@@ -1,0 +1,116 @@
+# Dive Service Management --- Project Plan
+
+## Synopsis
+
+This is a customer/service item/inventory management tool for a dive equipment repair business. It tracks customers, service orders, serviceable items (primarily drysuits and related components), parts inventory, billing/invoicing, and provides reporting and utility tools. It should include indexed tag and keyword searches, and helpful tools (for example, dedicated billing searches, relevant calculators, reporting section, etc).
+
+The initial deployment target is a scuba drysuit repair shop, but the architecture is designed to be reusable for any item-repair business.
+
+> Full technical specification: **PROJECT_BLUEPRINT.md**
+
+---
+
+## System Main Components
+
+- **Customer**: tracks customers (individual or business), who may or may not have submitted a service order. A list of related orders, service items, and prior invoices (and invoice status: paid/not paid) should be available, as well as common customer information---contact info, preferred contact method, tax exempt status, referral source, notes, tags, payment terms, credit limit, and a do-not-service flag (admin override required).
+
+- **Service order/item**: tracks items that have come from a customer and need a service. An order may consist of one or more items, and should have a general description of the work, the related customer, assigned technician, priority, status workflow, dates (received, promised, completed), and customer approval tracking (who approved, when, by what method). A service tech should be able to add services from the **price list**, add custom ad-hoc charges, add parts and labor to the order---the customer, services, and parts should be pickable from the existing lists, or addable directly from the form page. Service items should be tracked with fields such as a name, serial, brand, model, and a `last_service_date`. Drysuit-specific fields (material, seals, zipper, valves, boots) are stored in a separate `drysuit_details` extension table to keep the core item model clean for other equipment types. Each item has a serviceability status, condition-at-receipt documentation, and warranty tracking (type, start/end date, notes). When a tech enters a serial, the item should show past history of service or offer to create it. File attachments (photos, documents) can be added to items, order items, and service notes. A tech should be able to generate an invoice for the current order.
+
+- **Price list**: an editable catalog of standard services with flat-rate pricing (parts + labor bundled), organized by category. Based on industry-standard drysuit repair pricing---categories include leak testing, seal replacement (glue-on and ring systems), zipper replacement, valve service, boot/sock replacement, patching, accessories, and surcharges. Techs apply services from the price list to order items; non-price-list custom items are also addable. Prices are snapshotted at time of application so future edits don't affect past orders. Applied services can link to auto-deducted inventory parts, with clear traceability between parts_used records and the applied service that triggered them. A printable customer-facing price list (PDF) can be generated. Seeded with common drysuit repair services and typical pricing on first install.
+
+- **Inventory management**: tracks parts inventory, for use with an item to be serviced or individual resale. Each item will have name, SKU, purchase and resale costs, category/subcategory, manufacturer, storage location, notes, number in stock, reorder level, custom fields, supplier lead time, minimum order quantity, and expiration date (for adhesives, sealants, etc.). There should be tools to notify on low supply (configurable per item), expiring inventory, or other significant events/concerns. Price list services can optionally auto-deduct linked parts from inventory when applied to an order.
+
+- **Invoicing/billing**: invoices generated from service orders, with line items sourced from applied services, additional parts, and additional labor. Invoice-to-order relationship is many-to-many (an invoice may cover multiple orders; an order may be split across invoices for progress billing). Supports full lifecycle (draft, sent, paid, overdue, void, refund). Payment recording supports deposits/prepayments against a service order before an invoice exists, with future integration readiness for external systems (QuickBooks, Stripe). Dedicated billing search page. PDF invoice generation with company letterhead.
+
+---
+
+## Import/Export
+
+Import/export of each category to other formats should be supported---CSV, XLSX, JSON, and PDF. A customer export, an inventory export, a service order/parts export, an invoice/billing export, a price list export, etc. Import supports CSV/JSON/XLSX with column mapping interface, preview, and validation. Large exports/imports run as background tasks.
+
+---
+
+## Technology Stack
+
+- **Backend**: Python 3.12+ with Flask 3.1 (chosen over FastAPI because Jinja2 is Flask's native template engine, and the HTMX-driven frontend returns server-rendered HTML fragments)
+- **Frontend**: Jinja2 templates + HTMX 2.0 + Bootstrap 5 + Alpine.js + Chart.js + Tom Select (no build step required)
+- **Database**: MariaDB 11 LTS (InnoDB with FULLTEXT indexes for search; Pi-optimized tuning profile included)
+- **Task queue**: Celery + Redis (default) or Huey + Redis (lightweight alternative for Pi---fewer dependencies, lower RAM, runs in-process)
+- **PDF generation**: fpdf2 (primary---lightweight, no system dependencies, fast on ARM64) with optional WeasyPrint for complex HTML-to-PDF rendering
+- **ORM**: SQLAlchemy 2.0 with Flask-Migrate (Alembic)
+- **Auth**: Flask-Security-Too with argon2 password hashing, session-based
+
+---
+
+## Authentication and Authorization
+
+Multi-user with three roles: **admin** (full access), **technician** (create/edit data, apply services, generate invoices), **viewer** (read-only). Permissions enforced via decorators and template conditionals. Account lockout after configurable failed attempts. Additional permissions for attachments, deposits, and do-not-service overrides.
+
+---
+
+## Base Architecture
+
+It's intended to run a frontend web interface in a Docker container on a Raspberry Pi (ARM64), with a separate container hosting the DB. It should also be deployable to a container in a Windows/x86-64 Docker environment. Full deployment: five containers (web, MariaDB, Redis, Celery worker, Celery beat). Lightweight Pi profile: three containers (web with Huey in-process, MariaDB, Redis).
+
+A **setup script** (`scripts/setup.sh`) handles first-time installation: detects OS/arch (offers lightweight profile on Pi), installs Docker if needed, generates secrets and `.env`, builds/starts containers, runs migrations, seeds default data (roles, config, price list), and creates the admin user. Also supports `upgrade`, `backup`, `restore`, `status`, `stop`, `start` subcommands. Supports `--non-interactive` for automated deployments.
+
+The containers may or may not run on the same host, and configuration of a remote DB should be documented. The container should be accessible from network access, and the ability to define the network adapter included. All configurable options should be documented, with a reasonable set of defaults applied. Pi-specific MariaDB tuning (buffer pool, connection limits, disabled performance_schema) is provided via custom.cnf.
+
+---
+
+## Web Page Structure
+
+Should consist of a navigable menu on left, tabs for the current work at top, and the data entry in the middle. Custom themes (dark/light/auto) and graphics (such as corporate logos) should be supported. All pages should share a base template. Navigation sections: Dashboard, Customers, Orders, Inventory, Price List, Invoices, Reports, Tools, Admin.
+
+Key pages include: dashboard with summary cards and charts, customer list/detail/form, service order list (table and kanban views) with inline item management, serial number lookup, inventory list with stock-level indicators, price list browser with printable output, invoice generation from orders, dedicated billing search, report hub with 7 report types, tools hub with drysuit-specific calculators, and admin/configuration pages.
+
+---
+
+## Search and Indexing
+
+MariaDB InnoDB FULLTEXT indexes on key text columns across all entities. Global search bar in header searches customers, orders, items, inventory, and invoices simultaneously with categorized results. Per-entity search on each list page. Polymorphic tagging system with AND/OR filtering. Saved searches per user with default option. Dedicated billing search with financial query fields and running totals.
+
+---
+
+## Notification System
+
+In-app notifications via bell icon with unread count. Notification types: low stock, critical stock (zero), overdue invoice, order status change, order approaching/past due date, new order assignment, serviceability change, payment received, inventory expiring, warranty expiring, deposit received, do-not-service override. Scheduled checks via Celery Beat or Huey (low stock every 6 hours, overdue invoices daily). Configurable retention period.
+
+---
+
+## Reporting
+
+Seven report categories: revenue (by period, type, customer), service orders (by status, turnaround, tech, repair type), inventory (stock levels, movement, valuation, usage), technician (hours, revenue, productivity), customer (new, lifetime value, repeat rate), accounts receivable aging, and item service history. All reports support date range filtering, Chart.js visualizations, and export to CSV/XLSX/PDF.
+
+---
+
+## Tools / Calculators
+
+Drysuit-specific tools: **seal size calculator** (measurement to size recommendation by brand/system), **material estimator** (adhesive/patch quantities for repairs), **pricing calculator** (quick quote from repair type checklist, converts to service order), **leak test logger** (structured test logging as service notes), **valve service reference** (specs, compatibility, torque values), and **unit converter** (imperial/metric, PSI/bar, F/C).
+
+---
+
+## Testing Strategy
+
+Testing is embedded into every development step, not deferred to a final phase:
+
+- **Unit tests**: written with each piece of code (model, service, form, utility), run immediately (`pytest tests/unit/ -x`) before proceeding to the next step. Covers creation, validation, relationships, computed properties, business rules, edge cases, and error cases.
+- **Blueprint tests**: written with each route, verify HTTP status codes, authentication enforcement, authorization per the permission matrix, HTMX fragment responses, and form handling.
+- **Validation tests**: 14 end-to-end workflow tests run at phase/feature completion---customer workflow, order workflow, serial lookup, invoice generation, price list application, inventory deduction, import/export round-trip, auth/permissions matrix, notifications, search, report accuracy, PDF generation, data integrity, and concurrent access.
+- **Smoke tests**: app starts, all pages load (no 500s), static assets served. Run after any config/infra change.
+- **Full regression**: all tests run at dev stop and before any commit. Coverage target: 80%+.
+
+Phase gates require all tests passing and coverage check before advancing to the next implementation phase. Uses pytest with factory-boy, Faker, freezegun, and pytest-cov.
+
+---
+
+## Implementation Phases
+
+1. **Foundation** (Weeks 1--3): scaffolding, Docker setup (full + lightweight profiles), setup script, config system, DB schema/migrations, base template with nav/themes, auth with roles, CLI commands
+2. **Core Entities** (Weeks 4--6): customer CRUD (with payment terms, credit limit, do-not-service), service item CRUD (serial lookup, drysuit_details extension table), inventory CRUD (with expiration tracking), price list management with seed data, tags, global search, file attachments
+3. **Service Workflow** (Weeks 7--9): service order CRUD with status workflow and customer approval tracking, applied services (price list + custom) with applied_service_id traceability on parts_used, parts used with auto-deduct, labor entries, service notes, condition-at-receipt, warranty tracking, order timeline, tab system
+4. **Billing** (Weeks 10--11): invoice generation from orders (many-to-many via invoice_orders), invoice CRUD/status, deposit/prepayment recording, PDF generation (fpdf2), billing search, printable price list
+5. **Reports, Tools, Polish** (Weeks 12--14): all reports with charts, calculators/tools, import/export, notification system (including expiration and warranty alerts), background tasks (Celery or Huey)
+6. **Production Readiness** (Weeks 15--16): documentation, Docker optimization, security review, performance testing on Pi, backup/restore, final regression + coverage
+
+Tests are written incrementally within each phase---not in Phase 6. Each phase has a test gate.
