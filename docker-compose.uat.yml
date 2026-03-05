@@ -40,7 +40,7 @@ services:
   # MariaDB for UAT
   # ---------------------------------------------------------------------------
   db:
-    image: mariadb:11-lts
+    image: mariadb:lts
     container_name: dsm-uat-db
     environment:
       MARIADB_ROOT_PASSWORD: uat_root_pass
