@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_select, render_submit, render_form_errors %}
+
+{% block title %}{{ 'Edit Service Order #' ~ order.order_number if is_edit else 'New Service Order' }} - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('orders.list_orders') }}">Orders</a></li>
+    {% if is_edit %}
+    <li class="breadcrumb-item"><a href="{{ url_for('orders.detail', id=order.id) }}">{{ order.order_number }}</a></li>
+    <li class="breadcrumb-item active">Edit</li>
+    {% else %}
+    <li class="breadcrumb-item active">New Order</li>
+    {% endif %}
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">{{ 'Edit Service Order #' ~ order.order_number if is_edit else 'New Service Order' }}</h1>
+
+{{ render_form_errors(form) }}
+
+<form method="POST"
+      action="{{ url_for('orders.edit', id=order.id) if is_edit else url_for('orders.create') }}">
+  {{ form.hidden_tag() }}
+
+  {# Customer & Assignment #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Customer & Assignment</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_select(form.customer_id) }}
+        </div>
+        <div class="col-md-6">
+          {{ render_select(form.assigned_tech_id) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Dates #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Dates</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_field(form.date_received) }}
+        </div>
+        <div class="col-md-6">
+          {{ render_field(form.date_promised) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Status & Priority (edit only for status) #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Status & Priority</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        {% if is_edit %}
+        <div class="col-md-6">
+          {{ render_select(form.status) }}
+        </div>
+        <div class="col-md-6">
+          {{ render_select(form.priority) }}
+        </div>
+        {% else %}
+        <div class="col-md-6">
+          {{ render_select(form.priority) }}
+        </div>
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <input type="text" class="form-control" value="Intake" disabled>
+            <div class="form-text">New orders start in Intake status.</div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Financial #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Financial</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          {{ render_field(form.estimated_total, placeholder='0.00') }}
+        </div>
+        <div class="col-md-3">
+          {{ render_field(form.rush_fee, placeholder='0.00') }}
+        </div>
+        <div class="col-md-3">
+          {{ render_field(form.discount_percent, placeholder='0.00') }}
+        </div>
+        <div class="col-md-3">
+          {{ render_field(form.discount_amount, placeholder='0.00') }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Description & Notes #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Description & Notes</h5>
+    </div>
+    <div class="card-body">
+      {{ render_field(form.description, placeholder='Describe the work requested...') }}
+      {{ render_field(form.internal_notes, placeholder='Internal notes (not visible to customer)...') }}
+    </div>
+  </div>
+
+  {# Submit #}
+  <div class="d-flex gap-2">
+    {{ render_submit('Save Order', class='btn btn-primary') }}
+    <a href="{{ url_for('orders.detail', id=order.id) if is_edit else url_for('orders.list_orders') }}"
+       class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

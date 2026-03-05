@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_checkbox, render_select, render_submit, render_form_errors %}
+
+{% block title %}{{ 'Edit Customer' if is_edit else 'New Customer' }} - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('customers.list_customers') }}">Customers</a></li>
+    {% if is_edit %}
+    <li class="breadcrumb-item"><a href="{{ url_for('customers.detail', id=customer.id) }}">{{ customer.display_name }}</a></li>
+    <li class="breadcrumb-item active">Edit</li>
+    {% else %}
+    <li class="breadcrumb-item active">New Customer</li>
+    {% endif %}
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">{{ 'Edit Customer' if is_edit else 'New Customer' }}</h1>
+
+{{ render_form_errors(form) }}
+
+<form method="POST"
+      action="{{ url_for('customers.edit', id=customer.id) if is_edit else url_for('customers.create') }}">
+  {{ form.hidden_tag() }}
+
+  {# Customer Type #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Customer Type</h5>
+    </div>
+    <div class="card-body">
+      {{ render_select(form.customer_type) }}
+    </div>
+  </div>
+
+  {# Contact Information #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Contact Information</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_field(form.first_name, placeholder='First name') }}
+        </div>
+        <div class="col-md-6">
+          {{ render_field(form.last_name, placeholder='Last name') }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_field(form.business_name, placeholder='Business name') }}
+        </div>
+        <div class="col-md-6">
+          {{ render_field(form.contact_person, placeholder='Contact person (for businesses)') }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_field(form.email, placeholder='email@example.com') }}
+        </div>
+        <div class="col-md-3">
+          {{ render_field(form.phone_primary, placeholder='Primary phone') }}
+        </div>
+        <div class="col-md-3">
+          {{ render_field(form.phone_secondary, placeholder='Secondary phone') }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Address #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Address</h5>
+    </div>
+    <div class="card-body">
+      {{ render_field(form.address_line1, placeholder='Street address') }}
+      {{ render_field(form.address_line2, placeholder='Apt, suite, unit, etc.') }}
+      <div class="row">
+        <div class="col-md-4">
+          {{ render_field(form.city, placeholder='City') }}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.state_province, placeholder='State / Province') }}
+        </div>
+        <div class="col-md-2">
+          {{ render_field(form.postal_code, placeholder='Postal code') }}
+        </div>
+        <div class="col-md-2">
+          {{ render_field(form.country, placeholder='Country') }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Preferences #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Preferences</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          {{ render_select(form.preferred_contact) }}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.payment_terms, placeholder='e.g. Net 30') }}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.credit_limit, placeholder='0.00') }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4">
+          {{ render_checkbox(form.tax_exempt) }}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.tax_id, placeholder='Tax ID number') }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Notes #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Notes</h5>
+    </div>
+    <div class="card-body">
+      {{ render_field(form.notes, placeholder='Any additional notes...') }}
+      {{ render_field(form.referral_source, placeholder='How did this customer hear about us?') }}
+    </div>
+  </div>
+
+  {# Submit #}
+  <div class="d-flex gap-2">
+    {{ render_submit('Save Customer', class='btn btn-primary') }}
+    <a href="{{ url_for('customers.detail', id=customer.id) if is_edit else url_for('customers.list_customers') }}"
+       class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

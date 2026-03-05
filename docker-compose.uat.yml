@@ -1,0 +1,84 @@
+# =============================================================================
+# Dive Service Management - UAT Compose Configuration
+# Runs browser-based UAT tests against a live Flask app with MariaDB.
+#
+# Usage:
+#   docker compose -f docker-compose.uat.yml up -d web db
+#   docker compose -f docker-compose.uat.yml run --rm uat
+#   docker compose -f docker-compose.uat.yml down -v
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Flask App (live server for UAT)
+  # ---------------------------------------------------------------------------
+  web:
+    build: .
+    image: dsm-web:latest
+    container_name: dsm-uat-web
+    ports:
+      - "8081:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DSM_ENV=development
+      - DSM_SECRET_KEY=uat-secret-key-not-for-production
+      - DSM_SECURITY_PASSWORD_SALT=uat-salt-not-for-production
+      - DSM_DATABASE_URL=mysql+mysqldb://dsm:dsm_uat_pass@db:3306/dsm_uat
+      - DSM_DEBUG=false
+    networks:
+      - uat-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      start_period: 15s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # MariaDB for UAT
+  # ---------------------------------------------------------------------------
+  db:
+    image: mariadb:11-lts
+    container_name: dsm-uat-db
+    environment:
+      MARIADB_ROOT_PASSWORD: uat_root_pass
+      MARIADB_DATABASE: dsm_uat
+      MARIADB_USER: dsm
+      MARIADB_PASSWORD: dsm_uat_pass
+    tmpfs:
+      - /var/lib/mysql
+    networks:
+      - uat-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      start_period: 20s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # Playwright UAT Runner
+  # ---------------------------------------------------------------------------
+  uat:
+    build:
+      context: .
+      dockerfile: Dockerfile.uat
+    container_name: dsm-uat-runner
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      - DSM_UAT_BASE_URL=http://web:8080
+      - DSM_ENV=testing
+      - DSM_SECRET_KEY=uat-secret-key-not-for-production
+    volumes:
+      # Mount tests for live editing
+      - ./tests:/app/tests:ro
+    networks:
+      - uat-net
+
+networks:
+  uat-net:
+    driver: bridge

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_select, render_submit %}
+{% from 'macros/pagination.html' import render_pagination %}
+{% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
+
+{% block title %}Customers - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Customers</h1>
+    {{ record_count(pagination) }}
+  </div>
+  {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+  <a href="{{ url_for('customers.create') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> Add Customer
+  </a>
+  {% endif %}
+</div>
+
+{# Search and filter form #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('customers.list_customers') }}" class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label for="q" class="form-label">Search</label>
+        <input type="text" class="form-control" id="q" name="q"
+               value="{{ form.q.data or '' }}"
+               placeholder="Name, email, phone...">
+      </div>
+      <div class="col-md-3">
+        {{ render_select(form.customer_type) }}
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-search me-1"></i> Search
+        </button>
+      </div>
+      <div class="col-md-2">
+        <a href="{{ url_for('customers.list_customers') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Customer table #}
+{% if customers %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          {{ sortable_header('last_name', 'Name', sort, order) }}
+          {{ sortable_header('phone_primary', 'Phone', sort, order) }}
+          {{ sortable_header('email', 'Email', sort, order) }}
+          {{ sortable_header('customer_type', 'Type', sort, order) }}
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for customer in customers %}
+        <tr>
+          <td>
+            <a href="{{ url_for('customers.detail', id=customer.id) }}">
+              {{ customer.display_name }}
+            </a>
+          </td>
+          <td>{{ customer.phone_primary or '' }}</td>
+          <td>{{ customer.email or '' }}</td>
+          <td>
+            <span class="badge bg-{{ 'primary' if customer.customer_type == 'business' else 'secondary' }}">
+              {{ customer.customer_type|capitalize }}
+            </span>
+          </td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <a href="{{ url_for('customers.detail', id=customer.id) }}"
+                 class="btn btn-outline-primary" title="View">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+              <a href="{{ url_for('customers.edit', id=customer.id) }}"
+                 class="btn btn-outline-secondary" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{{ render_pagination(pagination) }}
+{% else %}
+{{ empty_state('No customers found.', 'bi-people', url_for('customers.create'), 'Add Customer') }}
+{% endif %}
+{% endblock %}

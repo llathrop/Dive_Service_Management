@@ -1,0 +1,19 @@
+# Dive Service Management - Development & Testing Dependencies
+# Install with: pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+# Testing Framework
+pytest==8.3.4
+pytest-flask==1.3.0
+pytest-cov==6.0.0
+
+# Test Factories & Data
+factory-boy==3.3.1
+Faker==30.8.2
+
+# Time Mocking
+freezegun==1.4.0
+
+# HTTP Mocking
+responses==0.25.6

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Price List - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Price List</h1>
+  <div class="d-flex gap-2">
+    {% if current_user.has_role('admin') %}
+    <a href="{{ url_for('price_list.categories') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-folder me-1"></i> Categories
+    </a>
+    {% endif %}
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('price_list.create') }}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i> Add Item
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# Search #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('price_list.list_items') }}" class="row g-3 align-items-end">
+      <div class="col-md-9">
+        <label for="q" class="form-label">Search</label>
+        <input type="text" class="form-control" id="q" name="q"
+               value="{{ q }}"
+               placeholder="Search services...">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-search me-1"></i> Search
+        </button>
+      </div>
+      <div class="col-md-1">
+        <a href="{{ url_for('price_list.list_items') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Accordion layout by category #}
+{% if category_items %}
+<div class="accordion" id="priceListAccordion">
+  {% for category, items in category_items.items() %}
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="heading{{ category.id }}">
+      <button class="accordion-button {{ '' if loop.first else 'collapsed' }}"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#collapse{{ category.id }}"
+              aria-expanded="{{ 'true' if loop.first else 'false' }}"
+              aria-controls="collapse{{ category.id }}">
+        {{ category.name }}
+        <span class="badge bg-secondary ms-2">{{ items|length }}</span>
+      </button>
+    </h2>
+    <div id="collapse{{ category.id }}"
+         class="accordion-collapse collapse {{ 'show' if loop.first else '' }}"
+         aria-labelledby="heading{{ category.id }}"
+         data-bs-parent="#priceListAccordion">
+      <div class="accordion-body p-0">
+        {% if items %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Service</th>
+                <th>Price</th>
+                <th>Unit</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <td><code>{{ item.code or '' }}</code></td>
+                <td>
+                  <a href="{{ url_for('price_list.detail', id=item.id) }}">{{ item.name }}</a>
+                  {% if item.description %}
+                  <br><small class="text-muted">{{ item.description|truncate(80) }}</small>
+                  {% endif %}
+                </td>
+                <td><strong>${{ "%.2f"|format(item.price) }}</strong></td>
+                <td>{{ item.unit_label }}</td>
+                <td>
+                  <div class="btn-group btn-group-sm">
+                    <a href="{{ url_for('price_list.detail', id=item.id) }}"
+                       class="btn btn-outline-primary" title="View">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+                    <a href="{{ url_for('price_list.edit', id=item.id) }}"
+                       class="btn btn-outline-secondary" title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="p-3 text-center text-muted">
+          No items in this category{% if q %} matching "{{ q }}"{% endif %}.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="bi bi-tags display-4 text-muted mb-3 d-block"></i>
+  <p class="text-muted mb-3">No price list items found{% if q %} matching "{{ q }}"{% endif %}.</p>
+  {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+  <a href="{{ url_for('price_list.create') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> Add Item
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

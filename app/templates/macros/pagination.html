@@ -1,0 +1,67 @@
+{# Pagination macro for Bootstrap 5 styled pagination.
+   Preserves current query parameters (sort, order, q, etc.) across pages
+   by merging them with the page number in url_for. #}
+
+{% macro render_pagination(pagination, endpoint=None) %}
+{% if pagination and pagination.pages > 1 %}
+{# Build a dict of current query args minus 'page' so we can merge with page numbers #}
+{% set base_args = request.args.to_dict() %}
+{% if 'page' in base_args %}{% set _ = base_args.pop('page') %}{% endif %}
+<nav aria-label="Page navigation">
+  <ul class="pagination justify-content-center">
+    {# Previous page link #}
+    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
+      {% if pagination.has_prev %}
+      <a class="page-link"
+         href="{{ url_for(endpoint or request.endpoint, page=pagination.prev_num, **base_args) }}"
+         aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+      </a>
+      {% else %}
+      <span class="page-link" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+      </span>
+      {% endif %}
+    </li>
+
+    {# Page number links #}
+    {% for page_num in pagination.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
+      {% if page_num %}
+        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
+          <a class="page-link"
+             href="{{ url_for(endpoint or request.endpoint, page=page_num, **base_args) }}">
+            {{ page_num }}
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">&hellip;</span>
+        </li>
+      {% endif %}
+    {% endfor %}
+
+    {# Next page link #}
+    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
+      {% if pagination.has_next %}
+      <a class="page-link"
+         href="{{ url_for(endpoint or request.endpoint, page=pagination.next_num, **base_args) }}"
+         aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+      </a>
+      {% else %}
+      <span class="page-link" aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+      </span>
+      {% endif %}
+    </li>
+  </ul>
+</nav>
+
+{# Page info #}
+<div class="text-center text-muted small">
+  Showing {{ ((pagination.page - 1) * pagination.per_page) + 1 }}
+  to {{ [pagination.page * pagination.per_page, pagination.total] | min }}
+  of {{ pagination.total }} results
+</div>
+{% endif %}
+{% endmacro %}

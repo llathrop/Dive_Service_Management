@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% from 'macros/status_badges.html' import serviceability_badge %}
+{% from 'macros/modals.html' import delete_modal %}
+
+{% block title %}{{ item.name }} - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{{ url_for('items.list_items') }}">Service Items</a></li>
+        <li class="breadcrumb-item active">{{ item.name }}</li>
+      </ol>
+    </nav>
+    <h1 class="h3 mb-0">{{ item.name }}</h1>
+    <div class="mt-1">
+      {{ serviceability_badge(item.serviceability) }}
+      {% if item.item_category %}
+      <span class="badge bg-info ms-1">{{ item.item_category }}</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('items.edit', id=item.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </a>
+    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteItemModal">
+      <i class="bi bi-trash me-1"></i> Delete
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row">
+  {# Item Details #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Item Details</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          {% if item.serial_number %}
+          <dt class="col-sm-5">Serial Number</dt>
+          <dd class="col-sm-7"><code>{{ item.serial_number }}</code></dd>
+          {% endif %}
+          <dt class="col-sm-5">Category</dt>
+          <dd class="col-sm-7">{{ item.item_category or 'N/A' }}</dd>
+          <dt class="col-sm-5">Brand</dt>
+          <dd class="col-sm-7">{{ item.brand or 'N/A' }}</dd>
+          <dt class="col-sm-5">Model</dt>
+          <dd class="col-sm-7">{{ item.model or 'N/A' }}</dd>
+          {% if item.year_manufactured %}
+          <dt class="col-sm-5">Year Manufactured</dt>
+          <dd class="col-sm-7">{{ item.year_manufactured }}</dd>
+          {% endif %}
+          <dt class="col-sm-5">Owner</dt>
+          <dd class="col-sm-7">
+            {% if item.customer %}
+            <a href="{{ url_for('customers.detail', id=item.customer.id) }}">
+              {{ item.customer.display_name }}
+            </a>
+            {% else %}
+            <span class="text-muted">Unassigned</span>
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Serviceability #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>Serviceability</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Status</dt>
+          <dd class="col-sm-7">{{ serviceability_badge(item.serviceability) }}</dd>
+          {% if item.serviceability_notes %}
+          <dt class="col-sm-5">Notes</dt>
+          <dd class="col-sm-7">{{ item.serviceability_notes }}</dd>
+          {% endif %}
+          {% if item.last_service_date %}
+          <dt class="col-sm-5">Last Service</dt>
+          <dd class="col-sm-7">{{ item.last_service_date.strftime('%Y-%m-%d') }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Notes #}
+{% if item.notes %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-journal-text me-2"></i>Notes</h5>
+  </div>
+  <div class="card-body">
+    <p class="mb-0" style="white-space: pre-line;">{{ item.notes }}</p>
+  </div>
+</div>
+{% endif %}
+
+{# Drysuit Details (only shown for Drysuit items) #}
+{% if item.is_drysuit and item.drysuit_details %}
+{% set ds = item.drysuit_details %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-water me-2"></i>Drysuit Details</h5>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <h6>Suit Basics</h6>
+        <dl class="row mb-3">
+          {% if ds.size %}
+          <dt class="col-sm-5">Size</dt>
+          <dd class="col-sm-7">{{ ds.size }}</dd>
+          {% endif %}
+          {% if ds.material_type %}
+          <dt class="col-sm-5">Material</dt>
+          <dd class="col-sm-7">{{ ds.material_type }}</dd>
+          {% endif %}
+          {% if ds.material_thickness %}
+          <dt class="col-sm-5">Thickness</dt>
+          <dd class="col-sm-7">{{ ds.material_thickness }}</dd>
+          {% endif %}
+          {% if ds.color %}
+          <dt class="col-sm-5">Color</dt>
+          <dd class="col-sm-7">{{ ds.color }}</dd>
+          {% endif %}
+          {% if ds.suit_entry_type %}
+          <dt class="col-sm-5">Entry Type</dt>
+          <dd class="col-sm-7">{{ ds.suit_entry_type }}</dd>
+          {% endif %}
+        </dl>
+
+        <h6>Seals</h6>
+        <dl class="row mb-3">
+          {% if ds.neck_seal_type %}
+          <dt class="col-sm-5">Neck Seal</dt>
+          <dd class="col-sm-7">{{ ds.neck_seal_type }}{% if ds.neck_seal_system %} ({{ ds.neck_seal_system }}){% endif %}</dd>
+          {% endif %}
+          {% if ds.wrist_seal_type %}
+          <dt class="col-sm-5">Wrist Seal</dt>
+          <dd class="col-sm-7">{{ ds.wrist_seal_type }}{% if ds.wrist_seal_system %} ({{ ds.wrist_seal_system }}){% endif %}</dd>
+          {% endif %}
+        </dl>
+      </div>
+      <div class="col-md-6">
+        <h6>Zipper</h6>
+        <dl class="row mb-3">
+          {% if ds.zipper_type %}
+          <dt class="col-sm-5">Type</dt>
+          <dd class="col-sm-7">{{ ds.zipper_type }}</dd>
+          {% endif %}
+          {% if ds.zipper_length %}
+          <dt class="col-sm-5">Length</dt>
+          <dd class="col-sm-7">{{ ds.zipper_length }}</dd>
+          {% endif %}
+          {% if ds.zipper_orientation %}
+          <dt class="col-sm-5">Orientation</dt>
+          <dd class="col-sm-7">{{ ds.zipper_orientation }}</dd>
+          {% endif %}
+        </dl>
+
+        <h6>Valves</h6>
+        <dl class="row mb-3">
+          {% if ds.inflate_valve_brand %}
+          <dt class="col-sm-5">Inflate Valve</dt>
+          <dd class="col-sm-7">{{ ds.inflate_valve_brand }} {{ ds.inflate_valve_model or '' }}</dd>
+          {% endif %}
+          {% if ds.dump_valve_brand %}
+          <dt class="col-sm-5">Dump Valve</dt>
+          <dd class="col-sm-7">{{ ds.dump_valve_brand }} {{ ds.dump_valve_model or '' }}{% if ds.dump_valve_type %} ({{ ds.dump_valve_type }}){% endif %}</dd>
+          {% endif %}
+        </dl>
+
+        {% if ds.boot_type %}
+        <h6>Boots</h6>
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Type</dt>
+          <dd class="col-sm-7">{{ ds.boot_type }}</dd>
+          {% if ds.boot_size %}
+          <dt class="col-sm-5">Size</dt>
+          <dd class="col-sm-7">{{ ds.boot_size }}</dd>
+          {% endif %}
+        </dl>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+{{ delete_modal('deleteItemModal', 'Service Item', url_for('items.delete', id=item.id)) }}
+{% endif %}
+{% endblock %}

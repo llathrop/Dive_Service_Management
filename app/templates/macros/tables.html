@@ -1,0 +1,48 @@
+{# Table macros for sortable, consistent table rendering #}
+
+{% macro sortable_header(column_name, display_name, current_sort='', current_order='asc', endpoint=None) %}
+{% set is_active = current_sort == column_name %}
+{% set next_order = 'desc' if (is_active and current_order == 'asc') else 'asc' %}
+<th>
+  <a href="{{ url_for(endpoint or request.endpoint, sort=column_name, order=next_order, **request.args) }}"
+     class="text-decoration-none text-body d-flex align-items-center">
+    {{ display_name }}
+    {% if is_active %}
+      {% if current_order == 'asc' %}
+        <i class="bi bi-sort-up ms-1"></i>
+      {% else %}
+        <i class="bi bi-sort-down ms-1"></i>
+      {% endif %}
+    {% else %}
+      <i class="bi bi-chevron-expand ms-1 text-muted opacity-50"></i>
+    {% endif %}
+  </a>
+</th>
+{% endmacro %}
+
+{% macro empty_state(message='No records found.', icon='bi-inbox', action_url='', action_text='') %}
+<div class="text-center py-5">
+  <i class="bi {{ icon }} display-4 text-muted mb-3 d-block"></i>
+  <p class="text-muted mb-3">{{ message }}</p>
+  {% if action_url %}
+  <a href="{{ action_url }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> {{ action_text }}
+  </a>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro record_count(pagination) %}
+{% if pagination %}
+<span class="text-muted small">
+  {{ pagination.total }} record{{ 's' if pagination.total != 1 else '' }}
+</span>
+{% endif %}
+{% endmacro %}
+
+{% macro bulk_actions_bar() %}
+<div class="d-flex align-items-center gap-2 mb-3" id="bulkActions" style="display: none !important;">
+  <span class="text-muted small"><span id="selectedCount">0</span> selected</span>
+  {{ caller() }}
+</div>
+{% endmacro %}

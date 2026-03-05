@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Revenue Report - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Revenue Report</h1>
+    <p class="text-muted mb-0">Revenue breakdown by type with monthly trend analysis.</p>
+  </div>
+  <a href="{{ url_for('reports.hub') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> All Reports
+  </a>
+</div>
+
+{# Date range filter #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('reports.revenue') }}" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label for="date_from" class="form-label">Date From</label>
+        <input type="date" class="form-control" id="date_from" name="date_from"
+               value="{{ date_from }}">
+      </div>
+      <div class="col-md-3">
+        <label for="date_to" class="form-label">Date To</label>
+        <input type="date" class="form-control" id="date_to" name="date_to"
+               value="{{ date_to }}">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-funnel me-1"></i> Filter
+        </button>
+      </div>
+      <div class="col-md-2">
+        <a href="{{ url_for('reports.revenue') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Summary cards #}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg">
+    <div class="card text-center border-start border-4 border-success">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Total Revenue</div>
+        <div class="fs-4 fw-bold text-success">${{ "%.2f"|format(data.total_revenue) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Parts</div>
+        <div class="fs-4 fw-bold">${{ "%.2f"|format(data.parts_revenue) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Labor</div>
+        <div class="fs-4 fw-bold">${{ "%.2f"|format(data.labor_revenue) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Services</div>
+        <div class="fs-4 fw-bold">${{ "%.2f"|format(data.services_revenue) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Fees</div>
+        <div class="fs-4 fw-bold">${{ "%.2f"|format(data.fees_revenue) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Monthly breakdown table and chart #}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Monthly Breakdown</h5>
+      </div>
+      <div class="card-body p-0">
+        {% if data.monthly_breakdown %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in data.monthly_breakdown %}
+              <tr>
+                <td>{{ row.month }}</td>
+                <td class="text-end">${{ "%.2f"|format(row.total) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+          No monthly data available.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Revenue Trend</h5>
+      </div>
+      <div class="card-body">
+        {% if data.monthly_breakdown %}
+        <canvas id="revenueTrendChart"></canvas>
+        {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-bar-chart fs-1 d-block mb-2"></i>
+          No chart data available.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if data.monthly_breakdown %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+  const monthlyData = {{ data.monthly_breakdown | tojson }};
+  const labels = monthlyData.map(d => d.month);
+  const totals = monthlyData.map(d => parseFloat(d.total));
+
+  const ctx = document.getElementById('revenueTrendChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Revenue',
+        data: totals,
+        borderColor: 'rgb(25, 135, 84)',
+        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return '$' + context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return '$' + value.toLocaleString('en-US');
+            }
+          }
+        }
+      }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

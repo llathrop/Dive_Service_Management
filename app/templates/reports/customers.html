@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Report - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Customer Report</h1>
+    <p class="text-muted mb-0">Customer statistics and top customers by invoice value.</p>
+  </div>
+  <a href="{{ url_for('reports.hub') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> All Reports
+  </a>
+</div>
+
+{# Date range filter #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('reports.customers') }}" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label for="date_from" class="form-label">Date From</label>
+        <input type="date" class="form-control" id="date_from" name="date_from"
+               value="{{ date_from }}">
+      </div>
+      <div class="col-md-3">
+        <label for="date_to" class="form-label">Date To</label>
+        <input type="date" class="form-control" id="date_to" name="date_to"
+               value="{{ date_to }}">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-funnel me-1"></i> Filter
+        </button>
+      </div>
+      <div class="col-md-2">
+        <a href="{{ url_for('reports.customers') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Summary cards #}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6">
+    <div class="card text-center border-start border-4 border-primary">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Total Customers</div>
+        <div class="fs-4 fw-bold text-primary">{{ data.total_customers }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6">
+    <div class="card text-center border-start border-4 border-success">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">New Customers (in range)</div>
+        <div class="fs-4 fw-bold text-success">{{ data.new_customers }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Top 10 customers table #}
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Top 10 Customers by Invoice Value</h5>
+  </div>
+  <div class="card-body p-0">
+    {% if data.top_customers %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Customer</th>
+            <th class="text-end">Total Invoiced</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for customer in data.top_customers %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>
+              <a href="{{ url_for('customers.detail', id=customer.customer_id) }}">
+                {{ customer.display_name }}
+              </a>
+            </td>
+            <td class="text-end">${{ "%.2f"|format(customer.total_value) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+      No customer data available.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

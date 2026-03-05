@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_select, render_submit, render_form_errors %}
+
+{% block title %}{{ 'Edit Item' if is_edit else 'New Service Item' }} - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('items.list_items') }}">Service Items</a></li>
+    {% if is_edit %}
+    <li class="breadcrumb-item"><a href="{{ url_for('items.detail', id=item.id) }}">{{ item.name }}</a></li>
+    <li class="breadcrumb-item active">Edit</li>
+    {% else %}
+    <li class="breadcrumb-item active">New Item</li>
+    {% endif %}
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">{{ 'Edit Service Item' if is_edit else 'New Service Item' }}</h1>
+
+{{ render_form_errors(form) }}
+
+<form method="POST"
+      action="{{ url_for('items.edit', id=item.id) if is_edit else url_for('items.create') }}"
+      x-data="{ category: '{{ form.item_category.data or '' }}' }">
+  {{ form.hidden_tag() }}
+  {{ form.customer_id() }}
+
+  {# Item Information #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Item Information</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_field(form.name, placeholder='Item name') }}
+        </div>
+        <div class="col-md-6">
+          {{ render_field(form.serial_number, placeholder='Serial number (optional)') }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4">
+          <div class="mb-3">
+            <label for="{{ form.item_category.id }}" class="form-label">
+              {{ form.item_category.label.text }}
+            </label>
+            {{ form.item_category(class='form-select', **{'x-model': 'category'}) }}
+          </div>
+        </div>
+        <div class="col-md-4">
+          {{ render_select(form.serviceability) }}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.year_manufactured, placeholder='e.g. 2020') }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_field(form.brand, placeholder='Manufacturer / Brand') }}
+        </div>
+        <div class="col-md-6">
+          {{ render_field(form.model, placeholder='Model name') }}
+        </div>
+      </div>
+      {{ render_field(form.serviceability_notes, placeholder='Serviceability notes...') }}
+      {{ render_field(form.notes, placeholder='General notes...') }}
+    </div>
+  </div>
+
+  {# Drysuit Details (shown only when category is Drysuit) #}
+  <div x-show="category === 'Drysuit'" x-cloak>
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-water me-2"></i>Drysuit Details</h5>
+      </div>
+      <div class="card-body">
+        <h6>Suit Basics</h6>
+        <div class="row">
+          <div class="col-md-3">
+            {{ render_field(drysuit_form.size, placeholder='Size') }}
+          </div>
+          <div class="col-md-3">
+            {{ render_select(drysuit_form.material_type) }}
+          </div>
+          <div class="col-md-3">
+            {{ render_field(drysuit_form.material_thickness, placeholder='Thickness') }}
+          </div>
+          <div class="col-md-3">
+            {{ render_field(drysuit_form.color, placeholder='Color') }}
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-4">
+            {{ render_select(drysuit_form.suit_entry_type) }}
+          </div>
+        </div>
+
+        <hr>
+        <h6>Seals</h6>
+        <div class="row">
+          <div class="col-md-3">
+            {{ render_select(drysuit_form.neck_seal_type) }}
+          </div>
+          <div class="col-md-3">
+            {{ render_field(drysuit_form.neck_seal_system, placeholder='Seal system') }}
+          </div>
+          <div class="col-md-3">
+            {{ render_select(drysuit_form.wrist_seal_type) }}
+          </div>
+          <div class="col-md-3">
+            {{ render_field(drysuit_form.wrist_seal_system, placeholder='Seal system') }}
+          </div>
+        </div>
+
+        <hr>
+        <h6>Zipper</h6>
+        <div class="row">
+          <div class="col-md-4">
+            {{ render_field(drysuit_form.zipper_type, placeholder='Zipper type') }}
+          </div>
+          <div class="col-md-4">
+            {{ render_field(drysuit_form.zipper_length, placeholder='Length') }}
+          </div>
+          <div class="col-md-4">
+            {{ render_select(drysuit_form.zipper_orientation) }}
+          </div>
+        </div>
+
+        <hr>
+        <h6>Valves</h6>
+        <div class="row">
+          <div class="col-md-4">
+            {{ render_field(drysuit_form.inflate_valve_brand, placeholder='Brand') }}
+          </div>
+          <div class="col-md-4">
+            {{ render_field(drysuit_form.inflate_valve_model, placeholder='Model') }}
+          </div>
+          <div class="col-md-4">
+            {{ render_field(drysuit_form.inflate_valve_position, placeholder='Position') }}
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-4">
+            {{ render_field(drysuit_form.dump_valve_brand, placeholder='Brand') }}
+          </div>
+          <div class="col-md-4">
+            {{ render_field(drysuit_form.dump_valve_model, placeholder='Model') }}
+          </div>
+          <div class="col-md-4">
+            {{ render_select(drysuit_form.dump_valve_type) }}
+          </div>
+        </div>
+
+        <hr>
+        <h6>Boots</h6>
+        <div class="row">
+          <div class="col-md-6">
+            {{ render_select(drysuit_form.boot_type) }}
+          </div>
+          <div class="col-md-6">
+            {{ render_field(drysuit_form.boot_size, placeholder='Boot size') }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Submit #}
+  <div class="d-flex gap-2">
+    {{ render_submit('Save Item', class='btn btn-primary') }}
+    <a href="{{ url_for('items.detail', id=item.id) if is_edit else url_for('items.list_items') }}"
+       class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

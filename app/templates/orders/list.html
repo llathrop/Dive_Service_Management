@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_select, render_submit %}
+{% from 'macros/pagination.html' import render_pagination %}
+{% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
+{% from 'macros/status_badges.html' import order_status_badge, priority_badge %}
+
+{% block title %}Service Orders - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Service Orders</h1>
+    {{ record_count(orders) }}
+  </div>
+  {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+  <a href="{{ url_for('orders.create') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> New Order
+  </a>
+  {% endif %}
+</div>
+
+{# Search and filter form #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('orders.list_orders') }}" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label for="q" class="form-label">Search</label>
+        <input type="text" class="form-control" id="q" name="q"
+               value="{{ form.q.data or '' }}"
+               placeholder="Order #, customer name...">
+      </div>
+      <div class="col-md-2">
+        {{ render_select(form.status) }}
+      </div>
+      <div class="col-md-2">
+        {{ render_select(form.priority) }}
+      </div>
+      <div class="col-md-2">
+        {{ render_select(form.assigned_tech_id) }}
+      </div>
+      <div class="col-md-3">
+        <div class="row g-2">
+          <div class="col-6">
+            {{ render_field(form.date_from) }}
+          </div>
+          <div class="col-6">
+            {{ render_field(form.date_to) }}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-search me-1"></i> Search
+        </button>
+      </div>
+      <div class="col-md-2">
+        <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Orders table #}
+{% if orders.items %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          {{ sortable_header('order_number', 'Order #', sort, order) }}
+          {{ sortable_header('customer_id', 'Customer', sort, order) }}
+          {{ sortable_header('status', 'Status', sort, order) }}
+          {{ sortable_header('priority', 'Priority', sort, order) }}
+          {{ sortable_header('assigned_tech_id', 'Tech', sort, order) }}
+          {{ sortable_header('date_received', 'Received', sort, order) }}
+          {{ sortable_header('date_promised', 'Promised', sort, order) }}
+          {{ sortable_header('estimated_total', 'Est. Total', sort, order) }}
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for so in orders.items %}
+        <tr>
+          <td>
+            <a href="{{ url_for('orders.detail', id=so.id) }}">
+              {{ so.order_number }}
+            </a>
+          </td>
+          <td>
+            <a href="{{ url_for('customers.detail', id=so.customer.id) }}">
+              {{ so.customer.display_name }}
+            </a>
+          </td>
+          <td>{{ order_status_badge(so.status) }}</td>
+          <td>{{ priority_badge(so.priority) }}</td>
+          <td>
+            {% if so.assigned_tech %}
+              {{ so.assigned_tech.username }}
+            {% else %}
+              <span class="text-muted">Unassigned</span>
+            {% endif %}
+          </td>
+          <td>{{ so.date_received.strftime('%m/%d/%Y') if so.date_received else '' }}</td>
+          <td>
+            {% if so.date_promised %}
+              <span class="{{ 'text-danger fw-bold' if so.is_overdue else '' }}">
+                {{ so.date_promised.strftime('%m/%d/%Y') }}
+              </span>
+            {% endif %}
+          </td>
+          <td>
+            {% if so.estimated_total is not none %}
+              ${{ "%.2f"|format(so.estimated_total) }}
+            {% endif %}
+          </td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <a href="{{ url_for('orders.detail', id=so.id) }}"
+                 class="btn btn-outline-primary" title="View">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+              <a href="{{ url_for('orders.edit', id=so.id) }}"
+                 class="btn btn-outline-secondary" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{{ render_pagination(orders) }}
+{% else %}
+{{ empty_state('No service orders found.', 'bi-clipboard-x', url_for('orders.create'), 'New Order') }}
+{% endif %}
+{% endblock %}

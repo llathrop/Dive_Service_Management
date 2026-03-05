@@ -1,0 +1,9 @@
+# Dive Service Management - UAT (User Acceptance Testing) Dependencies
+# Install with: pip install -r requirements-uat.txt
+# These are used for browser-based UAT tests via Playwright.
+
+-r requirements-dev.txt
+
+# Playwright browser automation
+pytest-playwright==0.6.2
+playwright==1.49.1

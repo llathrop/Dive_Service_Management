@@ -2789,7 +2789,55 @@ test-failed:        pytest --lf --tb=long                          # Re-run only
 test-watch:         ptw tests/unit/ -- -x --tb=short               # Watch mode (requires pytest-watch)
 ```
 
-### 14.8 CI Integration (Future)
+### 14.8 User Acceptance Testing (UAT)
+
+UAT scripts validate the application from an end-user perspective using browser
+automation via **Playwright**. They complement unit/blueprint tests by exercising
+the full stack: Docker containers, Flask app, rendered HTML, HTMX interactions,
+and database persistence.
+
+**Infrastructure:**
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| Dockerfile | `Dockerfile.uat` | Test image with Playwright + Chromium |
+| Compose | `docker-compose.uat.yml` | Orchestrates: app (web), db (MariaDB), Playwright runner |
+| Requirements | `requirements-uat.txt` | pytest-playwright, playwright |
+| Conftest | `tests/uat/conftest.py` | Fixtures: browser, page, admin_page, tech_page, viewer_page |
+| Plan | `tests/uat/UAT_PLAN.md` | Full test inventory and timing schedule |
+
+**Marker:** `@pytest.mark.uat` — excluded from standard test runs via `--ignore=tests/uat`.
+
+**UAT Timing Schedule:**
+
+| Phase | UAT Scope | Script File(s) |
+|-------|-----------|----------------|
+| 1 | Login, logout, dashboard, health | `test_uat_auth.py` |
+| 2 | Customer/Item/Inventory CRUD, price list, search | `test_uat_customers.py`, `test_uat_items.py`, `test_uat_inventory.py`, `test_uat_price_list.py`, `test_uat_search.py` |
+| 3 | Service order workflow, parts, labor, notes | `test_uat_orders.py` |
+| 4 | Invoice generation, payments, billing search | `test_uat_invoices.py` |
+| 5 | Reports, calculator tools | `test_uat_reports.py`, `test_uat_tools.py` |
+| 6 | **Full E2E suite** — all above + complete workflow | `test_uat_e2e.py` |
+
+**Commands:**
+
+```bash
+# Start app + db for UAT
+docker compose -f docker-compose.uat.yml up -d web db
+
+# Run all UATs
+docker compose -f docker-compose.uat.yml run --rm uat
+
+# Run specific phase
+docker compose -f docker-compose.uat.yml run --rm uat pytest tests/uat/test_uat_auth.py -v
+
+# Cleanup
+docker compose -f docker-compose.uat.yml down -v
+```
+
+UAT scripts are updated progressively as each phase completes to match actual page structure and output.
+
+### 14.9 CI Integration (Future)
 
 When a CI pipeline is added (GitHub Actions, etc.), it should run:
 

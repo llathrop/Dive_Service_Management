@@ -1,0 +1,749 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_select, render_checkbox, render_submit %}
+{% from 'macros/status_badges.html' import order_status_badge, priority_badge, serviceability_badge %}
+{% from 'macros/modals.html' import delete_modal %}
+
+{% block title %}{{ order.order_number }} - Dive Service Management{% endblock %}
+
+{% block content %}
+{# ===== STATUS TRANSITIONS MAP ===== #}
+{% set STATUS_TRANSITIONS = {
+  'intake': ['assessment', 'cancelled'],
+  'assessment': ['awaiting_approval', 'in_progress', 'cancelled'],
+  'awaiting_approval': ['in_progress', 'cancelled'],
+  'in_progress': ['awaiting_parts', 'completed', 'cancelled'],
+  'awaiting_parts': ['in_progress', 'cancelled'],
+  'completed': ['ready_for_pickup'],
+  'ready_for_pickup': ['picked_up'],
+  'picked_up': [],
+  'cancelled': ['intake'],
+} %}
+
+{% set STATUS_LABELS = {
+  'intake': 'Intake',
+  'assessment': 'Assessment',
+  'awaiting_approval': 'Awaiting Approval',
+  'in_progress': 'In Progress',
+  'awaiting_parts': 'Awaiting Parts',
+  'completed': 'Completed',
+  'ready_for_pickup': 'Ready for Pickup',
+  'picked_up': 'Picked Up',
+  'cancelled': 'Cancelled',
+} %}
+
+{# ===== HEADER ROW ===== #}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{{ url_for('orders.list_orders') }}">Orders</a></li>
+        <li class="breadcrumb-item active">{{ order.order_number }}</li>
+      </ol>
+    </nav>
+    <h1 class="h3 mb-1">{{ order.order_number }}</h1>
+    <div class="d-flex gap-2 align-items-center">
+      {{ order_status_badge(order.status) }}
+      {{ priority_badge(order.priority) }}
+    </div>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('orders.edit', id=order.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </a>
+
+    {# Status change dropdown #}
+    {% set next_statuses = STATUS_TRANSITIONS.get(order.status, []) %}
+    {% if next_statuses %}
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+              id="statusDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-arrow-right-circle me-1"></i> Change Status
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="statusDropdown">
+        {% for next_status in next_statuses %}
+        <li>
+          <form method="POST" action="{{ url_for('orders.change_status', id=order.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="new_status" value="{{ next_status }}">
+            <button type="submit" class="dropdown-item">
+              <i class="bi bi-arrow-right me-1"></i>
+              {{ STATUS_LABELS.get(next_status, next_status) }}
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if current_user.has_role('admin') %}
+    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteOrderModal">
+      <i class="bi bi-trash me-1"></i> Delete
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== INFO BAR (row of cards) ===== #}
+<div class="row mb-4">
+  {# Customer card #}
+  <div class="col-md-3 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-person me-2"></i>Customer</h6>
+      </div>
+      <div class="card-body">
+        <p class="mb-1">
+          <a href="{{ url_for('customers.detail', id=order.customer.id) }}" class="fw-semibold">
+            {{ order.customer.display_name }}
+          </a>
+        </p>
+        {% if order.customer.phone_primary %}
+        <p class="mb-1 small text-muted">
+          <i class="bi bi-telephone me-1"></i> {{ order.customer.phone_primary }}
+        </p>
+        {% endif %}
+        {% if order.customer.email %}
+        <p class="mb-0 small text-muted">
+          <i class="bi bi-envelope me-1"></i> {{ order.customer.email }}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Dates card #}
+  <div class="col-md-3 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-calendar3 me-2"></i>Dates</h6>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-6">Received</dt>
+          <dd class="col-6">{{ order.date_received.strftime('%m/%d/%Y') if order.date_received else 'N/A' }}</dd>
+          <dt class="col-6">Promised</dt>
+          <dd class="col-6">
+            {% if order.date_promised %}
+            <span class="{{ 'text-danger fw-bold' if order.is_overdue else '' }}">
+              {{ order.date_promised.strftime('%m/%d/%Y') }}
+              {% if order.is_overdue %}<i class="bi bi-exclamation-triangle-fill ms-1"></i>{% endif %}
+            </span>
+            {% else %}
+            N/A
+            {% endif %}
+          </dd>
+          <dt class="col-6">Completed</dt>
+          <dd class="col-6">{{ order.date_completed.strftime('%m/%d/%Y') if order.date_completed else 'N/A' }}</dd>
+          <dt class="col-6">Picked Up</dt>
+          <dd class="col-6">{{ order.date_picked_up.strftime('%m/%d/%Y') if order.date_picked_up else 'N/A' }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Assignment card #}
+  <div class="col-md-3 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-person-badge me-2"></i>Assignment</h6>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5">Tech</dt>
+          <dd class="col-7">
+            {% if order.assigned_tech %}
+              {{ order.assigned_tech.display_name }}
+            {% else %}
+              <span class="text-muted">Unassigned</span>
+            {% endif %}
+          </dd>
+          <dt class="col-5">Created By</dt>
+          <dd class="col-7">
+            {% if order.created_by %}
+              <span class="text-muted">User #{{ order.created_by }}</span>
+            {% else %}
+              <span class="text-muted">System</span>
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Financial Summary card #}
+  <div class="col-md-3 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-currency-dollar me-2"></i>Financial Summary</h6>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-7">Services</dt>
+          <dd class="col-5 text-end">${{ "%.2f"|format(summary.applied_services_total) }}</dd>
+          <dt class="col-7">Parts</dt>
+          <dd class="col-5 text-end">${{ "%.2f"|format(summary.parts_total) }}</dd>
+          <dt class="col-7">Labor</dt>
+          <dd class="col-5 text-end">${{ "%.2f"|format(summary.labor_total) }}</dd>
+          {% if summary.rush_fee > 0 %}
+          <dt class="col-7">Rush Fee</dt>
+          <dd class="col-5 text-end">${{ "%.2f"|format(summary.rush_fee) }}</dd>
+          {% endif %}
+          {% if summary.discount_total > 0 %}
+          <dt class="col-7 text-danger">Discounts</dt>
+          <dd class="col-5 text-end text-danger">-${{ "%.2f"|format(summary.discount_total) }}</dd>
+          {% endif %}
+          <dt class="col-7 border-top pt-1 fw-bold">Est. Total</dt>
+          <dd class="col-5 text-end border-top pt-1 fw-bold">${{ "%.2f"|format(summary.estimated_total) }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ===== DESCRIPTION & INTERNAL NOTES ===== #}
+{% if order.description or order.internal_notes %}
+<div class="row mb-4">
+  {% if order.description %}
+  <div class="col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-card-text me-2"></i>Description</h6>
+      </div>
+      <div class="card-body">
+        <p class="mb-0" style="white-space: pre-line;">{{ order.description }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if order.internal_notes %}
+  <div class="col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-journal-text me-2"></i>Internal Notes</h6>
+      </div>
+      <div class="card-body">
+        <p class="mb-0" style="white-space: pre-line;">{{ order.internal_notes }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ===== SERVICE ITEMS SECTION ===== #}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0"><i class="bi bi-tools me-2"></i>Service Items</h5>
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <button class="btn btn-sm btn-outline-primary" type="button"
+            data-bs-toggle="collapse" data-bs-target="#addItemForm"
+            aria-expanded="false" aria-controls="addItemForm">
+      <i class="bi bi-plus-lg me-1"></i> Add Item
+    </button>
+    {% endif %}
+  </div>
+
+  {# Add Item collapse form #}
+  {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+  <div class="collapse" id="addItemForm">
+    <div class="card-body border-bottom bg-body-tertiary">
+      <form method="POST" action="{{ url_for('orders.add_item', id=order.id) }}">
+        {{ item_form.hidden_tag() }}
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            {{ render_select(item_form.service_item_id) }}
+            {% if item_form.service_item_id.choices|length <= 1 %}
+            <div class="form-text text-warning">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              No service items found. <a href="{{ url_for('items.create') }}">Create one first</a>.
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-md-3">
+            {{ render_field(item_form.work_description, placeholder='Description of work needed...') }}
+          </div>
+          <div class="col-md-3">
+            {{ render_field(item_form.condition_at_receipt, placeholder='Condition when received...') }}
+          </div>
+          <div class="col-md-2">
+            <div class="mb-3">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-plus-lg me-1"></i> Add Item
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card-body">
+    {% set order_items_list = order.order_items.all() %}
+    {% if order_items_list %}
+      {% for oi in order_items_list %}
+      <div class="border rounded p-3 mb-4 {{ 'border-start border-4 border-primary' if loop.first else '' }}">
+        {# Order Item Header #}
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h6 class="mb-1">
+              <i class="bi bi-box me-1"></i>
+              {{ oi.service_item.name }}
+              {% if oi.service_item.serial_number %}
+                <small class="text-muted">({{ oi.service_item.serial_number }})</small>
+              {% endif %}
+            </h6>
+            <div class="d-flex gap-2">
+              {{ serviceability_badge(oi.service_item.serviceability) }}
+              {% if oi.status == 'pending' %}
+              <span class="badge bg-secondary">Pending</span>
+              {% elif oi.status == 'in_progress' %}
+              <span class="badge bg-primary">In Progress</span>
+              {% elif oi.status == 'completed' %}
+              <span class="badge bg-success">Completed</span>
+              {% elif oi.status == 'cancelled' %}
+              <span class="badge bg-danger">Cancelled</span>
+              {% elif oi.status == 'returned_unserviceable' %}
+              <span class="badge bg-warning text-dark">Returned Unserviceable</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+          <form method="POST" action="{{ url_for('orders.remove_item', item_id=oi.id) }}"
+                onsubmit="return confirm('Remove this item and all its services, parts, labor, and notes?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove Item">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+          {% endif %}
+        </div>
+
+        {# Work description and condition #}
+        {% if oi.work_description %}
+        <p class="small mb-1"><strong>Work Description:</strong> {{ oi.work_description }}</p>
+        {% endif %}
+        {% if oi.condition_at_receipt %}
+        <p class="small mb-1"><strong>Condition at Receipt:</strong> {{ oi.condition_at_receipt }}</p>
+        {% endif %}
+        {% if oi.diagnosis %}
+        <p class="small mb-2"><strong>Diagnosis:</strong> {{ oi.diagnosis }}</p>
+        {% endif %}
+
+        {# ---- Applied Services Sub-section ---- #}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0 small text-uppercase text-muted">
+              <i class="bi bi-wrench me-1"></i> Applied Services
+            </h6>
+            {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+            <button class="btn btn-sm btn-outline-secondary" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#addServiceForm-{{ oi.id }}"
+                    aria-expanded="false">
+              <i class="bi bi-plus me-1"></i> Add Service
+            </button>
+            {% endif %}
+          </div>
+
+          {% set applied_services_list = oi.applied_services.all() %}
+          {% if applied_services_list %}
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-2">
+              <thead class="table-light">
+                <tr>
+                  <th>Service Name</th>
+                  <th class="text-center">Qty</th>
+                  <th class="text-end">Unit Price</th>
+                  <th class="text-center">Discount %</th>
+                  <th class="text-end">Line Total</th>
+                  <th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for svc in applied_services_list %}
+                <tr>
+                  <td>{{ svc.service_name }}</td>
+                  <td class="text-center">{{ svc.quantity }}</td>
+                  <td class="text-end">${{ "%.2f"|format(svc.unit_price) }}</td>
+                  <td class="text-center">{{ "%.1f"|format(svc.discount_percent) }}%</td>
+                  <td class="text-end">${{ "%.2f"|format(svc.line_total) }}</td>
+                  <td class="text-center">
+                    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+                    <form method="POST" action="{{ url_for('orders.remove_service', service_id=svc.id) }}" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove Service"
+                              onclick="return confirm('Remove this service?');">
+                        <i class="bi bi-trash3"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="text-muted small mb-2">No applied services yet.</p>
+          {% endif %}
+
+          {# Add Service collapse form #}
+          {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+          <div class="collapse" id="addServiceForm-{{ oi.id }}">
+            <div class="bg-body-tertiary rounded p-3">
+              <form method="POST" action="{{ url_for('orders.add_service', item_id=oi.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-3">
+                    <label for="price_list_item_id_{{ oi.id }}" class="form-label small">Price List Item</label>
+                    <select name="price_list_item_id" id="price_list_item_id_{{ oi.id }}" class="form-select form-select-sm">
+                      {% for value, label in service_form.price_list_item_id.choices %}
+                      <option value="{{ value }}">{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label for="service_name_{{ oi.id }}" class="form-label small">Service Name <span class="text-danger">*</span></label>
+                    <input type="text" name="service_name" id="service_name_{{ oi.id }}" class="form-control form-control-sm" required>
+                  </div>
+                  <div class="col-md-1">
+                    <label for="quantity_{{ oi.id }}" class="form-label small">Qty</label>
+                    <input type="number" name="quantity" id="quantity_{{ oi.id }}" class="form-control form-control-sm" value="1" step="0.01" min="0.01" required>
+                  </div>
+                  <div class="col-md-2">
+                    <label for="unit_price_{{ oi.id }}" class="form-label small">Unit Price <span class="text-danger">*</span></label>
+                    <input type="number" name="unit_price" id="unit_price_{{ oi.id }}" class="form-control form-control-sm" step="0.01" min="0" required>
+                  </div>
+                  <div class="col-md-1">
+                    <label for="discount_percent_{{ oi.id }}" class="form-label small">Disc %</label>
+                    <input type="number" name="discount_percent" id="discount_percent_{{ oi.id }}" class="form-control form-control-sm" value="0" step="0.01" min="0" max="100">
+                  </div>
+                  <div class="col-md-1">
+                    <div class="form-check mt-4">
+                      <input type="checkbox" name="is_taxable" id="is_taxable_{{ oi.id }}" class="form-check-input" checked>
+                      <label class="form-check-label small" for="is_taxable_{{ oi.id }}">Tax</label>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">
+                      <i class="bi bi-plus-lg me-1"></i> Add Service
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        {# ---- Parts Used Sub-section ---- #}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0 small text-uppercase text-muted">
+              <i class="bi bi-box-seam me-1"></i> Parts Used
+            </h6>
+            {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+            <button class="btn btn-sm btn-outline-secondary" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#addPartForm-{{ oi.id }}"
+                    aria-expanded="false">
+              <i class="bi bi-plus me-1"></i> Add Part
+            </button>
+            {% endif %}
+          </div>
+
+          {% set parts_list = oi.parts_used.all() %}
+          {% if parts_list %}
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-2">
+              <thead class="table-light">
+                <tr>
+                  <th>Part Name</th>
+                  <th class="text-center">Qty</th>
+                  <th class="text-end">Unit Cost</th>
+                  <th class="text-end">Unit Price</th>
+                  <th class="text-end">Line Total</th>
+                  <th class="text-center">Auto?</th>
+                  <th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for part in parts_list %}
+                <tr>
+                  <td>
+                    <a href="{{ url_for('inventory.detail', id=part.inventory_item.id) }}">
+                      {{ part.inventory_item.name }}
+                    </a>
+                  </td>
+                  <td class="text-center">{{ part.quantity }}</td>
+                  <td class="text-end">${{ "%.2f"|format(part.unit_cost_at_use) }}</td>
+                  <td class="text-end">${{ "%.2f"|format(part.unit_price_at_use) }}</td>
+                  <td class="text-end">
+                    {% if part.line_total is not none %}
+                      ${{ "%.2f"|format(part.line_total) }}
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if part.is_auto_deducted %}
+                    <i class="bi bi-check-circle-fill text-success" title="Auto-deducted from applied service"></i>
+                    {% else %}
+                    <i class="bi bi-dash text-muted"></i>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+                    <form method="POST" action="{{ url_for('orders.remove_part', part_id=part.id) }}" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove Part"
+                              onclick="return confirm('Remove this part? Inventory will be restored.');">
+                        <i class="bi bi-trash3"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="text-muted small mb-2">No parts used yet.</p>
+          {% endif %}
+
+          {# Add Part collapse form #}
+          {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+          <div class="collapse" id="addPartForm-{{ oi.id }}">
+            <div class="bg-body-tertiary rounded p-3">
+              <form method="POST" action="{{ url_for('orders.add_part', item_id=oi.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-4">
+                    <label for="inventory_item_id_{{ oi.id }}" class="form-label small">Inventory Item <span class="text-danger">*</span></label>
+                    <select name="inventory_item_id" id="inventory_item_id_{{ oi.id }}" class="form-select form-select-sm" required>
+                      {% for value, label in part_form.inventory_item_id.choices %}
+                      <option value="{{ value }}">{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label for="quantity_part_{{ oi.id }}" class="form-label small">Qty <span class="text-danger">*</span></label>
+                    <input type="number" name="quantity" id="quantity_part_{{ oi.id }}" class="form-control form-control-sm" value="1" step="0.01" min="0.01" required>
+                  </div>
+                  <div class="col-md-2">
+                    <label for="unit_price_at_use_{{ oi.id }}" class="form-label small">Unit Price <span class="text-danger">*</span></label>
+                    <input type="number" name="unit_price_at_use" id="unit_price_at_use_{{ oi.id }}" class="form-control form-control-sm" step="0.01" min="0" required>
+                  </div>
+                  <div class="col-md-2">
+                    <label for="notes_part_{{ oi.id }}" class="form-label small">Notes</label>
+                    <input type="text" name="notes" id="notes_part_{{ oi.id }}" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">
+                      <i class="bi bi-plus-lg me-1"></i> Add Part
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        {# ---- Labor Entries Sub-section ---- #}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0 small text-uppercase text-muted">
+              <i class="bi bi-clock-history me-1"></i> Labor Entries
+            </h6>
+            {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+            <button class="btn btn-sm btn-outline-secondary" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#addLaborForm-{{ oi.id }}"
+                    aria-expanded="false">
+              <i class="bi bi-plus me-1"></i> Add Labor
+            </button>
+            {% endif %}
+          </div>
+
+          {% set labor_list = oi.labor_entries.all() %}
+          {% if labor_list %}
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-2">
+              <thead class="table-light">
+                <tr>
+                  <th>Technician</th>
+                  <th class="text-center">Hours</th>
+                  <th class="text-end">Rate</th>
+                  <th class="text-end">Total</th>
+                  <th>Description</th>
+                  <th>Date</th>
+                  <th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for entry in labor_list %}
+                <tr>
+                  <td>{{ entry.tech.display_name if entry.tech else 'Unknown' }}</td>
+                  <td class="text-center">{{ entry.hours }}</td>
+                  <td class="text-end">${{ "%.2f"|format(entry.hourly_rate) }}</td>
+                  <td class="text-end">
+                    {% if entry.line_total is not none %}
+                      ${{ "%.2f"|format(entry.line_total) }}
+                    {% endif %}
+                  </td>
+                  <td>{{ entry.description or '' }}</td>
+                  <td>{{ entry.work_date.strftime('%m/%d/%Y') if entry.work_date else '' }}</td>
+                  <td class="text-center">
+                    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+                    <form method="POST" action="{{ url_for('orders.remove_labor', labor_id=entry.id) }}" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove Labor Entry"
+                              onclick="return confirm('Remove this labor entry?');">
+                        <i class="bi bi-trash3"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="text-muted small mb-2">No labor entries yet.</p>
+          {% endif %}
+
+          {# Add Labor collapse form #}
+          {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+          <div class="collapse" id="addLaborForm-{{ oi.id }}">
+            <div class="bg-body-tertiary rounded p-3">
+              <form method="POST" action="{{ url_for('orders.add_labor', item_id=oi.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-3">
+                    <label for="tech_id_{{ oi.id }}" class="form-label small">Technician <span class="text-danger">*</span></label>
+                    <select name="tech_id" id="tech_id_{{ oi.id }}" class="form-select form-select-sm" required>
+                      {% for value, label in labor_form.tech_id.choices %}
+                      <option value="{{ value }}">{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label for="hours_{{ oi.id }}" class="form-label small">Hours <span class="text-danger">*</span></label>
+                    <input type="number" name="hours" id="hours_{{ oi.id }}" class="form-control form-control-sm" step="0.25" min="0.1" max="24" required>
+                  </div>
+                  <div class="col-md-2">
+                    <label for="hourly_rate_{{ oi.id }}" class="form-label small">Rate <span class="text-danger">*</span></label>
+                    <input type="number" name="hourly_rate" id="hourly_rate_{{ oi.id }}" class="form-control form-control-sm" step="0.01" min="0" required>
+                  </div>
+                  <div class="col-md-2">
+                    <label for="description_labor_{{ oi.id }}" class="form-label small">Description</label>
+                    <input type="text" name="description" id="description_labor_{{ oi.id }}" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-md-2">
+                    <label for="work_date_{{ oi.id }}" class="form-label small">Date <span class="text-danger">*</span></label>
+                    <input type="date" name="work_date" id="work_date_{{ oi.id }}" class="form-control form-control-sm" required>
+                  </div>
+                  <div class="col-md-1">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">
+                      <i class="bi bi-plus-lg"></i>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        {# ---- Notes Sub-section ---- #}
+        <div>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0 small text-uppercase text-muted">
+              <i class="bi bi-chat-left-text me-1"></i> Notes
+            </h6>
+            {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+            <button class="btn btn-sm btn-outline-secondary" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#addNoteForm-{{ oi.id }}"
+                    aria-expanded="false">
+              <i class="bi bi-plus me-1"></i> Add Note
+            </button>
+            {% endif %}
+          </div>
+
+          {% set notes_list = oi.notes.all()|sort(attribute='created_at', reverse=true) %}
+          {% if notes_list %}
+          <div class="list-group list-group-flush mb-2">
+            {% for note in notes_list %}
+            <div class="list-group-item px-0 py-2">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  {% if note.note_type == 'diagnostic' %}
+                  <span class="badge bg-info me-1">Diagnostic</span>
+                  {% elif note.note_type == 'repair' %}
+                  <span class="badge bg-success me-1">Repair</span>
+                  {% elif note.note_type == 'testing' %}
+                  <span class="badge bg-primary me-1">Testing</span>
+                  {% elif note.note_type == 'customer_communication' %}
+                  <span class="badge bg-warning text-dark me-1">Customer Comm.</span>
+                  {% else %}
+                  <span class="badge bg-secondary me-1">General</span>
+                  {% endif %}
+                  <span class="small">{{ note.note_text }}</span>
+                </div>
+                <small class="text-muted text-nowrap ms-2">
+                  {{ note.author.display_name if note.author else 'Unknown' }}
+                  <br>{{ note.created_at.strftime('%m/%d/%Y %I:%M %p') if note.created_at else '' }}
+                </small>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted small mb-2">No notes yet.</p>
+          {% endif %}
+
+          {# Add Note collapse form #}
+          {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+          <div class="collapse" id="addNoteForm-{{ oi.id }}">
+            <div class="bg-body-tertiary rounded p-3">
+              <form method="POST" action="{{ url_for('orders.add_note', item_id=oi.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-3">
+                    <label for="note_type_{{ oi.id }}" class="form-label small">Note Type</label>
+                    <select name="note_type" id="note_type_{{ oi.id }}" class="form-select form-select-sm">
+                      {% for value, label in note_form.note_type.choices %}
+                      <option value="{{ value }}">{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-7">
+                    <label for="note_text_{{ oi.id }}" class="form-label small">Note <span class="text-danger">*</span></label>
+                    <textarea name="note_text" id="note_text_{{ oi.id }}" class="form-control form-control-sm" rows="2" required></textarea>
+                  </div>
+                  <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">
+                      <i class="bi bi-plus-lg me-1"></i> Add Note
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <p class="text-muted mb-0">No service items on this order. Click "Add Item" to get started.</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== DELETE MODAL ===== #}
+{% if current_user.has_role('admin') %}
+{{ delete_modal('deleteOrderModal', 'Service Order', url_for('orders.delete', id=order.id)) }}
+{% endif %}
+{% endblock %}

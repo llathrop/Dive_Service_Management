@@ -1,0 +1,101 @@
+/* ============================================================
+   Dive Service Management - Print Stylesheet
+   ============================================================
+   Hides navigation and non-essential UI elements.
+   Ensures clean, readable output on paper.
+   ============================================================ */
+
+@media print {
+  /* Hide navigation and UI chrome */
+  .app-header,
+  .app-sidebar,
+  .app-footer,
+  .sidebar-overlay,
+  .tab-bar,
+  .sidebar-toggle,
+  #htmx-loading-bar,
+  .notification-badge,
+  .btn,
+  .alert-dismissible .btn-close,
+  .dropdown-menu,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Full-width content */
+  .app-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    padding-top: 0 !important;
+    font-size: 12pt;
+    line-height: 1.4;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  /* Remove card borders and shadows */
+  .card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  .card-header {
+    background-color: #f5f5f5 !important;
+  }
+
+  /* Ensure links are readable */
+  a {
+    color: #000 !important;
+    text-decoration: underline !important;
+  }
+
+  /* Show link URLs */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    font-weight: normal;
+  }
+
+  a[href^="#"]::after,
+  a[href^="javascript"]::after {
+    content: "";
+  }
+
+  /* Table formatting */
+  table {
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border: 1px solid #ddd !important;
+    padding: 0.5rem !important;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 1.5cm;
+  }
+
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    color: #000 !important;
+  }
+
+  /* Images */
+  img {
+    max-width: 100% !important;
+  }
+}

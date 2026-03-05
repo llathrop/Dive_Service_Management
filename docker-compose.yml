@@ -1,0 +1,131 @@
+# =============================================================================
+# Dive Service Management - Docker Compose
+# 5 services: web, db, redis, worker, beat
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Web Application (Flask + Gunicorn)
+  # ---------------------------------------------------------------------------
+  web:
+    build: .
+    image: dsm-web:latest
+    container_name: dsm-web
+    ports:
+      - "${DSM_BIND_ADDRESS:-0.0.0.0}:${DSM_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./instance:/app/instance
+    restart: unless-stopped
+    networks:
+      - dsm-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # MariaDB 11 LTS
+  # ---------------------------------------------------------------------------
+  db:
+    image: mariadb:lts
+    container_name: dsm-db
+    volumes:
+      - dsm-db-data:/var/lib/mysql
+      - ./docker/db/init:/docker-entrypoint-initdb.d
+      - ./docker/db/conf:/etc/mysql/conf.d
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-dsm}
+      MARIADB_USER: ${MARIADB_USER:-dsm}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+    restart: unless-stopped
+    networks:
+      - dsm-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 (cache, sessions, task broker)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: dsm-redis
+    command: redis-server --appendonly yes --maxmemory 64mb --maxmemory-policy allkeys-lru
+    volumes:
+      - dsm-redis-data:/data
+    restart: unless-stopped
+    networks:
+      - dsm-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker (async tasks: PDF generation, exports, notifications)
+  # ---------------------------------------------------------------------------
+  worker:
+    build: .
+    image: dsm-web:latest
+    container_name: dsm-worker
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - dsm-net
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat (scheduled tasks: low-stock checks, overdue reminders)
+  # ---------------------------------------------------------------------------
+  beat:
+    build: .
+    image: dsm-web:latest
+    container_name: dsm-beat
+    command: celery -A app.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - dsm-net
+
+# ---------------------------------------------------------------------------
+# Persistent Volumes
+# ---------------------------------------------------------------------------
+volumes:
+  dsm-db-data:
+    driver: local
+  dsm-redis-data:
+    driver: local
+
+# ---------------------------------------------------------------------------
+# Network
+# ---------------------------------------------------------------------------
+networks:
+  dsm-net:
+    driver: bridge

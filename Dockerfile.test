@@ -1,0 +1,38 @@
+# =============================================================================
+# Dive Service Management - Test Dockerfile
+# Builds a container for running the test suite with all dependencies.
+# Uses SQLite in-memory for tests (no MariaDB needed).
+# =============================================================================
+
+FROM python:3.12-slim
+
+# Minimal system dependencies (no MySQL client needed for testing with SQLite)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libffi-dev \
+    build-essential \
+    pkg-config \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies (dev includes test deps + prod deps)
+# Filter out mysqlclient since we use SQLite for testing
+COPY requirements.txt requirements-dev.txt ./
+RUN grep -v mysqlclient requirements.txt > /tmp/requirements-filtered.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-filtered.txt \
+    && pip install --no-cache-dir pytest==8.3.4 pytest-flask==1.3.0 pytest-cov==6.0.0 \
+       factory-boy==3.3.1 Faker==30.8.2 freezegun==1.4.0 responses==0.25.6
+
+# Copy application code and tests
+COPY . .
+
+# Create non-root user
+RUN useradd -m -r -s /bin/bash dsm \
+    && chown -R dsm:dsm /app
+
+USER dsm
+
+# Default command: run all tests with verbose output
+ENV DSM_ENV=testing
+CMD ["python", "-m", "pytest", "tests/", "-v", "--tb=short"]

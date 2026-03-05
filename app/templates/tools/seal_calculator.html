@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Seal Calculator - Tools - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('tools.hub') }}">Tools</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Seal Calculator</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Seal Size Calculator</h1>
+    <p class="text-muted mb-0">Calculate recommended drysuit neck and wrist seal sizes</p>
+  </div>
+</div>
+
+<div x-data="sealCalculator()" class="row g-4">
+  {# Input form #}
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-sliders me-2"></i>Measurement Input</h5>
+      </div>
+      <div class="card-body">
+        {# Seal Type #}
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Seal Type</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="sealType" id="sealNeck"
+                   value="neck" x-model="sealType" autocomplete="off">
+            <label class="btn btn-outline-primary" for="sealNeck">
+              <i class="bi bi-person me-1"></i> Neck
+            </label>
+            <input type="radio" class="btn-check" name="sealType" id="sealWrist"
+                   value="wrist" x-model="sealType" autocomplete="off">
+            <label class="btn btn-outline-primary" for="sealWrist">
+              <i class="bi bi-hand-index me-1"></i> Wrist
+            </label>
+          </div>
+        </div>
+
+        {# Measurement #}
+        <div class="mb-3">
+          <label for="measurement" class="form-label fw-semibold">Circumference Measurement</label>
+          <div class="input-group">
+            <input type="number" class="form-control" id="measurement"
+                   x-model.number="measurement" step="0.1" min="0" max="100"
+                   placeholder="Enter measurement">
+            <div class="input-group-text">
+              <div class="btn-group btn-group-sm" role="group">
+                <input type="radio" class="btn-check" name="units" id="unitCm"
+                       value="cm" x-model="units" autocomplete="off">
+                <label class="btn btn-outline-secondary btn-sm" for="unitCm">cm</label>
+                <input type="radio" class="btn-check" name="units" id="unitIn"
+                       value="in" x-model="units" autocomplete="off">
+                <label class="btn btn-outline-secondary btn-sm" for="unitIn">in</label>
+              </div>
+            </div>
+          </div>
+          <div class="form-text" x-show="units === 'in' && measurement > 0">
+            <span x-text="(measurement * 2.54).toFixed(1)"></span> cm
+          </div>
+        </div>
+
+        {# Material #}
+        <div class="mb-3">
+          <label for="material" class="form-label fw-semibold">Material</label>
+          <select class="form-select" id="material" x-model="material">
+            <option value="latex">Latex</option>
+            <option value="silicone">Silicone</option>
+            <option value="neoprene">Neoprene</option>
+          </select>
+        </div>
+
+        {# Brand System #}
+        <div class="mb-3">
+          <label for="brand" class="form-label fw-semibold">Brand System</label>
+          <select class="form-select" id="brand" x-model="brand">
+            <option value="generic">Generic</option>
+            <option value="sitech">SI Tech</option>
+            <option value="dui">DUI</option>
+            <option value="waterproof">Waterproof</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Results #}
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-check-circle me-2"></i>Recommended Size</h5>
+      </div>
+      <div class="card-body">
+        <template x-if="measurement > 0">
+          <div>
+            <div class="text-center mb-4">
+              <div class="display-4 fw-bold text-primary" x-text="recommendedSize"></div>
+              <p class="text-muted mb-0">Recommended Size</p>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-6">
+                <div class="border rounded p-3 text-center">
+                  <div class="fw-semibold" x-text="measurementCm.toFixed(1) + ' cm'"></div>
+                  <small class="text-muted">Measurement</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="border rounded p-3 text-center">
+                  <div class="fw-semibold" x-text="comfortableRange"></div>
+                  <small class="text-muted">Comfortable Range</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-info" x-show="brand !== 'generic'">
+              <i class="bi bi-info-circle me-1"></i>
+              <span x-text="brandNote"></span>
+            </div>
+
+            <div class="alert alert-warning" x-show="isEdgeCase">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              Measurement falls between sizes. Consider trying both the recommended size and one size
+              <span x-text="edgeCaseDirection"></span> for best fit.
+            </div>
+
+            {# Size chart for reference #}
+            <h6 class="mt-4 mb-3">Size Chart Reference</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                  <tr>
+                    <th>Size</th>
+                    <th>Range (cm)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(range, size) in currentSizeChart" :key="size">
+                    <tr :class="{ 'table-primary': size === recommendedSize }">
+                      <td x-text="size" class="fw-semibold"></td>
+                      <td x-text="range[0] + ' - ' + range[1] + ' cm'"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+
+        <template x-if="!measurement || measurement <= 0">
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-rulers fs-1 d-block mb-3"></i>
+            <p>Enter a measurement to see the recommended seal size.</p>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function sealCalculator() {
+  return {
+    sealType: 'neck',
+    measurement: null,
+    units: 'cm',
+    material: 'latex',
+    brand: 'generic',
+
+    sizingData: {
+      neck: {
+        latex: {
+          'S':  [30, 33],
+          'M':  [33, 36],
+          'L':  [36, 39],
+          'XL': [39, 42]
+        },
+        silicone: {
+          'S':  [31, 34],
+          'M':  [34, 37],
+          'L':  [37, 40],
+          'XL': [40, 43]
+        },
+        neoprene: {
+          'S':  [30, 33],
+          'M':  [33, 36],
+          'L':  [36, 39],
+          'XL': [39, 42]
+        }
+      },
+      wrist: {
+        latex: {
+          'XS': [14, 15],
+          'S':  [15, 16],
+          'M':  [16, 17],
+          'L':  [17, 18],
+          'XL': [18, 19]
+        },
+        silicone: {
+          'XS': [14.5, 15.5],
+          'S':  [15.5, 16.5],
+          'M':  [16.5, 17.5],
+          'L':  [17.5, 18.5],
+          'XL': [18.5, 19.5]
+        },
+        neoprene: {
+          'XS': [14, 15],
+          'S':  [15, 16],
+          'M':  [16, 17],
+          'L':  [17, 18],
+          'XL': [18, 19]
+        }
+      }
+    },
+
+    get measurementCm() {
+      if (!this.measurement || this.measurement <= 0) return 0;
+      return this.units === 'in' ? this.measurement * 2.54 : this.measurement;
+    },
+
+    get currentSizeChart() {
+      return this.sizingData[this.sealType][this.material] || {};
+    },
+
+    get recommendedSize() {
+      const cm = this.measurementCm;
+      if (cm <= 0) return '--';
+      const chart = this.currentSizeChart;
+      for (const [size, [min, max]] of Object.entries(chart)) {
+        if (cm >= min && cm < max) return size;
+      }
+      // If above all ranges, return largest
+      const sizes = Object.keys(chart);
+      const lastSize = sizes[sizes.length - 1];
+      const lastRange = chart[lastSize];
+      if (cm >= lastRange[0]) return lastSize;
+      // If below all ranges, return smallest
+      return sizes[0];
+    },
+
+    get comfortableRange() {
+      const size = this.recommendedSize;
+      if (size === '--') return '--';
+      const range = this.currentSizeChart[size];
+      if (!range) return '--';
+      return range[0] + ' - ' + range[1] + ' cm';
+    },
+
+    get isEdgeCase() {
+      const cm = this.measurementCm;
+      if (cm <= 0) return false;
+      const chart = this.currentSizeChart;
+      for (const [size, [min, max]] of Object.entries(chart)) {
+        // Within 0.5cm of a boundary
+        if (Math.abs(cm - min) < 0.5 || Math.abs(cm - max) < 0.5) {
+          return true;
+        }
+      }
+      return false;
+    },
+
+    get edgeCaseDirection() {
+      const cm = this.measurementCm;
+      const chart = this.currentSizeChart;
+      const sizes = Object.keys(chart);
+      const idx = sizes.indexOf(this.recommendedSize);
+      if (idx <= 0) return 'up';
+      if (idx >= sizes.length - 1) return 'down';
+      const range = chart[this.recommendedSize];
+      const midpoint = (range[0] + range[1]) / 2;
+      return cm < midpoint ? 'down' : 'up';
+    },
+
+    get brandNote() {
+      const notes = {
+        sitech: 'SI Tech seals use a ring system. Ensure the seal is compatible with your suit\'s ring size.',
+        dui: 'DUI uses a proprietary ZipSeal system. Sizes may differ slightly from generic measurements.',
+        waterproof: 'Waterproof suits use their own seal sizing system. Consult Waterproof size charts for exact fit.'
+      };
+      return notes[this.brand] || '';
+    }
+  };
+}
+</script>
+{% endblock %}

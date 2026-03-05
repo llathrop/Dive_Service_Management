@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_select, render_submit, render_form_errors %}
+
+{% block title %}{{ 'Edit Invoice #' ~ invoice.invoice_number if is_edit else 'New Invoice' }} - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('invoices.list_invoices') }}">Invoices</a></li>
+    {% if is_edit %}
+    <li class="breadcrumb-item"><a href="{{ url_for('invoices.detail', id=invoice.id) }}">{{ invoice.invoice_number }}</a></li>
+    <li class="breadcrumb-item active">Edit</li>
+    {% else %}
+    <li class="breadcrumb-item active">New Invoice</li>
+    {% endif %}
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">{{ 'Edit Invoice #' ~ invoice.invoice_number if is_edit else 'New Invoice' }}</h1>
+
+{{ render_form_errors(form) }}
+
+<form method="POST"
+      action="{{ url_for('invoices.edit', id=invoice.id) if is_edit else url_for('invoices.create') }}">
+  {{ form.hidden_tag() }}
+
+  {# Customer & Status #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Customer & Status</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_select(form.customer_id) }}
+        </div>
+        <div class="col-md-6">
+          {% if is_edit %}
+          {{ render_select(form.status) }}
+          {% else %}
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <input type="text" class="form-control" value="Draft" disabled>
+            <div class="form-text">New invoices start in Draft status.</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Dates #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Dates</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_field(form.issue_date) }}
+        </div>
+        <div class="col-md-6">
+          {{ render_field(form.due_date) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Financial #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Financial</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_field(form.tax_rate, placeholder='0.00') }}
+        </div>
+        <div class="col-md-6">
+          {{ render_field(form.discount_amount, placeholder='0.00') }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Notes & Terms #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Notes & Terms</h5>
+    </div>
+    <div class="card-body">
+      {{ render_field(form.notes, placeholder='Internal notes (not visible to customer)...') }}
+      {{ render_field(form.customer_notes, placeholder='Notes visible to the customer on the invoice...') }}
+      {{ render_field(form.terms, placeholder='Payment terms and conditions...') }}
+    </div>
+  </div>
+
+  {# Submit #}
+  <div class="d-flex gap-2">
+    {{ render_submit('Save Invoice', class='btn btn-primary') }}
+    <a href="{{ url_for('invoices.detail', id=invoice.id) if is_edit else url_for('invoices.list_invoices') }}"
+       class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}
