@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from 'macros/pagination.html' import render_pagination %}
+
+{% block title %}Notifications - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Notifications</h1>
+    {% if notifications.total %}
+    <small class="text-muted">{{ notifications.total }} notification{{ 's' if notifications.total != 1 else '' }}</small>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-2">
+    {# Toggle unread / all #}
+    {% if unread_only %}
+    <a href="{{ url_for('notifications.list_notifications') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-eye me-1"></i> Show All
+    </a>
+    {% else %}
+    <a href="{{ url_for('notifications.list_notifications', unread_only=True) }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-eye-slash me-1"></i> Unread Only
+    </a>
+    {% endif %}
+
+    {# Mark all as read #}
+    <form method="POST" action="{{ url_for('notifications.mark_all_read') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-check2-all me-1"></i> Mark All Read
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if notifications.items %}
+<div class="row g-3">
+  {% for notification in notifications.items %}
+  <div class="col-12">
+    <div class="card {{ 'border-start border-4' if not notification.is_read else '' }}
+                {% if not notification.is_read %}
+                  {% if notification.severity == 'critical' %}border-danger{% elif notification.severity == 'warning' %}border-warning{% else %}border-primary{% endif %}
+                {% endif %}">
+      <div class="card-body d-flex align-items-start">
+        {# Severity icon #}
+        <div class="me-3 fs-4">
+          {% if notification.severity == 'critical' %}
+            <i class="bi bi-exclamation-octagon text-danger"></i>
+          {% elif notification.severity == 'warning' %}
+            <i class="bi bi-exclamation-triangle text-warning"></i>
+          {% else %}
+            <i class="bi bi-info-circle text-primary"></i>
+          {% endif %}
+        </div>
+
+        {# Content #}
+        <div class="flex-grow-1">
+          <h6 class="mb-1 {{ 'fw-bold' if not notification.is_read else 'text-muted' }}">
+            {{ notification.title }}
+          </h6>
+          <p class="mb-1 {{ '' if not notification.is_read else 'text-muted' }}">
+            {{ notification.message }}
+          </p>
+          <small class="text-muted">
+            <i class="bi bi-clock me-1"></i>
+            {{ notification.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+            {% if notification.is_read and notification.read_at %}
+              <span class="ms-2">
+                <i class="bi bi-check2 me-1"></i>Read {{ notification.read_at.strftime('%b %d, %Y at %I:%M %p') }}
+              </span>
+            {% endif %}
+          </small>
+        </div>
+
+        {# Mark as read button #}
+        {% if not notification.is_read %}
+        <div class="ms-3">
+          <form method="POST" action="{{ url_for('notifications.mark_read', id=notification.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Mark as read">
+              <i class="bi bi-check2"></i>
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{{ render_pagination(notifications) }}
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-bell-slash fs-1 text-muted mb-3 d-block"></i>
+    <h5 class="text-muted">No notifications</h5>
+    <p class="text-muted mb-0">
+      {% if unread_only %}
+        You have no unread notifications.
+        <a href="{{ url_for('notifications.list_notifications') }}">Show all notifications</a>.
+      {% else %}
+        You don't have any notifications yet.
+      {% endif %}
+    </p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

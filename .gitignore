@@ -1,0 +1,96 @@
+# --------------------------------------------------
+# Dive Service Management - .gitignore
+# --------------------------------------------------
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# ---------- Virtual Environments ----------
+.venv/
+venv/
+env/
+ENV/
+
+# ---------- Testing ----------
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.tox/
+.nox/
+
+# ---------- IDE / Editors ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.spyderproject
+.spyproject
+
+# ---------- Environment / Secrets ----------
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+instance/config.py
+
+# ---------- Credentials / Keys ----------
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+docker/nginx/ssl/
+secrets/
+
+# ---------- Docker ----------
+docker-compose.override.yml
+
+# ---------- Application Runtime ----------
+uploads/
+logs/
+instance/
+backups/
+
+# ---------- Database ----------
+*.sql
+*.sql.gz
+*.dump
+*.sqlite3
+*.db
+
+# ---------- Node (vendored static assets tooling) ----------
+node_modules/
+
+# ---------- OS Files ----------
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ---------- Misc ----------
+*.log
+*.bak
+*.tmp
+*.temp
+
+# ---------- Playwright / MCP ephemeral outputs ----------
+.playwright-mcp/

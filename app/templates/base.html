@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+
+  <title>{% block title %}Dive Service Management{% endblock %}</title>
+
+  {# Bootstrap 5.3 CSS #}
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+        crossorigin="anonymous">
+
+  {# Bootstrap Icons #}
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+        rel="stylesheet">
+
+  {# Application CSS #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/dark.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/light.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}" media="print">
+
+  {% block head %}{% endblock %}
+</head>
+<body x-data="appLayout()" :data-bs-theme="effectiveTheme">
+  {% from 'macros/forms.html' import render_field, render_checkbox, render_select, render_submit %}
+
+  {# ===== HEADER BAR ===== #}
+  <header class="app-header navbar navbar-expand-lg fixed-top">
+    <div class="container-fluid">
+      {# Sidebar toggle button (mobile) #}
+      <button class="btn btn-link text-decoration-none me-2 d-lg-none sidebar-toggle"
+              type="button"
+              @click="sidebarOpen = !sidebarOpen"
+              aria-label="Toggle sidebar">
+        <i class="bi bi-list fs-4"></i>
+      </button>
+
+      {# Logo / App name (left) #}
+      <a class="navbar-brand d-flex align-items-center" href="{{ url_for('dashboard.index') }}">
+        <i class="bi bi-water me-2"></i>
+        <span class="d-none d-sm-inline">Dive Service Management</span>
+        <span class="d-sm-none">DSM</span>
+      </a>
+
+      {# Global search bar (center) #}
+      <div class="flex-grow-1 mx-3 d-none d-md-block" style="max-width: 500px;">
+        <form class="position-relative" action="{{ url_for('search.results') }}" method="GET" role="search">
+          <div class="input-group">
+            <span class="input-group-text bg-transparent border-end-0">
+              <i class="bi bi-search"></i>
+            </span>
+            <input type="search"
+                   class="form-control border-start-0 global-search-input"
+                   placeholder="Search customers, orders, inventory..."
+                   aria-label="Global search"
+                   name="q"
+                   autocomplete="off">
+          </div>
+        </form>
+      </div>
+
+      {# Right side: Notifications + User dropdown #}
+      <div class="d-flex align-items-center ms-auto">
+        {# Notification bell #}
+        <div class="dropdown me-3">
+          <button class="btn btn-link text-decoration-none position-relative p-1"
+                  type="button"
+                  id="notificationDropdown"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Notifications">
+            <i class="bi bi-bell fs-5"></i>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge"
+                  id="notificationCount"
+                  style="display: none;">
+              0
+            </span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="notificationDropdown" style="min-width: 300px;">
+            <li><h6 class="dropdown-header">Notifications</h6></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <div class="px-3 py-2 text-muted small text-center">
+                No new notifications
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        {# Theme toggle #}
+        <div class="dropdown me-3">
+          <button class="btn btn-link text-decoration-none p-1"
+                  type="button"
+                  id="themeDropdown"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Toggle theme">
+            <i class="bi" :class="themeIcon"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="themeDropdown">
+            <li>
+              <button class="dropdown-item" :class="{ 'active': theme === 'light' }" @click="setTheme('light')">
+                <i class="bi bi-sun me-2"></i> Light
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item" :class="{ 'active': theme === 'dark' }" @click="setTheme('dark')">
+                <i class="bi bi-moon-stars me-2"></i> Dark
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item" :class="{ 'active': theme === 'auto' }" @click="setTheme('auto')">
+                <i class="bi bi-circle-half me-2"></i> Auto
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        {# User dropdown #}
+        {% if current_user.is_authenticated %}
+        <div class="dropdown">
+          <button class="btn btn-link text-decoration-none dropdown-toggle d-flex align-items-center"
+                  type="button"
+                  id="userDropdown"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false">
+            <i class="bi bi-person-circle me-1"></i>
+            <span class="d-none d-sm-inline">{{ current_user.username or current_user.email }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
+            <li><h6 class="dropdown-header">{{ current_user.email }}</h6></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item" href="{{ url_for('security.change_password') }}">
+                <i class="bi bi-key me-2"></i> Change Password
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item" href="{{ url_for('security.logout') }}">
+                <i class="bi bi-box-arrow-right me-2"></i> Logout
+              </a>
+            </li>
+          </ul>
+        </div>
+        {% else %}
+        <a href="{{ url_for('security.login') }}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-box-arrow-in-right me-1"></i> Login
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  {# ===== SIDEBAR NAV ===== #}
+  <nav class="app-sidebar" :class="{ 'sidebar-open': sidebarOpen, 'sidebar-collapsed': sidebarCollapsed }" id="sidebar">
+    <div class="sidebar-inner">
+      {# Collapse toggle (desktop only) #}
+      <div class="sidebar-collapse-toggle d-none d-lg-flex justify-content-end p-2">
+        <button class="btn btn-sm btn-link text-decoration-none"
+                @click="sidebarCollapsed = !sidebarCollapsed"
+                aria-label="Collapse sidebar">
+          <i class="bi" :class="sidebarCollapsed ? 'bi-chevron-right' : 'bi-chevron-left'"></i>
+        </button>
+      </div>
+
+      <ul class="nav flex-column sidebar-nav">
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('dashboard') }}"
+             href="{{ url_for('dashboard.index') }}"
+             title="Dashboard">
+            <i class="bi bi-speedometer2"></i>
+            <span class="nav-text">Dashboard</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('customers') }}"
+             href="{{ url_for('customers.list_customers') }}"
+             title="Customers">
+            <i class="bi bi-people"></i>
+            <span class="nav-text">Customers</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('orders') }}"
+             href="{{ url_for('orders.list_orders') }}"
+             title="Orders">
+            <i class="bi bi-clipboard-check"></i>
+            <span class="nav-text">Orders</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('inventory') }}"
+             href="{{ url_for('inventory.list_items') }}"
+             title="Inventory">
+            <i class="bi bi-box-seam"></i>
+            <span class="nav-text">Inventory</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('price_list') }}"
+             href="{{ url_for('price_list.list_items') }}"
+             title="Price List">
+            <i class="bi bi-tags"></i>
+            <span class="nav-text">Price List</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('invoices') }}"
+             href="{{ url_for('invoices.list_invoices') }}"
+             title="Invoices">
+            <i class="bi bi-receipt"></i>
+            <span class="nav-text">Invoices</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('reports') }}"
+             href="{{ url_for('reports.hub') }}"
+             title="Reports">
+            <i class="bi bi-graph-up"></i>
+            <span class="nav-text">Reports</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('tools') }}"
+             href="{{ url_for('tools.hub') }}"
+             title="Tools">
+            <i class="bi bi-tools"></i>
+            <span class="nav-text">Tools</span>
+          </a>
+        </li>
+
+        {# Admin section - restricted to admin role #}
+        {% if current_user.is_authenticated and current_user.has_role('admin') %}
+        <li class="nav-item mt-2">
+          <hr class="sidebar-divider">
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin') }}"
+             href="{{ url_for('admin.hub') }}"
+             title="Admin">
+            <i class="bi bi-gear"></i>
+            <span class="nav-text">Admin</span>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+  </nav>
+
+  {# ===== OVERLAY for mobile sidebar ===== #}
+  <div class="sidebar-overlay d-lg-none"
+       x-show="sidebarOpen"
+       @click="sidebarOpen = false"
+       x-transition:enter="transition-opacity"
+       x-transition:leave="transition-opacity"
+       style="display: none;"></div>
+
+  {# ===== HTMX Loading Bar ===== #}
+  <div id="htmx-loading-bar"></div>
+
+  {# ===== MAIN CONTENT WRAPPER ===== #}
+  <div class="app-content" :class="{ 'content-shifted': sidebarCollapsed }">
+    {# Tab bar area (placeholder for future tab system) #}
+    <div class="tab-bar" id="tabBar">
+      {# Tabs will be dynamically populated in future phases #}
+    </div>
+
+    {# Flash messages #}
+    <div class="container-fluid mt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+               role="alert">
+            {% if category == 'success' %}
+            <i class="bi bi-check-circle me-1"></i>
+            {% elif category == 'error' or category == 'danger' %}
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            {% elif category == 'warning' %}
+            <i class="bi bi-exclamation-circle me-1"></i>
+            {% elif category == 'info' %}
+            <i class="bi bi-info-circle me-1"></i>
+            {% endif %}
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    {# Main content area #}
+    <main class="container-fluid py-3">
+      {% block content %}{% endblock %}
+    </main>
+
+    {# ===== FOOTER ===== #}
+    <footer class="app-footer">
+      <div class="container-fluid d-flex justify-content-between align-items-center">
+        <span class="text-muted small">
+          Dive Service Management
+        </span>
+        <span class="text-muted small">
+          <span class="status-indicator status-ok me-1"></span>
+          System OK
+          <span class="mx-2">|</span>
+          v0.1.0-dev
+        </span>
+      </div>
+    </footer>
+  </div>
+
+  {# ===== JAVASCRIPT ===== #}
+
+  {# Bootstrap 5.3 JS Bundle (includes Popper) #}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+          crossorigin="anonymous"></script>
+
+  {# HTMX 2.0 #}
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+  {# Alpine.js 3.14 #}
+  <script defer
+          src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+  {# Application JS #}
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

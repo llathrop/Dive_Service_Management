@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_select, render_checkbox %}
+{% from 'macros/pagination.html' import render_pagination %}
+{% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
+{% from 'macros/status_badges.html' import stock_level_badge %}
+
+{% block title %}Inventory - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Inventory</h1>
+    {{ record_count(pagination) }}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('inventory.low_stock') }}" class="btn btn-outline-warning">
+      <i class="bi bi-exclamation-triangle me-1"></i> Low Stock
+    </a>
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('inventory.create') }}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i> Add Item
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# Search and filter form #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('inventory.list_items') }}" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label for="q" class="form-label">Search</label>
+        <input type="text" class="form-control" id="q" name="q"
+               value="{{ form.q.data or '' }}"
+               placeholder="Name, SKU, manufacturer...">
+      </div>
+      <div class="col-md-2">
+        {{ render_select(form.category) }}
+      </div>
+      <div class="col-md-2">
+        {{ render_select(form.is_active) }}
+      </div>
+      <div class="col-md-2">
+        <div class="form-check mt-4">
+          {{ form.low_stock_only(class='form-check-input') }}
+          <label class="form-check-label" for="{{ form.low_stock_only.id }}">Low Stock Only</label>
+        </div>
+      </div>
+      <div class="col-md-1">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
+      <div class="col-md-1">
+        <a href="{{ url_for('inventory.list_items') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if items %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          {{ sortable_header('name', 'Name', sort, order) }}
+          {{ sortable_header('sku', 'SKU', sort, order) }}
+          {{ sortable_header('category', 'Category', sort, order) }}
+          {{ sortable_header('quantity_in_stock', 'Stock', sort, order) }}
+          <th>Status</th>
+          {{ sortable_header('resale_price', 'Price', sort, order) }}
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>
+            <a href="{{ url_for('inventory.detail', id=item.id) }}">{{ item.name }}</a>
+          </td>
+          <td><code>{{ item.sku or '' }}</code></td>
+          <td>{{ item.category }}</td>
+          <td>
+            {{ item.quantity_in_stock }}
+            {{ stock_level_badge(item.quantity_in_stock, item.reorder_level) }}
+          </td>
+          <td>
+            {% if item.is_active %}
+            <span class="badge bg-success">Active</span>
+            {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.resale_price %}
+            ${{ "%.2f"|format(item.resale_price) }}
+            {% else %}
+            -
+            {% endif %}
+          </td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <a href="{{ url_for('inventory.detail', id=item.id) }}"
+                 class="btn btn-outline-primary" title="View">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+              <a href="{{ url_for('inventory.edit', id=item.id) }}"
+                 class="btn btn-outline-secondary" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{{ render_pagination(pagination) }}
+{% else %}
+{{ empty_state('No inventory items found.', 'bi-box-seam', url_for('inventory.create'), 'Add Item') }}
+{% endif %}
+{% endblock %}

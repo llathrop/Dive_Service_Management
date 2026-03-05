@@ -1,0 +1,60 @@
+# =============================================================================
+# Dive Service Management - UAT Dockerfile
+# Builds a container with Playwright + Chromium for browser-based UAT testing.
+# Runs against a live Flask app container (not SQLite in-memory).
+# =============================================================================
+
+FROM python:3.12-slim
+
+# System dependencies for Playwright/Chromium and mysqlclient
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libffi-dev \
+    build-essential \
+    pkg-config \
+    curl \
+    # Playwright Chromium dependencies
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libasound2t64 \
+    libatspi2.0-0 \
+    libwayland-client0 \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies (filter out mysqlclient for SQLite compat in runner)
+COPY requirements.txt requirements-dev.txt requirements-uat.txt ./
+RUN grep -v mysqlclient requirements.txt > /tmp/requirements-filtered.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-filtered.txt \
+    && pip install --no-cache-dir -r requirements-dev.txt \
+    && pip install --no-cache-dir pytest-playwright==0.6.2 playwright==1.49.1
+
+# Install Playwright browsers (Chromium only for speed/size)
+RUN playwright install chromium
+
+# Copy application code and tests
+COPY . .
+
+# Create non-root user
+RUN useradd -m -r -s /bin/bash dsm \
+    && chown -R dsm:dsm /app
+
+USER dsm
+
+ENV DSM_ENV=testing
+
+# Default: run UAT tests
+CMD ["python", "-m", "pytest", "tests/uat/", "-v", "--tb=short"]

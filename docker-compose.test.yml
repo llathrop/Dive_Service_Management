@@ -1,0 +1,30 @@
+# =============================================================================
+# Dive Service Management - Test Compose Configuration
+# Runs the test suite in a Docker container using SQLite in-memory.
+# No external services (MariaDB, Redis) required for unit/smoke/blueprint tests.
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml build
+#   docker compose -f docker-compose.test.yml run --rm test
+#   docker compose -f docker-compose.test.yml run --rm test pytest tests/ -v --cov=app
+#   docker compose -f docker-compose.test.yml run --rm test pytest tests/ -m smoke
+# =============================================================================
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - DSM_ENV=testing
+      - DSM_SECRET_KEY=test-secret-key-not-for-production
+      - DSM_SECURITY_PASSWORD_SALT=test-salt-not-for-production
+    volumes:
+      # Mount source code for live changes during development
+      - ./app:/app/app:ro
+      - ./tests:/app/tests:ro
+      - ./migrations:/app/migrations:ro
+      - ./pyproject.toml:/app/pyproject.toml:ro
+    tmpfs:
+      # Use tmpfs for any temp files created during tests
+      - /tmp

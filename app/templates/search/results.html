@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% from 'macros/status_badges.html' import serviceability_badge, stock_level_badge %}
+
+{% block title %}Search{% if q %}: {{ q }}{% endif %} - Dive Service Management{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">
+  {% if q %}
+  Search Results for "{{ q }}"
+  {% else %}
+  Search
+  {% endif %}
+</h1>
+
+{# Search form #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('search.results') }}" class="row g-3 align-items-end">
+      <div class="col-md-9">
+        <label for="q" class="form-label">Search</label>
+        <input type="text" class="form-control form-control-lg" id="q" name="q"
+               value="{{ q }}"
+               placeholder="Search customers, equipment, inventory..."
+               autofocus>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-primary btn-lg w-100">
+          <i class="bi bi-search me-1"></i> Search
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if q %}
+  {% set total = customers|length + items|length + inventory|length %}
+
+  {% if total == 0 %}
+  <div class="text-center py-5">
+    <i class="bi bi-search display-4 text-muted mb-3 d-block"></i>
+    <p class="text-muted">No results found for "{{ q }}".</p>
+    <p class="text-muted small">Try a different search term or check your spelling.</p>
+  </div>
+  {% else %}
+  <p class="text-muted mb-4">{{ total }} result{{ 's' if total != 1 else '' }} found.</p>
+
+  {# Customers #}
+  {% if customers %}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-people me-2"></i>Customers
+        <span class="badge bg-secondary ms-1">{{ customers|length }}</span>
+      </h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for customer in customers %}
+          <tr>
+            <td><a href="{{ url_for('customers.detail', id=customer.id) }}">{{ customer.display_name }}</a></td>
+            <td>{{ customer.email or '' }}</td>
+            <td>{{ customer.phone_primary or '' }}</td>
+            <td><span class="badge bg-{{ 'primary' if customer.customer_type == 'business' else 'secondary' }}">{{ customer.customer_type|capitalize }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Service Items #}
+  {% if items %}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-tools me-2"></i>Service Items
+        <span class="badge bg-secondary ms-1">{{ items|length }}</span>
+      </h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Serial Number</th>
+            <th>Category</th>
+            <th>Serviceability</th>
+            <th>Owner</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td><a href="{{ url_for('items.detail', id=item.id) }}">{{ item.name }}</a></td>
+            <td><code>{{ item.serial_number or '' }}</code></td>
+            <td>{{ item.item_category or '' }}</td>
+            <td>{{ serviceability_badge(item.serviceability) }}</td>
+            <td>
+              {% if item.customer %}
+              <a href="{{ url_for('customers.detail', id=item.customer.id) }}">{{ item.customer.display_name }}</a>
+              {% else %}
+              <span class="text-muted">Unassigned</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Inventory Items #}
+  {% if inventory %}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-box-seam me-2"></i>Inventory
+        <span class="badge bg-secondary ms-1">{{ inventory|length }}</span>
+      </h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>SKU</th>
+            <th>Category</th>
+            <th>Stock</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in inventory %}
+          <tr>
+            <td><a href="{{ url_for('inventory.detail', id=inv.id) }}">{{ inv.name }}</a></td>
+            <td><code>{{ inv.sku or '' }}</code></td>
+            <td>{{ inv.category }}</td>
+            <td>
+              {{ inv.quantity_in_stock }}
+              {{ stock_level_badge(inv.quantity_in_stock, inv.reorder_level) }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+{% endif %}
+{% endblock %}

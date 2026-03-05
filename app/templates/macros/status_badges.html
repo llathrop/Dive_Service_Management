@@ -1,0 +1,93 @@
+{# Status badge macros for consistent display across the application #}
+
+{% macro serviceability_badge(status) %}
+{% if status == 'serviceable' %}
+<span class="badge bg-success">Serviceable</span>
+{% elif status == 'non_serviceable' %}
+<span class="badge bg-danger">Non-Serviceable</span>
+{% elif status == 'conditional' %}
+<span class="badge bg-warning text-dark">Conditional</span>
+{% elif status == 'retired' %}
+<span class="badge bg-secondary">Retired</span>
+{% else %}
+<span class="badge bg-light text-dark">{{ status }}</span>
+{% endif %}
+{% endmacro %}
+
+{% macro order_status_badge(status) %}
+{% if status == 'intake' %}
+<span class="badge bg-info">Intake</span>
+{% elif status == 'assessment' %}
+<span class="badge bg-primary">Assessment</span>
+{% elif status == 'awaiting_approval' %}
+<span class="badge bg-warning text-dark">Awaiting Approval</span>
+{% elif status == 'in_progress' %}
+<span class="badge bg-primary">In Progress</span>
+{% elif status == 'awaiting_parts' %}
+<span class="badge bg-warning text-dark">Awaiting Parts</span>
+{% elif status == 'completed' %}
+<span class="badge bg-success">Completed</span>
+{% elif status == 'ready_for_pickup' %}
+<span class="badge bg-info">Ready for Pickup</span>
+{% elif status == 'picked_up' %}
+<span class="badge bg-secondary">Picked Up</span>
+{% elif status == 'cancelled' %}
+<span class="badge bg-danger">Cancelled</span>
+{% else %}
+<span class="badge bg-light text-dark">{{ status }}</span>
+{% endif %}
+{% endmacro %}
+
+{% macro priority_badge(priority) %}
+{% if priority == 'rush' %}
+<span class="badge bg-danger">Rush</span>
+{% elif priority == 'high' %}
+<span class="badge bg-warning text-dark">High</span>
+{% elif priority == 'normal' %}
+<span class="badge bg-primary">Normal</span>
+{% elif priority == 'low' %}
+<span class="badge bg-secondary">Low</span>
+{% else %}
+<span class="badge bg-light text-dark">{{ priority }}</span>
+{% endif %}
+{% endmacro %}
+
+{% macro invoice_status_badge(status) %}
+{% if status == 'draft' %}
+<span class="badge bg-secondary">Draft</span>
+{% elif status == 'sent' %}
+<span class="badge bg-info">Sent</span>
+{% elif status == 'viewed' %}
+<span class="badge bg-primary">Viewed</span>
+{% elif status == 'partially_paid' %}
+<span class="badge bg-warning text-dark">Partially Paid</span>
+{% elif status == 'paid' %}
+<span class="badge bg-success">Paid</span>
+{% elif status == 'overdue' %}
+<span class="badge bg-danger">Overdue</span>
+{% elif status == 'void' %}
+<span class="badge bg-dark text-decoration-line-through">Void</span>
+{% elif status == 'refunded' %}
+<span class="badge bg-dark">Refunded</span>
+{% else %}
+<span class="badge bg-light text-dark">{{ status }}</span>
+{% endif %}
+{% endmacro %}
+
+{% macro stock_level_badge(quantity, reorder_level) %}
+{% if reorder_level > 0 and quantity <= 0 %}
+<span class="badge bg-danger">Out of Stock</span>
+{% elif reorder_level > 0 and quantity <= reorder_level %}
+<span class="badge bg-warning text-dark">Low Stock</span>
+{% else %}
+<span class="badge bg-success">In Stock</span>
+{% endif %}
+{% endmacro %}
+
+{% macro boolean_badge(value, true_text='Yes', false_text='No') %}
+{% if value %}
+<span class="badge bg-success">{{ true_text }}</span>
+{% else %}
+<span class="badge bg-secondary">{{ false_text }}</span>
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,206 @@
+# Dive Service Management - Implementation Progress
+
+## Timeline
+
+### Phase 0: Planning (Complete)
+- [x] Initial README.plan created
+- [x] PROJECT_BLUEPRINT.md written (14 sections, ~2800 lines)
+- [x] Price list with real-world drysuit repair pricing added
+- [x] Deployment script (setup.sh) specified
+- [x] Testing strategy defined (4 test categories, phase gates)
+- [x] Critical review performed: 12 pre-implementation items identified and applied
+  - Architecture: fpdf2 primary PDF, Huey lightweight alternative, Pi MariaDB tuning
+  - Data model: Circular FK removed, applied_service traceability, many-to-many invoices, drysuit_details table
+  - Features: Attachments, customer approval workflow, deposits, warranty tracking
+  - Additional fields: condition_at_receipt, pickup tracking, customer billing defaults, inventory expiration
+
+### Phase 1: Foundation (Complete)
+**Target**: Project scaffolding, Docker, config, DB schema, base template, auth, CLI
+
+- [x] Project scaffolding (directory structure, requirements, pyproject.toml)
+- [x] Docker setup (Dockerfile, docker-compose.yml, lightweight profile, DB config)
+- [x] Configuration system (config.py, .env.example, extensions.py)
+- [x] Application factory (app/__init__.py)
+- [x] Model mixins (TimestampMixin, SoftDeleteMixin, AuditMixin)
+- [x] User/Role models + Alembic migrations
+- [x] Base template with navigation, theme support, error pages
+- [x] Static assets (HTMX, Alpine.js, Bootstrap via CDN; CSS themes, app.js)
+- [x] Flask-Security-Too authentication (login, logout, password management)
+- [x] Flask CLI commands (seed-db, create-admin)
+- [x] Makefile + scripts/setup.sh
+- [x] Health check endpoint (/health with DB connectivity check)
+- [x] Docker-based testing workflow (Dockerfile.test, docker-compose.test.yml)
+- [x] Phase 1 tests: 36 tests (10 smoke, 14 unit, 9 blueprint, 3 health)
+- [x] Phase 1 gate: all 36 tests pass, 93.27% coverage (target: 80%)
+
+**Critical Review Findings (resolved)**:
+- Added /health endpoint (Docker health check was referencing it)
+- Initialized Alembic migrations directory with initial schema migration
+- Added Flask-Mail to requirements.txt (was imported but not listed)
+- Added DSM_SECURITY_PASSWORD_SALT to .env.example and setup.sh
+- Added admin_client, viewer_client test fixtures for Phase 2 readiness
+- Added theme CSS links and htmx-loading-bar to base.html
+- Created .dockerignore for efficient builds
+
+**Remaining low-priority items for future phases**:
+- Vendor frontend libraries (currently CDN-only; works but not offline-ready)
+- Wire up ExtendedLoginForm (exists but not connected to Flask-Security)
+- Add docker-compose.override.yml template for dev workflow
+
+### Phase 2: Core Entities (Complete)
+**Target**: Customer, ServiceItem, Inventory, PriceList, Tags, Search
+
+- [x] Customer model with validation, soft-delete, display_name/full_address properties
+- [x] ServiceItem model with serial number tracking, serviceability status
+- [x] DrysuitDetails model (1:1 extension for drysuit-specific fields)
+- [x] InventoryItem model with stock management, is_low_stock property
+- [x] PriceList models (PriceListCategory, PriceListItem, PriceListItemPart)
+- [x] Tag/Taggable polymorphic tagging system with TaggableMixin
+- [x] Customer, Item, Inventory, PriceList, Search forms (WTForms)
+- [x] Customer, Inventory, PriceList, Tag, Search services (business logic layer)
+- [x] Customers blueprint (list, detail, create, edit, delete)
+- [x] Items blueprint (list, lookup, detail, create, edit, delete, drysuit fields)
+- [x] Inventory blueprint (list, low-stock, detail, create, edit, delete, stock adjust)
+- [x] Price List blueprint (list, detail, create, edit, duplicate, categories)
+- [x] Search blueprint (global search results, HTMX autocomplete)
+- [x] 16 templates + 4 macro files (status_badges, tables, tags, modals)
+- [x] Base template: sidebar nav wired, global search form, pagination macro fix
+- [x] Config: SECURITY_UNAUTHORIZED_VIEW=None for proper 403 responses
+- [x] Test factories (Factory Boy) for all models
+- [x] Phase 2 tests: 377 total, 94.01% coverage (target: 80%)
+
+### UAT Testing Framework (Complete)
+
+- [x] UAT test plan (tests/uat/UAT_PLAN.md) with per-phase timing schedule
+- [x] Playwright infrastructure (Dockerfile.uat, docker-compose.uat.yml, requirements-uat.txt)
+- [x] UAT conftest with browser fixtures (admin_page, tech_page, viewer_page)
+- [x] Phase 1 UAT: test_uat_auth.py (6 tests)
+- [x] Phase 2 UATs: customers (7), items (6), inventory (6), price_list (4), search (3)
+- [x] End-to-end UAT: test_uat_e2e.py (full workflow with Phase 3-5 placeholders)
+- [x] Future phase placeholders: orders, invoices, reports, tools
+- [x] UAT excluded from standard test runs (--ignore=tests/uat in pyproject.toml)
+- [ ] UAT scripts updated as each phase completes to match actual output
+
+### Phase 2 → Phase 3 Gate: External Review Fix-ups (Complete)
+
+**Trigger**: External code reviews identified issues to address before Phase 3.
+
+**Fixed Now**:
+
+- [x] Sort parameter injection — added SORTABLE_FIELDS allowlists in customers, items, inventory blueprints
+- [x] IntegrityError handling — wrapped db.session.commit() with try/except in customers, items, inventory, price_list for duplicate unique fields (email, serial_number, sku, code)
+- [x] Setup script stale messages — updated seed-db and create-admin fallback messages (were saying "not yet available")
+- [x] MEMORY.md and PROGRESS.md sync — updated to reflect actual state
+
+**Deferred to Later Phases**:
+
+- Service layer refactoring (Phase 3 new code uses services; existing blueprints refactored incrementally)
+- Drysuit logic extraction from items.py to item_service.py (Phase 3)
+- Validation workflow tests (progressive, each phase)
+- Migration quality gate / test-vs-Alembic alignment (Phase 6)
+- Tag UI integration into entity workflows (Phase 3+)
+- FULLTEXT search + HTMX autocomplete (Phase 5)
+- Inconsistent populate_obj usage (Phase 3 refactor)
+
+### Phase 3: Service Workflow (Complete)
+
+**Target**: Orders, AppliedServices, PartsUsed, Labor, Notes, Status workflow
+
+- [x] ServiceOrder model with status workflow, priority, customer/tech assignment, approval/pickup fields
+- [x] ServiceOrderItem model with warranty tracking, condition-at-receipt, per-item status
+- [x] AppliedService model linking price list items to order items with price snapshots
+- [x] PartUsed model with inventory deduction/restoration and cost snapshots
+- [x] LaborEntry model with tech assignment and rate snapshots
+- [x] ServiceNote model with typed notes (diagnostic, repair, testing, general, customer_communication)
+- [x] order_service.py — full service layer with status transitions, order number generation, CRUD, sub-entity management, order summary calculations
+- [x] Orders blueprint — 16 routes using service layer, role-based access, SORTABLE_FIELDS allowlist
+- [x] ServiceOrderForm, OrderSearchForm, ServiceOrderItemForm, AppliedServiceForm, PartUsedForm, LaborEntryForm, ServiceNoteForm
+- [x] Templates: orders/list.html, form.html, detail.html (full workspace), kanban.html (placeholder)
+- [x] Base template: sidebar Orders link wired to orders.list_orders
+- [x] Test factories for all Phase 3 models
+- [x] Phase 3 tests: 516 total, 91.23% coverage (target: 80%)
+
+### Phase 4: Billing (Complete)
+**Target**: Invoices, Payments, Line Items, Invoice Generation from Orders
+
+- [x] Invoice model with status tracking (draft→sent→paid/void/refunded), financial fields, recalculate_totals()
+- [x] InvoiceLineItem model with type classification (service, labor, part, fee, discount), traceability links
+- [x] invoice_orders many-to-many association table linking invoices to service orders
+- [x] Payment model with payment types (payment, deposit, refund), methods, and external system fields
+- [x] invoice_service.py — full service layer with CRUD, invoice number generation (INV-YYYY-NNNNN), generate_from_order(), line item management, payment recording with auto-status transitions
+- [x] Invoices blueprint — 11 routes using service layer, role-based access (void=admin only), SORTABLE_FIELDS
+- [x] InvoiceForm, InvoiceSearchForm, InvoiceLineItemForm, PaymentForm
+- [x] Templates: invoices/list.html, form.html, detail.html (workspace with line items, payments, status changes)
+- [x] Base template: sidebar Invoices link wired to invoices.list_invoices
+- [x] Test factories: InvoiceFactory, InvoiceLineItemFactory, PaymentFactory
+- [x] Phase 4 tests: 635 total, 91.24% coverage (target: 80%)
+
+### Phase 5: Reports, Tools, Polish (Complete)
+
+**Target**: Reports, Calculators, Import/Export, Notifications
+
+- [x] Notification model with severity levels, entity linking, read/unread tracking
+- [x] report_service.py — 5 report functions: revenue, orders, inventory, customers, aging
+- [x] notification_service.py — CRUD, unread counts, mark-as-read, domain notifications (low stock, order status, payment)
+- [x] export_service.py — CSV and XLSX export for customers, inventory, orders, invoices (with openpyxl)
+- [x] Reports blueprint — 6 routes (hub, revenue, orders, inventory, customers, aging)
+- [x] Reports templates — hub with card links, 5 report pages with Chart.js visualizations, date range filters
+- [x] Tools blueprint — 7 routes (hub + 6 tools)
+- [x] Tools templates — seal calculator, material estimator, pricing calculator, leak test log, valve reference, unit converter (Alpine.js client-side)
+- [x] Notifications blueprint — 4 routes (list, unread count JSON, mark read, mark all read)
+- [x] Export blueprint — 8 endpoints (4 entities x CSV/XLSX)
+- [x] Base template: sidebar Reports and Tools links wired
+- [x] Test factories: NotificationFactory
+- [x] Phase 5 tests: 726 total, 92% coverage (target: 80%)
+
+### Phase 6: Production Readiness (Complete)
+
+**Target**: Migrations, Docker verification, Security audit, Makefile updates
+
+- [x] Alembic migration for Phases 3-5 (11 tables: service_orders, service_order_items, service_notes, applied_services, parts_used, labor_entries, invoices, invoice_orders, invoice_line_items, payments, notifications)
+- [x] Dockerfile verified: multi-stage build, non-root user, health check, proper gunicorn config
+- [x] docker-compose.yml verified: health checks, service dependencies, restart policies, named volumes
+- [x] .env.example verified: all active DSM_ variables documented (mail vars deferred — not yet active)
+- [x] config.py verified: ProductionConfig disables DEBUG, argon2 password hashing, proper SECRET_KEY handling
+- [x] Makefile updated: added export-test and lint targets
+- [x] All 15 blueprints registered and wired (admin, auth, customers, dashboard, export, health, inventory, invoices, items, notifications, orders, price_list, reports, search, tools)
+- [x] All sidebar links wired to actual routes
+- [x] Phase 6 tests: 726 total, 92% coverage (target: 80%) — all passing
+
+### Post-Phase 6: Review Fixes and Enhancements (Complete)
+
+**Trigger**: External code reviews and manual UAT identified issues to address.
+
+**Critical (P0) Fixes**:
+
+- [x] P0-1: Inventory truncation — `int()` → `round()` for decimal quantity deductions in order_service.py
+- [x] P0-2: Notification auth — added user ownership check to `mark_as_read` (IDOR prevention)
+- [x] P0-3: Number generation race — retry-on-IntegrityError for order/invoice creation
+- [x] P0-4: Refund math — type-aware payment sum using `case()` for refund/deposit/payment handling
+
+**High Priority (P1) Fixes**:
+
+- [x] P1-4: Invoice status bypass — VALID_STATUSES allowlist on change_status route
+
+**Medium Priority (P2) Fixes**:
+
+- [x] P2-4: Health endpoint — specific exception types (OperationalError/SQLAlchemyError) instead of broad catch
+- [x] P2-3: pyproject.toml README reference fixed
+- [x] P2-3: Placeholder stubs documented and cleaned up
+
+**Feature Enhancements**:
+
+- [x] Dashboard — live open orders, awaiting pickup, low stock alerts, overdue invoices counts
+- [x] Dashboard — quick action links wired to real routes
+- [x] Admin blueprint — user management (list, create, edit, toggle active, password reset)
+- [x] Admin blueprint — system settings overview
+- [x] Admin blueprint — data management with backup/restore instructions and export links
+- [x] Admin sidebar link wired to actual route
+- [x] Seed data — 6 price list categories, 3 demo users seeded by default
+- [x] Empty-state UX warnings for service items and price list categories
+- [x] Report service — MariaDB-compatible date calculations (Python-side grouping)
+- [x] UAT scripts — 11 markdown test scripts with screenshots in docs/uat/
+- [x] README.md created for GitHub
+- [x] .gitignore enhanced with credential/key exclusions
+
+**Tests**: 757 total, all passing

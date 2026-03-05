@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% from 'macros/modals.html' import delete_modal %}
+
+{% block title %}{{ customer.display_name }} - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{{ url_for('customers.list_customers') }}">Customers</a></li>
+        <li class="breadcrumb-item active">{{ customer.display_name }}</li>
+      </ol>
+    </nav>
+    <h1 class="h3 mb-0">{{ customer.display_name }}</h1>
+    <span class="badge bg-{{ 'primary' if customer.customer_type == 'business' else 'secondary' }}">
+      {{ customer.customer_type|capitalize }}
+    </span>
+  </div>
+  <div class="d-flex gap-2">
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('customers.edit', id=customer.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </a>
+    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteCustomerModal">
+      <i class="bi bi-trash me-1"></i> Delete
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row">
+  {# Contact Info #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-person-lines-fill me-2"></i>Contact Information</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          {% if customer.customer_type == 'business' and customer.contact_person %}
+          <dt class="col-sm-5">Contact Person</dt>
+          <dd class="col-sm-7">{{ customer.contact_person }}</dd>
+          {% endif %}
+          <dt class="col-sm-5">Email</dt>
+          <dd class="col-sm-7">
+            {% if customer.email %}
+            <a href="mailto:{{ customer.email }}">{{ customer.email }}</a>
+            {% else %}
+            <span class="text-muted">Not provided</span>
+            {% endif %}
+          </dd>
+          <dt class="col-sm-5">Primary Phone</dt>
+          <dd class="col-sm-7">{{ customer.phone_primary or 'Not provided' }}</dd>
+          {% if customer.phone_secondary %}
+          <dt class="col-sm-5">Secondary Phone</dt>
+          <dd class="col-sm-7">{{ customer.phone_secondary }}</dd>
+          {% endif %}
+          <dt class="col-sm-5">Preferred Contact</dt>
+          <dd class="col-sm-7">{{ customer.preferred_contact|capitalize }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Address #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-geo-alt me-2"></i>Address</h5>
+      </div>
+      <div class="card-body">
+        {% if customer.full_address %}
+        <p class="mb-0" style="white-space: pre-line;">{{ customer.full_address }}</p>
+        {% else %}
+        <p class="text-muted mb-0">No address on file.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Preferences #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-sliders me-2"></i>Preferences</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Tax Exempt</dt>
+          <dd class="col-sm-7">
+            {% if customer.tax_exempt %}
+            <span class="badge bg-success">Yes</span>
+            {% if customer.tax_id %}({{ customer.tax_id }}){% endif %}
+            {% else %}
+            <span class="badge bg-secondary">No</span>
+            {% endif %}
+          </dd>
+          {% if customer.payment_terms %}
+          <dt class="col-sm-5">Payment Terms</dt>
+          <dd class="col-sm-7">{{ customer.payment_terms }}</dd>
+          {% endif %}
+          {% if customer.credit_limit %}
+          <dt class="col-sm-5">Credit Limit</dt>
+          <dd class="col-sm-7">${{ "%.2f"|format(customer.credit_limit) }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Notes #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-journal-text me-2"></i>Notes</h5>
+      </div>
+      <div class="card-body">
+        {% if customer.notes %}
+        <p class="mb-0" style="white-space: pre-line;">{{ customer.notes }}</p>
+        {% else %}
+        <p class="text-muted mb-0">No notes.</p>
+        {% endif %}
+        {% if customer.referral_source %}
+        <hr>
+        <small class="text-muted">Referral source: {{ customer.referral_source }}</small>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Service Items #}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0"><i class="bi bi-tools me-2"></i>Service Items</h5>
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('items.create', customer_id=customer.id) }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-plus-lg me-1"></i> Add Item
+    </a>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% set service_items = customer.service_items.filter_by(is_deleted=False).all() %}
+    {% if service_items %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Serial Number</th>
+            <th>Category</th>
+            <th>Brand / Model</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in service_items %}
+          <tr>
+            <td><a href="{{ url_for('items.detail', id=item.id) }}">{{ item.name }}</a></td>
+            <td>{{ item.serial_number or '' }}</td>
+            <td>{{ item.item_category or '' }}</td>
+            <td>{{ [item.brand, item.model]|select|join(' ') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No service items on file.</p>
+    {% endif %}
+  </div>
+</div>
+
+{# Quick Actions #}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Quick Actions</h5>
+  </div>
+  <div class="card-body d-flex gap-2 flex-wrap">
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('customers.edit', id=customer.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i> Edit Customer
+    </a>
+    <button class="btn btn-outline-secondary" disabled title="Coming in Phase 3">
+      <i class="bi bi-clipboard-plus me-1"></i> New Order
+    </button>
+    <a href="{{ url_for('items.create', customer_id=customer.id) }}" class="btn btn-outline-secondary">
+      <i class="bi bi-plus-lg me-1"></i> Add Service Item
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+{{ delete_modal('deleteCustomerModal', 'Customer', url_for('customers.delete', id=customer.id)) }}
+{% endif %}
+{% endblock %}

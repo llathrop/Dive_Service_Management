@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "dive-service-management"
+version = "0.1.0"
+description = "Customer, service order, and inventory management for dive equipment repair shops"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "smoke: Quick sanity checks (app starts, pages load)",
+    "unit: Unit tests for models, services, forms, utilities",
+    "blueprint: HTTP route/response tests",
+    "validation: End-to-end workflow tests",
+    "uat: Browser-based user acceptance tests (Playwright)",
+    "slow: Tests that take >5 seconds (excluded from quick runs)",
+]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "-q",
+    "--ignore=tests/uat",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "app/celery_app.py",
+    "app/cli/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+]

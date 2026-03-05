@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Orders Report - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Orders Report</h1>
+    <p class="text-muted mb-0">Service order statistics and technician workload analysis.</p>
+  </div>
+  <a href="{{ url_for('reports.hub') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> All Reports
+  </a>
+</div>
+
+{# Date range filter #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('reports.orders') }}" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label for="date_from" class="form-label">Date From</label>
+        <input type="date" class="form-control" id="date_from" name="date_from"
+               value="{{ date_from }}">
+      </div>
+      <div class="col-md-3">
+        <label for="date_to" class="form-label">Date To</label>
+        <input type="date" class="form-control" id="date_to" name="date_to"
+               value="{{ date_to }}">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-funnel me-1"></i> Filter
+        </button>
+      </div>
+      <div class="col-md-2">
+        <a href="{{ url_for('reports.orders') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Summary cards #}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6">
+    <div class="card text-center border-start border-4 border-primary">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Total Orders</div>
+        <div class="fs-4 fw-bold text-primary">{{ data.total_orders }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6">
+    <div class="card text-center border-start border-4 border-info">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Avg Turnaround</div>
+        <div class="fs-4 fw-bold text-info">
+          {% if data.avg_turnaround_days is not none %}
+            {{ data.avg_turnaround_days }} days
+          {% else %}
+            N/A
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  {# Status breakdown table + chart #}
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Status Breakdown</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            {% if data.status_breakdown %}
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th class="text-end">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for status, count in data.status_breakdown.items() %}
+                  <tr>
+                    <td>{{ status | replace('_', ' ') | title }}</td>
+                    <td class="text-end">{{ count }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-4">
+              <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+              No status data available.
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            {% if data.status_breakdown %}
+            <canvas id="statusChart"></canvas>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Priority breakdown table #}
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Priority Breakdown</h5>
+      </div>
+      <div class="card-body p-0">
+        {% if data.priority_breakdown %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Priority</th>
+                <th class="text-end">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for priority, count in data.priority_breakdown.items() %}
+              <tr>
+                <td>{{ priority | replace('_', ' ') | title }}</td>
+                <td class="text-end">{{ count }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+          No priority data available.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Orders by technician #}
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Orders by Technician</h5>
+  </div>
+  <div class="card-body p-0">
+    {% if data.orders_by_tech %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Technician</th>
+            <th class="text-end">Orders</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tech in data.orders_by_tech %}
+          <tr>
+            <td>{{ tech.tech_name }}</td>
+            <td class="text-end">{{ tech.count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+      No technician data available.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if data.status_breakdown %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+  const statusData = {{ data.status_breakdown | tojson }};
+  const statusLabels = Object.keys(statusData).map(s => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+  const statusValues = Object.values(statusData);
+
+  const statusColors = [
+    'rgb(13, 110, 253)',
+    'rgb(25, 135, 84)',
+    'rgb(255, 193, 7)',
+    'rgb(220, 53, 69)',
+    'rgb(13, 202, 240)',
+    'rgb(108, 117, 125)',
+    'rgb(111, 66, 193)',
+    'rgb(253, 126, 20)'
+  ];
+
+  const ctx = document.getElementById('statusChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: statusLabels,
+      datasets: [{
+        data: statusValues,
+        backgroundColor: statusColors.slice(0, statusLabels.length),
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, padding: 8 }
+        }
+      }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

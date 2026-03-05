@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% from 'macros/pagination.html' import render_pagination %}
+{% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
+{% from 'macros/status_badges.html' import serviceability_badge %}
+
+{% block title %}Service Items - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Service Items</h1>
+    {{ record_count(pagination) }}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('items.lookup') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-upc-scan me-1"></i> Serial Lookup
+    </a>
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('items.create') }}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i> Add Item
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# Search form #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('items.list_items') }}" class="row g-3 align-items-end">
+      <div class="col-md-8">
+        <label for="q" class="form-label">Search</label>
+        <input type="text" class="form-control" id="q" name="q"
+               value="{{ q }}"
+               placeholder="Name, serial number, brand, model...">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-search me-1"></i> Search
+        </button>
+      </div>
+      <div class="col-md-2">
+        <a href="{{ url_for('items.list_items') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if items %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          {{ sortable_header('name', 'Name', sort, order) }}
+          {{ sortable_header('serial_number', 'Serial Number', sort, order) }}
+          {{ sortable_header('item_category', 'Category', sort, order) }}
+          {{ sortable_header('brand', 'Brand', sort, order) }}
+          <th>Serviceability</th>
+          <th>Owner</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>
+            <a href="{{ url_for('items.detail', id=item.id) }}">{{ item.name }}</a>
+          </td>
+          <td><code>{{ item.serial_number or '' }}</code></td>
+          <td>{{ item.item_category or '' }}</td>
+          <td>{{ [item.brand, item.model]|select|join(' ') }}</td>
+          <td>{{ serviceability_badge(item.serviceability) }}</td>
+          <td>
+            {% if item.customer %}
+            <a href="{{ url_for('customers.detail', id=item.customer.id) }}">
+              {{ item.customer.display_name }}
+            </a>
+            {% else %}
+            <span class="text-muted">Unassigned</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <a href="{{ url_for('items.detail', id=item.id) }}"
+                 class="btn btn-outline-primary" title="View">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+              <a href="{{ url_for('items.edit', id=item.id) }}"
+                 class="btn btn-outline-secondary" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{{ render_pagination(pagination) }}
+{% else %}
+{{ empty_state('No service items found.', 'bi-tools', url_for('items.create'), 'Add Item') }}
+{% endif %}
+{% endblock %}

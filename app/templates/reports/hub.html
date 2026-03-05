@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Reports</h1>
+    <p class="text-muted mb-0">Select a report to view business insights and analytics.</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  {# Revenue Report Card #}
+  <div class="col-md-6 col-lg-4">
+    <a href="{{ url_for('reports.revenue') }}" class="text-decoration-none">
+      <div class="card h-100 border-start border-4 border-success shadow-sm hover-shadow">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
+              <i class="bi bi-currency-dollar fs-3 text-success"></i>
+            </div>
+            <h5 class="card-title mb-0">Revenue</h5>
+          </div>
+          <p class="card-text text-muted">
+            Revenue breakdown by type (parts, labor, services, fees) with monthly trend analysis.
+          </p>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <span class="text-success small">View report <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  {# Orders Report Card #}
+  <div class="col-md-6 col-lg-4">
+    <a href="{{ url_for('reports.orders') }}" class="text-decoration-none">
+      <div class="card h-100 border-start border-4 border-primary shadow-sm hover-shadow">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+              <i class="bi bi-clipboard-data fs-3 text-primary"></i>
+            </div>
+            <h5 class="card-title mb-0">Orders</h5>
+          </div>
+          <p class="card-text text-muted">
+            Service order statistics including status breakdown, turnaround times, and technician workload.
+          </p>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <span class="text-primary small">View report <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  {# Inventory Report Card #}
+  <div class="col-md-6 col-lg-4">
+    <a href="{{ url_for('reports.inventory') }}" class="text-decoration-none">
+      <div class="card h-100 border-start border-4 border-info shadow-sm hover-shadow">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
+              <i class="bi bi-box-seam fs-3 text-info"></i>
+            </div>
+            <h5 class="card-title mb-0">Inventory</h5>
+          </div>
+          <p class="card-text text-muted">
+            Stock levels, valuation, low/out-of-stock alerts, category breakdown, and most used parts.
+          </p>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <span class="text-info small">View report <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  {# Customers Report Card #}
+  <div class="col-md-6 col-lg-4">
+    <a href="{{ url_for('reports.customers') }}" class="text-decoration-none">
+      <div class="card h-100 border-start border-4 border-warning shadow-sm hover-shadow">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
+              <i class="bi bi-people fs-3 text-warning"></i>
+            </div>
+            <h5 class="card-title mb-0">Customers</h5>
+          </div>
+          <p class="card-text text-muted">
+            Customer statistics with new customer trends and top customers by invoice value.
+          </p>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <span class="text-warning small">View report <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  {# Aging Report Card #}
+  <div class="col-md-6 col-lg-4">
+    <a href="{{ url_for('reports.aging') }}" class="text-decoration-none">
+      <div class="card h-100 border-start border-4 border-danger shadow-sm hover-shadow">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle bg-danger bg-opacity-10 p-3 me-3">
+              <i class="bi bi-clock-history fs-3 text-danger"></i>
+            </div>
+            <h5 class="card-title mb-0">Accounts Receivable Aging</h5>
+          </div>
+          <p class="card-text text-muted">
+            Outstanding invoice aging buckets showing overdue amounts by time period.
+          </p>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <span class="text-danger small">View report <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+{% endblock %}

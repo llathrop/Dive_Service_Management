@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}Unit Converter - Tools - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('tools.hub') }}">Tools</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Unit Converter</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Unit Converter</h1>
+    <p class="text-muted mb-0">Convert between common dive service measurements</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  {# Length Converter #}
+  <div class="col-md-6" x-data="lengthConverter()">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-rulers me-2"></i>Length</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="inches" class="form-label fw-semibold">Inches (in)</label>
+          <input type="number" class="form-control" id="inches"
+                 x-model.number="inches" step="0.01"
+                 @input="fromInches()" placeholder="0">
+        </div>
+        <div class="mb-3">
+          <label for="centimeters" class="form-label fw-semibold">Centimeters (cm)</label>
+          <input type="number" class="form-control" id="centimeters"
+                 x-model.number="centimeters" step="0.01"
+                 @input="fromCentimeters()" placeholder="0">
+        </div>
+        <div class="mb-0">
+          <label for="millimeters" class="form-label fw-semibold">Millimeters (mm)</label>
+          <input type="number" class="form-control" id="millimeters"
+                 x-model.number="millimeters" step="0.1"
+                 @input="fromMillimeters()" placeholder="0">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Pressure Converter #}
+  <div class="col-md-6" x-data="pressureConverter()">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-speedometer me-2"></i>Pressure</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="psi" class="form-label fw-semibold">PSI</label>
+          <input type="number" class="form-control" id="psi"
+                 x-model.number="psi" step="0.1"
+                 @input="fromPsi()" placeholder="0">
+        </div>
+        <div class="mb-3">
+          <label for="bar" class="form-label fw-semibold">Bar</label>
+          <input type="number" class="form-control" id="bar"
+                 x-model.number="bar" step="0.01"
+                 @input="fromBar()" placeholder="0">
+        </div>
+        <div class="mb-0">
+          <label for="atm" class="form-label fw-semibold">Atmospheres (atm)</label>
+          <input type="number" class="form-control" id="atm"
+                 x-model.number="atm" step="0.01"
+                 @input="fromAtm()" placeholder="0">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Temperature Converter #}
+  <div class="col-md-6" x-data="temperatureConverter()">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-thermometer-half me-2"></i>Temperature</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="fahrenheit" class="form-label fw-semibold">Fahrenheit (F)</label>
+          <input type="number" class="form-control" id="fahrenheit"
+                 x-model.number="fahrenheit" step="0.1"
+                 @input="fromFahrenheit()" placeholder="0">
+        </div>
+        <div class="mb-0">
+          <label for="celsius" class="form-label fw-semibold">Celsius (C)</label>
+          <input type="number" class="form-control" id="celsius"
+                 x-model.number="celsius" step="0.1"
+                 @input="fromCelsius()" placeholder="0">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Volume Converter #}
+  <div class="col-md-6" x-data="volumeConverter()">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-cup me-2"></i>Volume</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="floz" class="form-label fw-semibold">Fluid Ounces (fl oz)</label>
+          <input type="number" class="form-control" id="floz"
+                 x-model.number="floz" step="0.1"
+                 @input="fromFloz()" placeholder="0">
+        </div>
+        <div class="mb-0">
+          <label for="ml" class="form-label fw-semibold">Milliliters (ml)</label>
+          <input type="number" class="form-control" id="ml"
+                 x-model.number="ml" step="0.1"
+                 @input="fromMl()" placeholder="0">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Quick Reference #}
+<div class="card shadow-sm mt-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-bookmark me-2"></i>Quick Reference</h5>
+  </div>
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-md-3">
+        <h6>Length</h6>
+        <ul class="list-unstyled small">
+          <li>1 inch = 2.54 cm</li>
+          <li>1 cm = 10 mm</li>
+          <li>1 inch = 25.4 mm</li>
+        </ul>
+      </div>
+      <div class="col-md-3">
+        <h6>Pressure</h6>
+        <ul class="list-unstyled small">
+          <li>1 bar = 14.5038 psi</li>
+          <li>1 atm = 14.696 psi</li>
+          <li>1 atm = 1.01325 bar</li>
+        </ul>
+      </div>
+      <div class="col-md-3">
+        <h6>Temperature</h6>
+        <ul class="list-unstyled small">
+          <li>F = (C x 9/5) + 32</li>
+          <li>C = (F - 32) x 5/9</li>
+          <li>32 F = 0 C (freezing)</li>
+        </ul>
+      </div>
+      <div class="col-md-3">
+        <h6>Volume</h6>
+        <ul class="list-unstyled small">
+          <li>1 fl oz = 29.5735 ml</li>
+          <li>1 ml = 0.033814 fl oz</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function lengthConverter() {
+  return {
+    inches: null,
+    centimeters: null,
+    millimeters: null,
+
+    round(val, decimals) {
+      if (val === null || val === '' || isNaN(val)) return null;
+      return Math.round(val * Math.pow(10, decimals)) / Math.pow(10, decimals);
+    },
+
+    fromInches() {
+      if (this.inches === null || this.inches === '') {
+        this.centimeters = null;
+        this.millimeters = null;
+        return;
+      }
+      this.centimeters = this.round(this.inches * 2.54, 2);
+      this.millimeters = this.round(this.inches * 25.4, 1);
+    },
+
+    fromCentimeters() {
+      if (this.centimeters === null || this.centimeters === '') {
+        this.inches = null;
+        this.millimeters = null;
+        return;
+      }
+      this.inches = this.round(this.centimeters / 2.54, 2);
+      this.millimeters = this.round(this.centimeters * 10, 1);
+    },
+
+    fromMillimeters() {
+      if (this.millimeters === null || this.millimeters === '') {
+        this.inches = null;
+        this.centimeters = null;
+        return;
+      }
+      this.inches = this.round(this.millimeters / 25.4, 2);
+      this.centimeters = this.round(this.millimeters / 10, 2);
+    }
+  };
+}
+
+function pressureConverter() {
+  return {
+    psi: null,
+    bar: null,
+    atm: null,
+
+    round(val, decimals) {
+      if (val === null || val === '' || isNaN(val)) return null;
+      return Math.round(val * Math.pow(10, decimals)) / Math.pow(10, decimals);
+    },
+
+    fromPsi() {
+      if (this.psi === null || this.psi === '') {
+        this.bar = null;
+        this.atm = null;
+        return;
+      }
+      this.bar = this.round(this.psi / 14.5038, 2);
+      this.atm = this.round(this.psi / 14.696, 2);
+    },
+
+    fromBar() {
+      if (this.bar === null || this.bar === '') {
+        this.psi = null;
+        this.atm = null;
+        return;
+      }
+      this.psi = this.round(this.bar * 14.5038, 1);
+      this.atm = this.round(this.bar / 1.01325, 2);
+    },
+
+    fromAtm() {
+      if (this.atm === null || this.atm === '') {
+        this.psi = null;
+        this.bar = null;
+        return;
+      }
+      this.psi = this.round(this.atm * 14.696, 1);
+      this.bar = this.round(this.atm * 1.01325, 2);
+    }
+  };
+}
+
+function temperatureConverter() {
+  return {
+    fahrenheit: null,
+    celsius: null,
+
+    round(val, decimals) {
+      if (val === null || val === '' || isNaN(val)) return null;
+      return Math.round(val * Math.pow(10, decimals)) / Math.pow(10, decimals);
+    },
+
+    fromFahrenheit() {
+      if (this.fahrenheit === null || this.fahrenheit === '') {
+        this.celsius = null;
+        return;
+      }
+      this.celsius = this.round((this.fahrenheit - 32) * 5 / 9, 1);
+    },
+
+    fromCelsius() {
+      if (this.celsius === null || this.celsius === '') {
+        this.fahrenheit = null;
+        return;
+      }
+      this.fahrenheit = this.round((this.celsius * 9 / 5) + 32, 1);
+    }
+  };
+}
+
+function volumeConverter() {
+  return {
+    floz: null,
+    ml: null,
+
+    round(val, decimals) {
+      if (val === null || val === '' || isNaN(val)) return null;
+      return Math.round(val * Math.pow(10, decimals)) / Math.pow(10, decimals);
+    },
+
+    fromFloz() {
+      if (this.floz === null || this.floz === '') {
+        this.ml = null;
+        return;
+      }
+      this.ml = this.round(this.floz * 29.5735, 1);
+    },
+
+    fromMl() {
+      if (this.ml === null || this.ml === '') {
+        this.floz = null;
+        return;
+      }
+      this.floz = this.round(this.ml / 29.5735, 1);
+    }
+  };
+}
+</script>
+{% endblock %}

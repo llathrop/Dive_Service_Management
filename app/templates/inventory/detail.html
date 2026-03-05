@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_submit %}
+{% from 'macros/status_badges.html' import stock_level_badge %}
+{% from 'macros/modals.html' import delete_modal %}
+
+{% block title %}{{ item.name }} - Inventory - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{{ url_for('inventory.list_items') }}">Inventory</a></li>
+        <li class="breadcrumb-item active">{{ item.name }}</li>
+      </ol>
+    </nav>
+    <h1 class="h3 mb-0">{{ item.name }}</h1>
+    <div class="mt-1">
+      {{ stock_level_badge(item.quantity_in_stock, item.reorder_level) }}
+      {% if not item.is_active %}
+      <span class="badge bg-secondary ms-1">Inactive</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('inventory.edit', id=item.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </a>
+    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteItemModal">
+      <i class="bi bi-trash me-1"></i> Delete
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row">
+  {# Item Details #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Item Details</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          {% if item.sku %}
+          <dt class="col-sm-5">SKU</dt>
+          <dd class="col-sm-7"><code>{{ item.sku }}</code></dd>
+          {% endif %}
+          <dt class="col-sm-5">Category</dt>
+          <dd class="col-sm-7">{{ item.category }}{% if item.subcategory %} / {{ item.subcategory }}{% endif %}</dd>
+          {% if item.manufacturer %}
+          <dt class="col-sm-5">Manufacturer</dt>
+          <dd class="col-sm-7">{{ item.manufacturer }}</dd>
+          {% endif %}
+          {% if item.manufacturer_part_number %}
+          <dt class="col-sm-5">Part Number</dt>
+          <dd class="col-sm-7"><code>{{ item.manufacturer_part_number }}</code></dd>
+          {% endif %}
+          <dt class="col-sm-5">Unit of Measure</dt>
+          <dd class="col-sm-7">{{ item.unit_of_measure }}</dd>
+          {% if item.storage_location %}
+          <dt class="col-sm-5">Storage Location</dt>
+          <dd class="col-sm-7">{{ item.storage_location }}</dd>
+          {% endif %}
+          <dt class="col-sm-5">For Resale</dt>
+          <dd class="col-sm-7">{{ 'Yes' if item.is_for_resale else 'No' }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Stock & Pricing #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-box-seam me-2"></i>Stock &amp; Pricing</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Quantity in Stock</dt>
+          <dd class="col-sm-7">
+            <strong>{{ item.quantity_in_stock }}</strong> {{ item.unit_of_measure }}
+            {{ stock_level_badge(item.quantity_in_stock, item.reorder_level) }}
+          </dd>
+          <dt class="col-sm-5">Reorder Level</dt>
+          <dd class="col-sm-7">{{ item.reorder_level }}</dd>
+          {% if item.reorder_quantity %}
+          <dt class="col-sm-5">Reorder Quantity</dt>
+          <dd class="col-sm-7">{{ item.reorder_quantity }}</dd>
+          {% endif %}
+          {% if item.purchase_cost %}
+          <dt class="col-sm-5">Purchase Cost</dt>
+          <dd class="col-sm-7">${{ "%.2f"|format(item.purchase_cost) }}</dd>
+          {% endif %}
+          {% if item.resale_price %}
+          <dt class="col-sm-5">Resale Price</dt>
+          <dd class="col-sm-7">${{ "%.2f"|format(item.resale_price) }}</dd>
+          {% endif %}
+          {% if item.markup_percent %}
+          <dt class="col-sm-5">Markup</dt>
+          <dd class="col-sm-7">{{ "%.1f"|format(item.markup_percent) }}%</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Supplier Info #}
+{% if item.preferred_supplier %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-truck me-2"></i>Supplier Information</h5>
+  </div>
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Preferred Supplier</dt>
+      <dd class="col-sm-9">{{ item.preferred_supplier }}</dd>
+      {% if item.supplier_url %}
+      <dt class="col-sm-3">Supplier URL</dt>
+      <dd class="col-sm-9"><a href="{{ item.supplier_url }}" target="_blank" rel="noopener">{{ item.supplier_url }}</a></dd>
+      {% endif %}
+      {% if item.minimum_order_quantity %}
+      <dt class="col-sm-3">Min Order Qty</dt>
+      <dd class="col-sm-9">{{ item.minimum_order_quantity }}</dd>
+      {% endif %}
+      {% if item.supplier_lead_time_days %}
+      <dt class="col-sm-3">Lead Time</dt>
+      <dd class="col-sm-9">{{ item.supplier_lead_time_days }} days</dd>
+      {% endif %}
+    </dl>
+  </div>
+</div>
+{% endif %}
+
+{# Stock Adjustment #}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-arrow-left-right me-2"></i>Stock Adjustment</h5>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('inventory.adjust_stock', id=item.id) }}" class="row g-3 align-items-end">
+      {{ adjustment_form.hidden_tag() }}
+      <div class="col-md-3">
+        <label for="{{ adjustment_form.adjustment.id }}" class="form-label">Adjustment (+/-)</label>
+        {{ adjustment_form.adjustment(class='form-control', placeholder='e.g. 5 or -2') }}
+      </div>
+      <div class="col-md-5">
+        <label for="{{ adjustment_form.reason.id }}" class="form-label">Reason</label>
+        {{ adjustment_form.reason(class='form-control', placeholder='Reason for adjustment') }}
+      </div>
+      <div class="col-md-4">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-arrow-left-right me-1"></i> Adjust Stock
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# Notes #}
+{% if item.notes %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-journal-text me-2"></i>Notes</h5>
+  </div>
+  <div class="card-body">
+    <p class="mb-0" style="white-space: pre-line;">{{ item.notes }}</p>
+  </div>
+</div>
+{% endif %}
+
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+{{ delete_modal('deleteItemModal', 'Inventory Item', url_for('inventory.delete', id=item.id)) }}
+{% endif %}
+{% endblock %}

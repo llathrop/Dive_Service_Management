@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Pricing Calculator - Tools - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('tools.hub') }}">Tools</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Pricing Calculator</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Pricing Calculator</h1>
+    <p class="text-muted mb-0">Quick pricing calculator for service estimates</p>
+  </div>
+  <button class="btn btn-outline-secondary" @click="window.print()">
+    <i class="bi bi-printer me-1"></i> Print Estimate
+  </button>
+</div>
+
+<div x-data="pricingCalculator()" class="row g-4">
+  {# Input form #}
+  <div class="col-lg-7">
+    {# Repair Types Checklist #}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-list-check me-2"></i>Service Items</h5>
+      </div>
+      <div class="card-body">
+        <template x-for="(item, index) in serviceItems" :key="index">
+          <div class="d-flex align-items-center mb-2 p-2 border rounded"
+               :class="{ 'bg-light': item.selected }">
+            <div class="form-check flex-grow-1">
+              <input class="form-check-input" type="checkbox"
+                     :id="'item-' + index" x-model="item.selected">
+              <label class="form-check-label" :for="'item-' + index"
+                     x-text="item.name"></label>
+            </div>
+            <div class="input-group input-group-sm" style="max-width: 140px;">
+              <span class="input-group-text">$</span>
+              <input type="number" class="form-control text-end"
+                     x-model.number="item.price" step="0.01" min="0">
+            </div>
+          </div>
+        </template>
+
+        {# Add custom item #}
+        <div class="mt-3 pt-3 border-top">
+          <div class="row g-2">
+            <div class="col">
+              <input type="text" class="form-control form-control-sm"
+                     x-model="newItemName" placeholder="Custom item name">
+            </div>
+            <div class="col-auto">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control text-end"
+                       x-model.number="newItemPrice" step="0.01" min="0"
+                       placeholder="0.00" style="width: 90px;">
+              </div>
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-sm btn-outline-primary" @click="addCustomItem"
+                      :disabled="!newItemName || !newItemPrice">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Labor & Fees #}
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-clock me-2"></i>Labor & Adjustments</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          {# Labor Hours #}
+          <div class="col-md-6">
+            <label for="laborHours" class="form-label fw-semibold">Labor Hours</label>
+            <input type="number" class="form-control" id="laborHours"
+                   x-model.number="laborHours" step="0.25" min="0">
+          </div>
+
+          {# Hourly Rate #}
+          <div class="col-md-6">
+            <label for="hourlyRate" class="form-label fw-semibold">Hourly Rate ($)</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" class="form-control" id="hourlyRate"
+                     x-model.number="hourlyRate" step="1" min="0">
+            </div>
+          </div>
+
+          {# Rush Fee #}
+          <div class="col-md-6">
+            <div class="form-check form-switch mt-4">
+              <input class="form-check-input" type="checkbox" id="rushFee"
+                     x-model="rushFeeEnabled">
+              <label class="form-check-label fw-semibold" for="rushFee">Rush Fee</label>
+            </div>
+            <template x-if="rushFeeEnabled">
+              <div class="input-group input-group-sm mt-2">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" x-model.number="rushFeeAmount"
+                       step="1" min="0">
+              </div>
+            </template>
+          </div>
+
+          {# Discount #}
+          <div class="col-md-6">
+            <label for="discount" class="form-label fw-semibold">Discount ($)</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" class="form-control" id="discount"
+                     x-model.number="discount" step="1" min="0">
+            </div>
+          </div>
+
+          {# Tax Rate #}
+          <div class="col-12">
+            <label for="taxRate" class="form-label fw-semibold">Tax Rate (%)</label>
+            <div class="input-group" style="max-width: 200px;">
+              <input type="number" class="form-control" id="taxRate"
+                     x-model.number="taxRate" step="0.1" min="0" max="100">
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Estimate Summary #}
+  <div class="col-lg-5">
+    <div class="card shadow-sm sticky-top" style="top: 80px;">
+      <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0"><i class="bi bi-receipt me-2"></i>Estimate Summary</h5>
+      </div>
+      <div class="card-body">
+        {# Selected items #}
+        <template x-if="selectedItems.length > 0">
+          <div>
+            <h6 class="text-muted mb-2">Parts & Services</h6>
+            <template x-for="item in selectedItems" :key="item.name">
+              <div class="d-flex justify-content-between mb-1">
+                <span x-text="item.name"></span>
+                <span x-text="'$' + item.price.toFixed(2)"></span>
+              </div>
+            </template>
+            <hr>
+          </div>
+        </template>
+
+        {# Labor #}
+        <template x-if="laborTotal > 0">
+          <div>
+            <div class="d-flex justify-content-between mb-1">
+              <span>Labor (<span x-text="laborHours"></span> hrs @ $<span x-text="hourlyRate"></span>/hr)</span>
+              <span x-text="'$' + laborTotal.toFixed(2)"></span>
+            </div>
+            <hr>
+          </div>
+        </template>
+
+        {# Subtotal #}
+        <div class="d-flex justify-content-between mb-1">
+          <span class="fw-semibold">Subtotal</span>
+          <span x-text="'$' + subtotal.toFixed(2)"></span>
+        </div>
+
+        {# Rush Fee #}
+        <template x-if="rushFeeEnabled && rushFeeAmount > 0">
+          <div class="d-flex justify-content-between mb-1 text-danger">
+            <span>Rush Fee</span>
+            <span x-text="'+ $' + rushFeeAmount.toFixed(2)"></span>
+          </div>
+        </template>
+
+        {# Discount #}
+        <template x-if="discount > 0">
+          <div class="d-flex justify-content-between mb-1 text-success">
+            <span>Discount</span>
+            <span x-text="'- $' + discount.toFixed(2)"></span>
+          </div>
+        </template>
+
+        {# Tax #}
+        <template x-if="taxRate > 0">
+          <div class="d-flex justify-content-between mb-1">
+            <span>Tax (<span x-text="taxRate"></span>%)</span>
+            <span x-text="'$' + taxAmount.toFixed(2)"></span>
+          </div>
+        </template>
+
+        <hr>
+
+        {# Total #}
+        <div class="d-flex justify-content-between">
+          <span class="fs-5 fw-bold">Total</span>
+          <span class="fs-5 fw-bold text-primary" x-text="'$' + grandTotal.toFixed(2)"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function pricingCalculator() {
+  return {
+    serviceItems: [
+      { name: 'Neck Seal Replacement (Latex)', price: 60.00, selected: false },
+      { name: 'Neck Seal Replacement (Silicone)', price: 95.00, selected: false },
+      { name: 'Wrist Seal Replacement (Latex)', price: 45.00, selected: false },
+      { name: 'Wrist Seal Replacement (Silicone)', price: 80.00, selected: false },
+      { name: 'Zipper Replacement', price: 250.00, selected: false },
+      { name: 'Patch Repair (Small)', price: 35.00, selected: false },
+      { name: 'Patch Repair (Large)', price: 65.00, selected: false },
+      { name: 'Seam Repair', price: 45.00, selected: false },
+      { name: 'Valve Service', price: 40.00, selected: false },
+      { name: 'Leak Test', price: 25.00, selected: false },
+      { name: 'Full Service / Inspection', price: 85.00, selected: false },
+      { name: 'Boot Replacement', price: 120.00, selected: false }
+    ],
+    laborHours: 0,
+    hourlyRate: 75,
+    rushFeeEnabled: false,
+    rushFeeAmount: 50,
+    discount: 0,
+    taxRate: 0,
+    newItemName: '',
+    newItemPrice: null,
+
+    addCustomItem() {
+      if (this.newItemName && this.newItemPrice > 0) {
+        this.serviceItems.push({
+          name: this.newItemName,
+          price: this.newItemPrice,
+          selected: true
+        });
+        this.newItemName = '';
+        this.newItemPrice = null;
+      }
+    },
+
+    get selectedItems() {
+      return this.serviceItems.filter(item => item.selected);
+    },
+
+    get partsTotal() {
+      return this.selectedItems.reduce((sum, item) => sum + (item.price || 0), 0);
+    },
+
+    get laborTotal() {
+      return (this.laborHours || 0) * (this.hourlyRate || 0);
+    },
+
+    get subtotal() {
+      return this.partsTotal + this.laborTotal;
+    },
+
+    get taxableAmount() {
+      let amount = this.subtotal;
+      if (this.rushFeeEnabled) amount += (this.rushFeeAmount || 0);
+      amount -= (this.discount || 0);
+      return Math.max(0, amount);
+    },
+
+    get taxAmount() {
+      return this.taxableAmount * ((this.taxRate || 0) / 100);
+    },
+
+    get grandTotal() {
+      return this.taxableAmount + this.taxAmount;
+    }
+  };
+}
+</script>
+{% endblock %}

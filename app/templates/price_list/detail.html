@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% from 'macros/modals.html' import confirm_modal %}
+
+{% block title %}{{ item.name }} - Price List - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{{ url_for('price_list.list_items') }}">Price List</a></li>
+        <li class="breadcrumb-item active">{{ item.name }}</li>
+      </ol>
+    </nav>
+    <h1 class="h3 mb-0">{{ item.name }}</h1>
+    {% if item.code %}
+    <small class="text-muted">Code: {{ item.code }}</small>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-2">
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('price_list.edit', id=item.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </a>
+    <form method="POST" action="{{ url_for('price_list.duplicate', id=item.id) }}" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-outline-secondary">
+        <i class="bi bi-copy me-1"></i> Duplicate
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row">
+  {# Pricing Info #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-currency-dollar me-2"></i>Pricing</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Price</dt>
+          <dd class="col-sm-7"><strong class="fs-5">${{ "%.2f"|format(item.price) }}</strong></dd>
+          {% if item.cost %}
+          <dt class="col-sm-5">Cost</dt>
+          <dd class="col-sm-7">${{ "%.2f"|format(item.cost) }}</dd>
+          {% endif %}
+          {% if item.margin_percent is not none %}
+          <dt class="col-sm-5">Margin</dt>
+          <dd class="col-sm-7">{{ "%.1f"|format(item.margin_percent) }}%</dd>
+          {% endif %}
+          {% if item.price_tier %}
+          <dt class="col-sm-5">Price Tier</dt>
+          <dd class="col-sm-7">{{ item.price_tier }}</dd>
+          {% endif %}
+          <dt class="col-sm-5">Taxable</dt>
+          <dd class="col-sm-7">{{ 'Yes' if item.is_taxable else 'No' }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Service Details #}
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Service Details</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Category</dt>
+          <dd class="col-sm-7">{{ item.category.name }}</dd>
+          <dt class="col-sm-5">Per Unit</dt>
+          <dd class="col-sm-7">{{ 'Yes' if item.is_per_unit else 'No' }}</dd>
+          <dt class="col-sm-5">Default Quantity</dt>
+          <dd class="col-sm-7">{{ item.default_quantity }} {{ item.unit_label }}</dd>
+          <dt class="col-sm-5">Auto-Deduct Parts</dt>
+          <dd class="col-sm-7">{{ 'Yes' if item.auto_deduct_parts else 'No' }}</dd>
+          <dt class="col-sm-5">Active</dt>
+          <dd class="col-sm-7">
+            {% if item.is_active %}
+            <span class="badge bg-success">Active</span>
+            {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Description #}
+{% if item.description %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Description</h5>
+  </div>
+  <div class="card-body">
+    <p class="mb-0">{{ item.description }}</p>
+  </div>
+</div>
+{% endif %}
+
+{# Linked Parts #}
+{% set parts = item.linked_parts.all() %}
+{% if parts %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-link-45deg me-2"></i>Linked Parts</h5>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Part</th>
+          <th>Quantity</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for part in parts %}
+        <tr>
+          <td>
+            <a href="{{ url_for('inventory.detail', id=part.inventory_item.id) }}">
+              {{ part.inventory_item.name }}
+            </a>
+          </td>
+          <td>{{ part.quantity }}</td>
+          <td>{{ part.notes or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# Internal Notes #}
+{% if item.internal_notes and (current_user.has_role('admin') or current_user.has_role('technician')) %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-lock me-2"></i>Internal Notes</h5>
+  </div>
+  <div class="card-body">
+    <p class="mb-0" style="white-space: pre-line;">{{ item.internal_notes }}</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

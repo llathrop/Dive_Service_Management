@@ -1,0 +1,55 @@
+{# Tag display and editor macros #}
+
+{% macro render_tags(tags) %}
+{% for tag in tags %}
+<span class="badge rounded-pill me-1"
+      style="{% if tag.color %}background-color: {{ tag.color }}; color: {{ contrast_color(tag.color) if contrast_color is defined else '#fff' }};{% else %}background-color: #6c757d;{% endif %}">
+  {{ tag.name }}
+</span>
+{% endfor %}
+{% endmacro %}
+
+{% macro tag_filter(selected_tags=[], endpoint='', entity_type='') %}
+<div class="tag-filter" x-data="{ open: false }">
+  <button class="btn btn-sm btn-outline-secondary" @click="open = !open" type="button">
+    <i class="bi bi-tags me-1"></i>
+    Tags
+    {% if selected_tags %}
+    <span class="badge bg-primary ms-1">{{ selected_tags|length }}</span>
+    {% endif %}
+  </button>
+  <div class="tag-filter-dropdown mt-1" x-show="open" @click.outside="open = false" x-cloak>
+    <div class="p-2" id="tagFilterList"
+         hx-get="{{ url_for('api.tag_suggestions', entity_type=entity_type) }}"
+         hx-trigger="load">
+      <div class="spinner-border spinner-border-sm" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro tag_editor(entity_type, entity_id, current_tags=[]) %}
+<div class="tag-editor" x-data="tagEditor('{{ entity_type }}', {{ entity_id }})">
+  <div class="d-flex flex-wrap gap-1 mb-2" id="currentTags-{{ entity_type }}-{{ entity_id }}">
+    {% for tag in current_tags %}
+    <span class="badge rounded-pill d-flex align-items-center"
+          style="{% if tag.color %}background-color: {{ tag.color }};{% else %}background-color: #6c757d;{% endif %}">
+      {{ tag.name }}
+      <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 0.5em;"
+              @click="removeTag({{ tag.id }})"
+              aria-label="Remove tag"></button>
+    </span>
+    {% endfor %}
+  </div>
+  <div class="input-group input-group-sm">
+    <input type="text" class="form-control" placeholder="Add tag..."
+           x-model="newTag" @keydown.enter.prevent="addTag()"
+           autocomplete="off">
+    <button class="btn btn-outline-secondary" type="button" @click="addTag()">
+      <i class="bi bi-plus"></i>
+    </button>
+  </div>
+</div>
+{% endmacro %}

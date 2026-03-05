@@ -1,0 +1,77 @@
+{# Reusable form macros for Bootstrap 5 styled WTForms fields #}
+
+{% macro render_field(field, label_class='', field_class='', placeholder='', help_text='') %}
+<div class="mb-3">
+  {% if field.type != 'HiddenField' %}
+  <label for="{{ field.id }}" class="form-label {{ label_class }}">
+    {{ field.label.text }}
+    {% if field.flags.required %}<span class="text-danger">*</span>{% endif %}
+  </label>
+  {% endif %}
+  {% if field.type == 'TextAreaField' %}
+    {{ field(class='form-control ' ~ field_class ~ (' is-invalid' if field.errors else ''), placeholder=placeholder, **kwargs) }}
+  {% elif field.type == 'HiddenField' %}
+    {{ field(**kwargs) }}
+  {% else %}
+    {{ field(class='form-control ' ~ field_class ~ (' is-invalid' if field.errors else ''), placeholder=placeholder, **kwargs) }}
+  {% endif %}
+  {% if help_text %}
+  <div class="form-text">{{ help_text }}</div>
+  {% endif %}
+  {% if field.errors %}
+    {% for error in field.errors %}
+    <div class="invalid-feedback d-block">{{ error }}</div>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro render_checkbox(field) %}
+<div class="mb-3 form-check">
+  {{ field(class='form-check-input' ~ (' is-invalid' if field.errors else ''), **kwargs) }}
+  <label class="form-check-label" for="{{ field.id }}">
+    {{ field.label.text }}
+  </label>
+  {% if field.errors %}
+    {% for error in field.errors %}
+    <div class="invalid-feedback d-block">{{ error }}</div>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro render_select(field, label_class='', field_class='') %}
+<div class="mb-3">
+  <label for="{{ field.id }}" class="form-label {{ label_class }}">
+    {{ field.label.text }}
+    {% if field.flags.required %}<span class="text-danger">*</span>{% endif %}
+  </label>
+  {{ field(class='form-select ' ~ field_class ~ (' is-invalid' if field.errors else ''), **kwargs) }}
+  {% if field.errors %}
+    {% for error in field.errors %}
+    <div class="invalid-feedback d-block">{{ error }}</div>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro render_submit(text='Submit', class='btn btn-primary') %}
+<div class="mb-3">
+  <button type="submit" class="{{ class }}">{{ text }}</button>
+</div>
+{% endmacro %}
+
+{% macro render_form_errors(form) %}
+{% if form.errors %}
+<div class="alert alert-danger" role="alert">
+  <strong>Please correct the following errors:</strong>
+  <ul class="mb-0 mt-1">
+    {% for field_name, errors in form.errors.items() %}
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endmacro %}

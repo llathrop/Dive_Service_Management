@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from 'macros/status_badges.html' import serviceability_badge %}
+
+{% block title %}Serial Number Lookup - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('items.list_items') }}">Service Items</a></li>
+    <li class="breadcrumb-item active">Serial Lookup</li>
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">Serial Number Lookup</h1>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('items.lookup') }}" class="row g-3 align-items-end">
+      <div class="col-md-8">
+        <label for="serial" class="form-label">Serial Number</label>
+        <input type="text" class="form-control form-control-lg" id="serial" name="serial"
+               value="{{ serial }}"
+               placeholder="Enter serial number..."
+               autofocus>
+      </div>
+      <div class="col-md-4">
+        <button type="submit" class="btn btn-primary btn-lg w-100">
+          <i class="bi bi-search me-1"></i> Look Up
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if serial %}
+  {% if item %}
+  <div class="card">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Item Found</h5>
+    </div>
+    <div class="card-body">
+      <dl class="row mb-0">
+        <dt class="col-sm-3">Name</dt>
+        <dd class="col-sm-9">
+          <a href="{{ url_for('items.detail', id=item.id) }}">{{ item.name }}</a>
+        </dd>
+        <dt class="col-sm-3">Serial Number</dt>
+        <dd class="col-sm-9"><code>{{ item.serial_number }}</code></dd>
+        <dt class="col-sm-3">Category</dt>
+        <dd class="col-sm-9">{{ item.item_category or 'N/A' }}</dd>
+        <dt class="col-sm-3">Brand / Model</dt>
+        <dd class="col-sm-9">{{ [item.brand, item.model]|select|join(' ') or 'N/A' }}</dd>
+        <dt class="col-sm-3">Serviceability</dt>
+        <dd class="col-sm-9">{{ serviceability_badge(item.serviceability) }}</dd>
+        <dt class="col-sm-3">Owner</dt>
+        <dd class="col-sm-9">
+          {% if item.customer %}
+          <a href="{{ url_for('customers.detail', id=item.customer.id) }}">
+            {{ item.customer.display_name }}
+          </a>
+          {% else %}
+          <span class="text-muted">Unassigned</span>
+          {% endif %}
+        </dd>
+      </dl>
+    </div>
+    <div class="card-footer">
+      <a href="{{ url_for('items.detail', id=item.id) }}" class="btn btn-primary">
+        <i class="bi bi-eye me-1"></i> View Full Details
+      </a>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    No item found with serial number <strong>{{ serial }}</strong>.
+  </div>
+  {% endif %}
+{% endif %}
+{% endblock %}
