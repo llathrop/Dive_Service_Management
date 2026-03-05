@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">
+    <i class="bi bi-gear me-2"></i>Administration
+  </h1>
+</div>
+
+<div class="row g-3">
+  {# User Management #}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-3">
+          <div class="bg-primary bg-opacity-10 rounded p-3 me-3">
+            <i class="bi bi-people fs-3 text-primary"></i>
+          </div>
+          <div>
+            <h5 class="card-title mb-1">User Management</h5>
+            <p class="text-muted small mb-0">{{ user_count }} users, {{ role_count }} roles</p>
+          </div>
+        </div>
+        <p class="card-text">Create, edit, and manage user accounts and role assignments.</p>
+      </div>
+      <div class="card-footer bg-transparent">
+        <a href="{{ url_for('admin.list_users') }}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-arrow-right me-1"></i>Manage Users
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {# System Settings #}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-3">
+          <div class="bg-success bg-opacity-10 rounded p-3 me-3">
+            <i class="bi bi-sliders fs-3 text-success"></i>
+          </div>
+          <div>
+            <h5 class="card-title mb-1">System Settings</h5>
+            <p class="text-muted small mb-0">Application configuration</p>
+          </div>
+        </div>
+        <p class="card-text">Configure company info, service defaults, display preferences, and security settings.</p>
+      </div>
+      <div class="card-footer bg-transparent">
+        <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-success btn-sm">
+          <i class="bi bi-arrow-right me-1"></i>View Settings
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {# Data Management #}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-3">
+          <div class="bg-warning bg-opacity-10 rounded p-3 me-3">
+            <i class="bi bi-database fs-3 text-warning"></i>
+          </div>
+          <div>
+            <h5 class="card-title mb-1">Data Management</h5>
+            <p class="text-muted small mb-0">Backup, restore, statistics</p>
+          </div>
+        </div>
+        <p class="card-text">View database statistics, perform backups, and manage application data.</p>
+      </div>
+      <div class="card-footer bg-transparent">
+        <a href="{{ url_for('admin.data_management') }}" class="btn btn-outline-warning btn-sm">
+          <i class="bi bi-arrow-right me-1"></i>Manage Data
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

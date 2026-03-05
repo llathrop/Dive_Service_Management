@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_select, render_checkbox, render_submit %}
+{% from 'macros/pagination.html' import render_pagination %}
+{% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
+{% from 'macros/status_badges.html' import invoice_status_badge %}
+
+{% block title %}Invoices - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Invoices</h1>
+    {{ record_count(invoices) }}
+  </div>
+  {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+  <a href="{{ url_for('invoices.create') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> New Invoice
+  </a>
+  {% endif %}
+</div>
+
+{# Search and filter form #}
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('invoices.list_invoices') }}" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label for="q" class="form-label">Search</label>
+        <input type="text" class="form-control" id="q" name="q"
+               value="{{ form.q.data or '' }}"
+               placeholder="Invoice #, customer name...">
+      </div>
+      <div class="col-md-2">
+        {{ render_select(form.status) }}
+      </div>
+      <div class="col-md-3">
+        <div class="row g-2">
+          <div class="col-6">
+            {{ render_field(form.date_from) }}
+          </div>
+          <div class="col-6">
+            {{ render_field(form.date_to) }}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-2">
+        {{ render_checkbox(form.overdue_only) }}
+      </div>
+      <div class="col-md-1">
+        <button type="submit" class="btn btn-outline-primary w-100">
+          <i class="bi bi-search me-1"></i> Search
+        </button>
+      </div>
+      <div class="col-md-1">
+        <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Invoices table #}
+{% if invoices.items %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          {{ sortable_header('invoice_number', 'Invoice #', sort, order) }}
+          {{ sortable_header('customer_id', 'Customer', sort, order) }}
+          {{ sortable_header('issue_date', 'Issue Date', sort, order) }}
+          {{ sortable_header('due_date', 'Due Date', sort, order) }}
+          {{ sortable_header('total', 'Total', sort, order) }}
+          {{ sortable_header('amount_paid', 'Paid', sort, order) }}
+          {{ sortable_header('balance_due', 'Balance', sort, order) }}
+          {{ sortable_header('status', 'Status', sort, order) }}
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices.items %}
+        <tr>
+          <td>
+            <a href="{{ url_for('invoices.detail', id=inv.id) }}">
+              {{ inv.invoice_number }}
+            </a>
+          </td>
+          <td>
+            <a href="{{ url_for('customers.detail', id=inv.customer.id) }}">
+              {{ inv.customer.display_name }}
+            </a>
+          </td>
+          <td>{{ inv.issue_date.strftime('%m/%d/%Y') if inv.issue_date else '' }}</td>
+          <td>
+            {% if inv.due_date %}
+              <span class="{{ 'text-danger fw-bold' if inv.is_overdue else '' }}">
+                {{ inv.due_date.strftime('%m/%d/%Y') }}
+                {% if inv.is_overdue %}<i class="bi bi-exclamation-triangle-fill ms-1"></i>{% endif %}
+              </span>
+            {% endif %}
+          </td>
+          <td>${{ "%.2f"|format(inv.total) }}</td>
+          <td>${{ "%.2f"|format(inv.amount_paid) }}</td>
+          <td>
+            {% set balance = inv.balance_due %}
+            <span class="{{ 'fw-bold text-danger' if balance > 0 else 'text-success' }}">
+              ${{ "%.2f"|format(balance) }}
+            </span>
+          </td>
+          <td>{{ invoice_status_badge(inv.status) }}</td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <a href="{{ url_for('invoices.detail', id=inv.id) }}"
+                 class="btn btn-outline-primary" title="View">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+              <a href="{{ url_for('invoices.edit', id=inv.id) }}"
+                 class="btn btn-outline-secondary" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{{ render_pagination(invoices) }}
+{% else %}
+{{ empty_state('No invoices found.', 'bi-receipt', url_for('invoices.create'), 'New Invoice') }}
+{% endif %}
+{% endblock %}

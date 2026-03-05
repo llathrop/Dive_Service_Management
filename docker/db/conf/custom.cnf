@@ -1,0 +1,44 @@
+# =============================================================================
+# Dive Service Management - MariaDB Configuration
+# Pi-optimized settings (1-4GB total system RAM)
+# =============================================================================
+# For x86-64 hosts with more RAM, increase innodb_buffer_pool_size,
+# max_connections, and re-enable performance_schema as needed.
+# =============================================================================
+
+[mysqld]
+# ---- Character Set ----
+character-set-server    = utf8mb4
+collation-server        = utf8mb4_unicode_ci
+
+# ---- InnoDB (Memory-Constrained) ----
+innodb_buffer_pool_size = 128M
+innodb_log_file_size    = 32M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method     = O_DIRECT
+
+# ---- Full-Text Search ----
+# Allow short part numbers (e.g., "O2", "DI") in FULLTEXT indexes
+innodb_ft_min_token_size = 2
+
+# ---- Connection Limits ----
+max_connections         = 30
+thread_cache_size       = 4
+
+# ---- Memory Allocation ----
+key_buffer_size         = 16M
+table_open_cache        = 200
+tmp_table_size          = 16M
+max_heap_table_size     = 16M
+
+# ---- Performance Schema ----
+# Disabled to save ~100MB RAM on memory-constrained devices
+performance_schema      = OFF
+
+# ---- Logging ----
+slow_query_log          = ON
+slow_query_log_file     = /var/log/mysql/slow.log
+long_query_time         = 2
+
+[client]
+default-character-set   = utf8mb4

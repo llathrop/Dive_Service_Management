@@ -1,0 +1,48 @@
+/* ============================================================
+   Dive Service Management - Dark Theme Overrides
+   ============================================================
+   Bootstrap 5.3 handles most dark theme styling via
+   data-bs-theme="dark". This file contains overrides for
+   custom elements not covered by Bootstrap's dark mode.
+   ============================================================ */
+
+[data-bs-theme="dark"] {
+  /* Sidebar refinements */
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="dark"] .app-header {
+  background-color: var(--bs-body-bg);
+  border-bottom-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .app-sidebar {
+  background-color: var(--bs-body-bg);
+  border-right-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .sidebar-nav .nav-link:hover {
+  background-color: var(--sidebar-hover-bg);
+}
+
+[data-bs-theme="dark"] .dashboard-card:hover {
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
+}
+
+[data-bs-theme="dark"] .global-search-input {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .app-footer {
+  background-color: var(--bs-body-bg);
+  border-top-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .card {
+  border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .card-header {
+  background-color: rgba(255, 255, 255, 0.03);
+}

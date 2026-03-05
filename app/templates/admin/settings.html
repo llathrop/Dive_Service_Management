@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings - Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">
+    <i class="bi bi-sliders me-2"></i>System Settings
+  </h1>
+  <a href="{{ url_for('admin.hub') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Admin Hub
+  </a>
+</div>
+
+<div class="row g-3">
+  {# Application Settings #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-building me-1"></i> Company Information</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">Company name, address, contact information, and logo are configured via environment variables in the <code>.env</code> file.</p>
+        <dl class="mb-0">
+          <dt>Configuration File</dt>
+          <dd><code>.env</code> (project root)</dd>
+          <dt>Key Variables</dt>
+          <dd>
+            <code>DSM_SECRET_KEY</code>, <code>DSM_DATABASE_URL</code>,
+            <code>DSM_PORT</code>, <code>DSM_BIND_ADDRESS</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Security Settings #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-shield-lock me-1"></i> Security</h5>
+      </div>
+      <div class="card-body">
+        <dl class="mb-0">
+          <dt>Password Hashing</dt>
+          <dd>argon2 (via Flask-Security-Too)</dd>
+          <dt>Session Management</dt>
+          <dd>Server-side sessions with CSRF protection</dd>
+          <dt>Authentication</dt>
+          <dd>Role-based access control (admin, technician, viewer)</dd>
+          <dt>Manage Users</dt>
+          <dd><a href="{{ url_for('admin.list_users') }}">User Management</a></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Database Settings #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-database me-1"></i> Database</h5>
+      </div>
+      <div class="card-body">
+        <dl class="mb-0">
+          <dt>Engine</dt>
+          <dd>{{ config.get('SQLALCHEMY_DATABASE_URI', 'N/A').split('://')[0] if '://' in config.get('SQLALCHEMY_DATABASE_URI', '') else 'N/A' }}</dd>
+          <dt>Connection</dt>
+          <dd><code>Configured via DSM_DATABASE_URL</code></dd>
+          <dt>Migrations</dt>
+          <dd>Managed via Flask-Migrate (Alembic)</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Service Defaults #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-wrench me-1"></i> Service Defaults</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">Service order and invoice configuration defaults.</p>
+        <dl class="mb-0">
+          <dt>Order Number Format</dt>
+          <dd>SO-YYYY-NNNNN (auto-generated)</dd>
+          <dt>Invoice Number Format</dt>
+          <dd>INV-YYYY-NNNNN (auto-generated)</dd>
+          <dt>Default Priority</dt>
+          <dd>Normal</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Display Settings #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-palette me-1"></i> Display</h5>
+      </div>
+      <div class="card-body">
+        <dl class="mb-0">
+          <dt>Theme</dt>
+          <dd>Light / Dark / Auto (user preference via header toggle)</dd>
+          <dt>Pagination</dt>
+          <dd>25 items per page (default)</dd>
+          <dt>Frontend Libraries</dt>
+          <dd>Bootstrap 5.3, HTMX 2.0, Alpine.js 3.14, Chart.js</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Notification Settings #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-bell me-1"></i> Notifications</h5>
+      </div>
+      <div class="card-body">
+        <dl class="mb-0">
+          <dt>In-App Notifications</dt>
+          <dd>Enabled (low stock, order status, payments)</dd>
+          <dt>Email Notifications</dt>
+          <dd>Not yet configured (future feature)</dd>
+          <dt>Notification Bell</dt>
+          <dd>Updates via polling (60s interval)</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

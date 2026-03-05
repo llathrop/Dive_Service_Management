@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Aging Report - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Accounts Receivable Aging</h1>
+    <p class="text-muted mb-0">Outstanding invoice aging by time period.</p>
+  </div>
+  <a href="{{ url_for('reports.hub') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> All Reports
+  </a>
+</div>
+
+{# Total outstanding summary #}
+{% set total_outstanding = data.buckets | sum(attribute='total_amount') %}
+{% set total_count = data.buckets | sum(attribute='count') %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6">
+    <div class="card text-center border-start border-4 border-danger">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Total Outstanding</div>
+        <div class="fs-4 fw-bold text-danger">${{ "%.2f"|format(total_outstanding) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6">
+    <div class="card text-center border-start border-4 border-secondary">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase">Unpaid Invoices</div>
+        <div class="fs-4 fw-bold">{{ total_count }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Aging buckets table #}
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Aging Buckets</h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Bucket</th>
+            <th class="text-end">Invoices</th>
+            <th class="text-end">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for bucket in data.buckets %}
+          {% if bucket.label == 'Current' %}
+            {% set row_class = 'table-success' %}
+            {% set text_class = 'text-success' %}
+          {% elif bucket.label == '1-30 days' %}
+            {% set row_class = '' %}
+            {% set text_class = 'text-primary' %}
+          {% elif bucket.label == '31-60 days' %}
+            {% set row_class = 'table-warning' %}
+            {% set text_class = 'text-warning' %}
+          {% elif bucket.label == '61-90 days' %}
+            {% set row_class = '' %}
+            {% set text_class = 'text-orange' %}
+          {% elif bucket.label == '90+ days' %}
+            {% set row_class = 'table-danger' %}
+            {% set text_class = 'text-danger' %}
+          {% else %}
+            {% set row_class = '' %}
+            {% set text_class = '' %}
+          {% endif %}
+          <tr class="{{ row_class }}">
+            <td>
+              <span class="fw-semibold {{ text_class }}">
+                {% if bucket.label == 'Current' %}
+                  <i class="bi bi-check-circle me-1"></i>
+                {% elif bucket.label == '90+ days' %}
+                  <i class="bi bi-exclamation-triangle me-1"></i>
+                {% elif bucket.label == '61-90 days' %}
+                  <i class="bi bi-exclamation-circle me-1"></i>
+                {% else %}
+                  <i class="bi bi-clock me-1"></i>
+                {% endif %}
+                {{ bucket.label }}
+              </span>
+            </td>
+            <td class="text-end">{{ bucket.count }}</td>
+            <td class="text-end fw-bold {{ text_class }}">${{ "%.2f"|format(bucket.total_amount) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="table-active fw-bold">
+            <td>Total</td>
+            <td class="text-end">{{ total_count }}</td>
+            <td class="text-end">${{ "%.2f"|format(total_outstanding) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

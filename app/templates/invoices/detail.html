@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_select, render_submit %}
+{% from 'macros/status_badges.html' import invoice_status_badge %}
+{% from 'macros/modals.html' import confirm_modal %}
+
+{% block title %}{{ invoice.invoice_number }} - Dive Service Management{% endblock %}
+
+{% block content %}
+{# ===== STATUS TRANSITIONS MAP ===== #}
+{% set STATUS_TRANSITIONS = {
+  'draft': ['sent', 'void'],
+  'sent': ['viewed', 'partially_paid', 'paid', 'overdue', 'void'],
+  'viewed': ['partially_paid', 'paid', 'overdue', 'void'],
+  'partially_paid': ['paid', 'overdue', 'void'],
+  'paid': ['refunded'],
+  'overdue': ['partially_paid', 'paid', 'void'],
+  'void': [],
+  'refunded': [],
+} %}
+
+{% set STATUS_LABELS = {
+  'draft': 'Draft',
+  'sent': 'Sent',
+  'viewed': 'Viewed',
+  'partially_paid': 'Partially Paid',
+  'paid': 'Paid',
+  'overdue': 'Overdue',
+  'void': 'Void',
+  'refunded': 'Refunded',
+} %}
+
+{# ===== HEADER ROW ===== #}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{{ url_for('invoices.list_invoices') }}">Invoices</a></li>
+        <li class="breadcrumb-item active">{{ invoice.invoice_number }}</li>
+      </ol>
+    </nav>
+    <h1 class="h3 mb-1">{{ invoice.invoice_number }}</h1>
+    <div class="d-flex gap-2 align-items-center">
+      {{ invoice_status_badge(invoice.status) }}
+      {% if invoice.is_overdue %}
+      <span class="text-danger small fw-bold">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i> Overdue
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <a href="{{ url_for('invoices.edit', id=invoice.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </a>
+
+    {# Status change dropdown #}
+    {% set next_statuses = STATUS_TRANSITIONS.get(invoice.status, []) %}
+    {% if next_statuses %}
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+              id="statusDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-arrow-right-circle me-1"></i> Change Status
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="statusDropdown">
+        {% for next_status in next_statuses %}
+        <li>
+          <form method="POST" action="{{ url_for('invoices.change_status', id=invoice.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="new_status" value="{{ next_status }}">
+            <button type="submit" class="dropdown-item">
+              <i class="bi bi-arrow-right me-1"></i>
+              {{ STATUS_LABELS.get(next_status, next_status) }}
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if current_user.has_role('admin') and invoice.status != 'void' %}
+    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#voidInvoiceModal">
+      <i class="bi bi-x-circle me-1"></i> Void Invoice
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== INFO BAR (row of cards) ===== #}
+<div class="row mb-4">
+  {# Customer card #}
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-person me-2"></i>Customer</h6>
+      </div>
+      <div class="card-body">
+        <p class="mb-1">
+          <a href="{{ url_for('customers.detail', id=invoice.customer.id) }}" class="fw-semibold">
+            {{ invoice.customer.display_name }}
+          </a>
+        </p>
+        {% if invoice.customer.phone_primary %}
+        <p class="mb-1 small text-muted">
+          <i class="bi bi-telephone me-1"></i> {{ invoice.customer.phone_primary }}
+        </p>
+        {% endif %}
+        {% if invoice.customer.email %}
+        <p class="mb-0 small text-muted">
+          <i class="bi bi-envelope me-1"></i> {{ invoice.customer.email }}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Dates card #}
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-calendar3 me-2"></i>Dates</h6>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-6">Issue Date</dt>
+          <dd class="col-6">{{ invoice.issue_date.strftime('%m/%d/%Y') if invoice.issue_date else 'N/A' }}</dd>
+          <dt class="col-6">Due Date</dt>
+          <dd class="col-6">
+            {% if invoice.due_date %}
+            <span class="{{ 'text-danger fw-bold' if invoice.is_overdue else '' }}">
+              {{ invoice.due_date.strftime('%m/%d/%Y') }}
+              {% if invoice.is_overdue %}<i class="bi bi-exclamation-triangle-fill ms-1"></i>{% endif %}
+            </span>
+            {% else %}
+            N/A
+            {% endif %}
+          </dd>
+          <dt class="col-6">Created</dt>
+          <dd class="col-6">{{ invoice.created_at.strftime('%m/%d/%Y') if invoice.created_at else 'N/A' }}</dd>
+          <dt class="col-6">Updated</dt>
+          <dd class="col-6">{{ invoice.updated_at.strftime('%m/%d/%Y') if invoice.updated_at else 'N/A' }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Financial Summary card #}
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-currency-dollar me-2"></i>Financial Summary</h6>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-7">Subtotal</dt>
+          <dd class="col-5 text-end">${{ "%.2f"|format(invoice.subtotal) }}</dd>
+          {% if invoice.tax_amount is not none and invoice.tax_amount > 0 %}
+          <dt class="col-7">Tax ({{ "%.2f"|format(invoice.tax_rate) }}%)</dt>
+          <dd class="col-5 text-end">${{ "%.2f"|format(invoice.tax_amount) }}</dd>
+          {% endif %}
+          {% if invoice.discount_amount is not none and invoice.discount_amount > 0 %}
+          <dt class="col-7 text-danger">Discount</dt>
+          <dd class="col-5 text-end text-danger">-${{ "%.2f"|format(invoice.discount_amount) }}</dd>
+          {% endif %}
+          <dt class="col-7 border-top pt-1 fw-bold">Total</dt>
+          <dd class="col-5 text-end border-top pt-1 fw-bold">${{ "%.2f"|format(invoice.total) }}</dd>
+          <dt class="col-7 text-success">Amount Paid</dt>
+          <dd class="col-5 text-end text-success">${{ "%.2f"|format(invoice.amount_paid) }}</dd>
+          <dt class="col-7 border-top pt-1 fw-bold {{ 'text-danger' if invoice.balance_due > 0 else 'text-success' }}">Balance Due</dt>
+          <dd class="col-5 text-end border-top pt-1 fw-bold {{ 'text-danger' if invoice.balance_due > 0 else 'text-success' }}">${{ "%.2f"|format(invoice.balance_due) }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ===== NOTES SECTION ===== #}
+{% if invoice.notes or invoice.customer_notes or invoice.terms %}
+<div class="row mb-4">
+  {% if invoice.notes %}
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-journal-text me-2"></i>Internal Notes</h6>
+      </div>
+      <div class="card-body">
+        <p class="mb-0" style="white-space: pre-line;">{{ invoice.notes }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if invoice.customer_notes %}
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-chat-left-text me-2"></i>Customer Notes</h6>
+      </div>
+      <div class="card-body">
+        <p class="mb-0" style="white-space: pre-line;">{{ invoice.customer_notes }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if invoice.terms %}
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-file-earmark-text me-2"></i>Terms</h6>
+      </div>
+      <div class="card-body">
+        <p class="mb-0" style="white-space: pre-line;">{{ invoice.terms }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ===== LINE ITEMS SECTION ===== #}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0"><i class="bi bi-list-ol me-2"></i>Line Items</h5>
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <button class="btn btn-sm btn-outline-primary" type="button"
+            data-bs-toggle="collapse" data-bs-target="#addLineItemForm"
+            aria-expanded="false" aria-controls="addLineItemForm">
+      <i class="bi bi-plus-lg me-1"></i> Add Line Item
+    </button>
+    {% endif %}
+  </div>
+
+  {# Add Line Item collapse form #}
+  {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+  <div class="collapse" id="addLineItemForm">
+    <div class="card-body border-bottom bg-body-tertiary">
+      <form method="POST" action="{{ url_for('invoices.add_line_item', id=invoice.id) }}">
+        {{ line_item_form.hidden_tag() }}
+        <div class="row g-3 align-items-end">
+          <div class="col-md-2">
+            {{ render_select(line_item_form.line_type) }}
+          </div>
+          <div class="col-md-4">
+            {{ render_field(line_item_form.description, placeholder='Description of item or service...') }}
+          </div>
+          <div class="col-md-1">
+            {{ render_field(line_item_form.quantity, placeholder='1') }}
+          </div>
+          <div class="col-md-2">
+            {{ render_field(line_item_form.unit_price, placeholder='0.00') }}
+          </div>
+          <div class="col-md-1">
+            <div class="mb-3">
+              <label class="form-label">Line Total</label>
+              <input type="text" class="form-control" disabled placeholder="Auto">
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="mb-3">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-plus-lg me-1"></i> Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card-body">
+    {% set line_items = invoice.line_items.all() if invoice.line_items.all is defined else invoice.line_items %}
+    {% if line_items %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Type</th>
+            <th>Description</th>
+            <th class="text-center">Qty</th>
+            <th class="text-end">Unit Price</th>
+            <th class="text-end">Line Total</th>
+            {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+            <th class="text-center">Actions</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in line_items %}
+          <tr>
+            <td>
+              {% if item.line_type == 'service' %}
+              <span class="badge bg-primary">Service</span>
+              {% elif item.line_type == 'part' %}
+              <span class="badge bg-info">Part</span>
+              {% elif item.line_type == 'labor' %}
+              <span class="badge bg-warning text-dark">Labor</span>
+              {% elif item.line_type == 'fee' %}
+              <span class="badge bg-secondary">Fee</span>
+              {% elif item.line_type == 'discount' %}
+              <span class="badge bg-danger">Discount</span>
+              {% else %}
+              <span class="badge bg-light text-dark">{{ item.line_type }}</span>
+              {% endif %}
+            </td>
+            <td>{{ item.description }}</td>
+            <td class="text-center">{{ item.quantity }}</td>
+            <td class="text-end">${{ "%.2f"|format(item.unit_price) }}</td>
+            <td class="text-end">${{ "%.2f"|format(item.line_total) }}</td>
+            {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+            <td class="text-center">
+              <form method="POST" action="{{ url_for('invoices.remove_line_item', item_id=item.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove Line Item"
+                        onclick="return confirm('Remove this line item?');">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+          <tr>
+            <td colspan="{{ 4 if not (current_user.has_role('admin') or current_user.has_role('technician')) else 4 }}" class="text-end fw-bold">Subtotal:</td>
+            <td class="text-end fw-bold">${{ "%.2f"|format(invoice.subtotal) }}</td>
+            {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+            <td></td>
+            {% endif %}
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No line items yet. Click "Add Line Item" to get started.</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== PAYMENTS SECTION ===== #}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0"><i class="bi bi-credit-card me-2"></i>Payments</h5>
+    {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+    <button class="btn btn-sm btn-outline-primary" type="button"
+            data-bs-toggle="collapse" data-bs-target="#addPaymentForm"
+            aria-expanded="false" aria-controls="addPaymentForm">
+      <i class="bi bi-plus-lg me-1"></i> Add Payment
+    </button>
+    {% endif %}
+  </div>
+
+  {# Add Payment collapse form #}
+  {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+  <div class="collapse" id="addPaymentForm">
+    <div class="card-body border-bottom bg-body-tertiary">
+      <form method="POST" action="{{ url_for('invoices.add_payment', id=invoice.id) }}">
+        {{ payment_form.hidden_tag() }}
+        <div class="row g-3 align-items-end">
+          <div class="col-md-2">
+            {{ render_field(payment_form.payment_date) }}
+          </div>
+          <div class="col-md-2">
+            {{ render_select(payment_form.payment_type) }}
+          </div>
+          <div class="col-md-2">
+            {{ render_select(payment_form.payment_method) }}
+          </div>
+          <div class="col-md-2">
+            {{ render_field(payment_form.amount, placeholder='0.00') }}
+          </div>
+          <div class="col-md-2">
+            {{ render_field(payment_form.reference_number, placeholder='Check #, txn ID...') }}
+          </div>
+          <div class="col-md-2">
+            <div class="mb-3">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-plus-lg me-1"></i> Add Payment
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+            {{ render_field(payment_form.notes, placeholder='Payment notes...') }}
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card-body">
+    {% if payments %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Method</th>
+            <th class="text-end">Amount</th>
+            <th>Reference</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in payments %}
+          <tr>
+            <td>{{ payment.payment_date.strftime('%m/%d/%Y') if payment.payment_date else '' }}</td>
+            <td>
+              {% if payment.payment_type == 'payment' %}
+              <span class="badge bg-success">Payment</span>
+              {% elif payment.payment_type == 'refund' %}
+              <span class="badge bg-danger">Refund</span>
+              {% elif payment.payment_type == 'adjustment' %}
+              <span class="badge bg-warning text-dark">Adjustment</span>
+              {% else %}
+              <span class="badge bg-secondary">{{ payment.payment_type }}</span>
+              {% endif %}
+            </td>
+            <td>{{ payment.payment_method|replace('_', ' ')|title if payment.payment_method else '' }}</td>
+            <td class="text-end">
+              <span class="{{ 'text-danger' if payment.payment_type == 'refund' else 'text-success' }}">
+                {{ '-' if payment.payment_type == 'refund' else '' }}${{ "%.2f"|format(payment.amount) }}
+              </span>
+            </td>
+            <td>{{ payment.reference_number or '' }}</td>
+            <td>{{ payment.notes or '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+          <tr>
+            <td colspan="3" class="text-end fw-bold">Total Paid:</td>
+            <td class="text-end fw-bold text-success">${{ "%.2f"|format(invoice.amount_paid) }}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No payments recorded yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== VOID INVOICE MODAL ===== #}
+{% if current_user.has_role('admin') and invoice.status != 'void' %}
+{{ confirm_modal(
+    'voidInvoiceModal',
+    'Void Invoice?',
+    'Are you sure you want to void invoice ' ~ invoice.invoice_number ~ '? This action marks the invoice as void and cannot be easily undone.',
+    url_for('invoices.void_invoice', id=invoice.id),
+    'Void Invoice',
+    'btn-danger'
+) }}
+{% endif %}
+{% endblock %}

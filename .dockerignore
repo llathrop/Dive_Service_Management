@@ -1,0 +1,42 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Git
+.git/
+
+# Testing artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# IDE
+.vscode/
+.idea/
+
+# Docker compose overrides
+docker-compose.override.yml
+
+# Runtime directories
+uploads/
+logs/
+instance/
+backups/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+*.bak
+*.tmp
+__pycache__/
+*.py[cod]
+node_modules/
+
+# Local development files (not needed in container)
+.claude/
+.playwright-mcp/

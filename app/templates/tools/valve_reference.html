@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Valve Reference - Tools - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('tools.hub') }}">Tools</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Valve Reference</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Valve Service Reference</h1>
+    <p class="text-muted mb-0">Valve compatibility guide and service intervals</p>
+  </div>
+</div>
+
+<div x-data="valveReference()">
+  {# Search / Filter #}
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label for="searchQuery" class="form-label">Search</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="searchQuery"
+                   x-model="searchQuery" placeholder="Search valves...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label for="brandFilter" class="form-label">Brand</label>
+          <select class="form-select" id="brandFilter" x-model="brandFilter">
+            <option value="">All Brands</option>
+            <template x-for="brand in brands" :key="brand">
+              <option :value="brand" x-text="brand"></option>
+            </template>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="threadFilter" class="form-label">Thread Size</label>
+          <select class="form-select" id="threadFilter" x-model="threadFilter">
+            <option value="">All Threads</option>
+            <template x-for="thread in threadSizes" :key="thread">
+              <option :value="thread" x-text="thread"></option>
+            </template>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-outline-secondary w-100" @click="clearFilters">
+            <i class="bi bi-x-lg me-1"></i> Clear
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Results count #}
+  <p class="text-muted mb-3">
+    Showing <span x-text="filteredValves.length"></span> of <span x-text="valves.length"></span> valves
+  </p>
+
+  {# Valve Table #}
+  <div class="card shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Brand</th>
+            <th>Model</th>
+            <th>Type</th>
+            <th>Thread Size</th>
+            <th>Compatible With</th>
+            <th>Service Interval</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-if="filteredValves.length === 0">
+            <tr>
+              <td colspan="7" class="text-center py-4 text-muted">
+                <i class="bi bi-search fs-4 d-block mb-2"></i>
+                No valves match your search criteria.
+              </td>
+            </tr>
+          </template>
+          <template x-for="valve in filteredValves" :key="valve.model">
+            <tr>
+              <td class="fw-semibold" x-text="valve.brand"></td>
+              <td x-text="valve.model"></td>
+              <td>
+                <span class="badge"
+                      :class="{
+                        'bg-primary': valve.type === 'Inlet',
+                        'bg-info': valve.type === 'Exhaust',
+                        'bg-secondary': valve.type === 'Inflator'
+                      }"
+                      x-text="valve.type"></span>
+              </td>
+              <td><code x-text="valve.threadSize"></code></td>
+              <td>
+                <small x-text="valve.compatibleWith"></small>
+              </td>
+              <td x-text="valve.serviceInterval"></td>
+              <td><small class="text-muted" x-text="valve.notes"></small></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# Thread Size Reference #}
+  <div class="card shadow-sm mt-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Thread Size Quick Reference</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <h6>Common Thread Sizes</h6>
+          <table class="table table-sm table-bordered">
+            <thead class="table-light">
+              <tr>
+                <th>Thread</th>
+                <th>Diameter</th>
+                <th>Common Use</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>M22 x 1.5</code></td>
+                <td>22mm</td>
+                <td>Inflator valves, small exhaust valves</td>
+              </tr>
+              <tr>
+                <td><code>M25 x 2.0</code></td>
+                <td>25mm</td>
+                <td>Standard exhaust valves</td>
+              </tr>
+              <tr>
+                <td><code>M33 x 2.0</code></td>
+                <td>33mm</td>
+                <td>Large exhaust / dump valves</td>
+              </tr>
+              <tr>
+                <td><code>M38 x 1.5</code></td>
+                <td>38mm</td>
+                <td>Swivel exhaust valves, specialty valves</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <h6>General Service Guidelines</h6>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="bi bi-check-circle text-success me-1"></i>
+              Inspect all O-rings during each service; replace if worn or cracked.
+            </li>
+            <li class="mb-2">
+              <i class="bi bi-check-circle text-success me-1"></i>
+              Use manufacturer-recommended silicone grease on all moving parts.
+            </li>
+            <li class="mb-2">
+              <i class="bi bi-check-circle text-success me-1"></i>
+              Check spring tension on exhaust valves; replace springs every 2-3 years.
+            </li>
+            <li class="mb-2">
+              <i class="bi bi-check-circle text-success me-1"></i>
+              Clean threads with isopropyl alcohol before reassembly.
+            </li>
+            <li class="mb-2">
+              <i class="bi bi-exclamation-triangle text-warning me-1"></i>
+              Do not over-tighten valves; hand-tight plus 1/4 turn is typically sufficient.
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function valveReference() {
+  return {
+    searchQuery: '',
+    brandFilter: '',
+    threadFilter: '',
+
+    valves: [
+      // Apeks
+      { brand: 'Apeks', model: 'AP Inlet Valve', type: 'Inlet', threadSize: 'M22 x 1.5', compatibleWith: 'Most trilam suits, Apeks suits', serviceInterval: '12 months', notes: 'Standard low-profile inlet design' },
+      { brand: 'Apeks', model: 'AP Exhaust Valve', type: 'Exhaust', threadSize: 'M25 x 2.0', compatibleWith: 'Most trilam suits, Apeks suits', serviceInterval: '12 months', notes: 'Swivel cap, adjustable dump' },
+      { brand: 'Apeks', model: 'AP Auto Dump', type: 'Exhaust', threadSize: 'M33 x 2.0', compatibleWith: 'Apeks suits, compatible trilam', serviceInterval: '12 months', notes: 'Automatic exhaust with manual override' },
+
+      // SI Tech
+      { brand: 'SI Tech', model: 'Valve Inlet', type: 'Inlet', threadSize: 'M22 x 1.5', compatibleWith: 'SI Tech suits, most trilam suits', serviceInterval: '12 months', notes: 'Works with standard BC inflator hose' },
+      { brand: 'SI Tech', model: 'Exhaust Valve Standard', type: 'Exhaust', threadSize: 'M25 x 2.0', compatibleWith: 'SI Tech suits, most trilam suits', serviceInterval: '12 months', notes: 'Standard screw-in exhaust' },
+      { brand: 'SI Tech', model: 'Exhaust Valve Large', type: 'Exhaust', threadSize: 'M33 x 2.0', compatibleWith: 'SI Tech suits', serviceInterval: '12 months', notes: 'High-flow exhaust for cold water' },
+      { brand: 'SI Tech', model: 'Swivel Exhaust', type: 'Exhaust', threadSize: 'M38 x 1.5', compatibleWith: 'SI Tech suits, select trilam suits', serviceInterval: '12 months', notes: '360-degree swivel cap' },
+
+      // DUI
+      { brand: 'DUI', model: 'DUI Inlet Valve', type: 'Inlet', threadSize: 'M22 x 1.5', compatibleWith: 'DUI CF200, TLS350, FLX Extreme', serviceInterval: '12 months', notes: 'DUI proprietary low-profile design' },
+      { brand: 'DUI', model: 'DUI Exhaust Valve', type: 'Exhaust', threadSize: 'M25 x 2.0', compatibleWith: 'DUI CF200, TLS350, FLX Extreme', serviceInterval: '12 months', notes: 'Standard DUI dump valve' },
+      { brand: 'DUI', model: 'DUI Auto/Manual Dump', type: 'Exhaust', threadSize: 'M33 x 2.0', compatibleWith: 'DUI suits (all models)', serviceInterval: '12 months', notes: 'Combo auto/manual dump with position lock' },
+      { brand: 'DUI', model: 'DUI Inflator Assembly', type: 'Inflator', threadSize: 'M22 x 1.5', compatibleWith: 'DUI suits (all models)', serviceInterval: '12 months', notes: 'Complete inflator with swivel connection' },
+
+      // Generic / Replacement
+      { brand: 'Generic', model: 'Universal Inlet', type: 'Inlet', threadSize: 'M22 x 1.5', compatibleWith: 'Most drysuits with M22 thread', serviceInterval: '12 months', notes: 'Aftermarket replacement, check O-ring compatibility' },
+      { brand: 'Generic', model: 'Universal Exhaust', type: 'Exhaust', threadSize: 'M25 x 2.0', compatibleWith: 'Most drysuits with M25 thread', serviceInterval: '12 months', notes: 'Aftermarket replacement with adjustable dump' },
+      { brand: 'Generic', model: 'Universal Large Exhaust', type: 'Exhaust', threadSize: 'M33 x 2.0', compatibleWith: 'Suits with M33 thread port', serviceInterval: '12 months', notes: 'High-flow aftermarket option' }
+    ],
+
+    get brands() {
+      return [...new Set(this.valves.map(v => v.brand))].sort();
+    },
+
+    get threadSizes() {
+      return [...new Set(this.valves.map(v => v.threadSize))].sort();
+    },
+
+    get filteredValves() {
+      let results = this.valves;
+
+      if (this.brandFilter) {
+        results = results.filter(v => v.brand === this.brandFilter);
+      }
+
+      if (this.threadFilter) {
+        results = results.filter(v => v.threadSize === this.threadFilter);
+      }
+
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        results = results.filter(v =>
+          v.brand.toLowerCase().includes(query) ||
+          v.model.toLowerCase().includes(query) ||
+          v.type.toLowerCase().includes(query) ||
+          v.threadSize.toLowerCase().includes(query) ||
+          v.compatibleWith.toLowerCase().includes(query) ||
+          v.notes.toLowerCase().includes(query)
+        );
+      }
+
+      return results;
+    },
+
+    clearFilters() {
+      this.searchQuery = '';
+      this.brandFilter = '';
+      this.threadFilter = '';
+    }
+  };
+}
+</script>
+{% endblock %}

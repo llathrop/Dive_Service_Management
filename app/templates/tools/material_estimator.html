@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Material Estimator - Tools - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('tools.hub') }}">Tools</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Material Estimator</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Material Estimator</h1>
+    <p class="text-muted mb-0">Estimate material quantities for common drysuit repairs</p>
+  </div>
+</div>
+
+<div x-data="materialEstimator()" class="row g-4">
+  {# Input form #}
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-sliders me-2"></i>Repair Details</h5>
+      </div>
+      <div class="card-body">
+        {# Repair Type #}
+        <div class="mb-3">
+          <label for="repairType" class="form-label fw-semibold">Repair Type</label>
+          <select class="form-select" id="repairType" x-model="repairType">
+            <option value="patch">Patch Repair</option>
+            <option value="seam">Seam Repair</option>
+            <option value="seal_replacement">Seal Replacement</option>
+            <option value="zipper_replacement">Zipper Replacement</option>
+          </select>
+        </div>
+
+        {# Material Type #}
+        <div class="mb-3">
+          <label for="materialType" class="form-label fw-semibold">Suit Material</label>
+          <select class="form-select" id="materialType" x-model="materialType">
+            <option value="neoprene">Neoprene</option>
+            <option value="trilaminate">Trilaminate</option>
+          </select>
+        </div>
+
+        {# Damage Dimensions (for patch/seam) #}
+        <template x-if="repairType === 'patch' || repairType === 'seam'">
+          <div>
+            <label class="form-label fw-semibold">Damage Dimensions</label>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <div class="input-group">
+                  <input type="number" class="form-control" x-model.number="damageLength"
+                         step="0.5" min="0" placeholder="Length">
+                  <span class="input-group-text">cm</span>
+                </div>
+                <small class="form-text text-muted">Length</small>
+              </div>
+              <div class="col-6">
+                <div class="input-group">
+                  <input type="number" class="form-control" x-model.number="damageWidth"
+                         step="0.5" min="0" placeholder="Width">
+                  <span class="input-group-text">cm</span>
+                </div>
+                <small class="form-text text-muted">Width</small>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        {# Number of Seals (for seal replacement) #}
+        <template x-if="repairType === 'seal_replacement'">
+          <div class="mb-3">
+            <label for="numSeals" class="form-label fw-semibold">Number of Seals</label>
+            <input type="number" class="form-control" id="numSeals"
+                   x-model.number="numSeals" min="1" max="10" step="1">
+            <div class="mb-3 mt-2">
+              <label for="sealMaterial" class="form-label fw-semibold">Seal Material</label>
+              <select class="form-select" id="sealMaterial" x-model="sealMaterial">
+                <option value="latex">Latex</option>
+                <option value="neoprene">Neoprene</option>
+              </select>
+            </div>
+          </div>
+        </template>
+
+        {# Zipper Length (for zipper replacement) #}
+        <template x-if="repairType === 'zipper_replacement'">
+          <div class="mb-3">
+            <label for="zipperLength" class="form-label fw-semibold">Zipper Length</label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="zipperLength"
+                     x-model.number="zipperLength" step="1" min="0" placeholder="Length">
+              <span class="input-group-text">cm</span>
+            </div>
+          </div>
+        </template>
+
+        {# Adhesive Type #}
+        <div class="mb-3">
+          <label for="adhesiveType" class="form-label fw-semibold">Adhesive Type</label>
+          <select class="form-select" id="adhesiveType" x-model="adhesiveType">
+            <option value="aquaseal">Aquaseal (Urethane)</option>
+            <option value="contact_cement">Contact Cement</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Results #}
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-box-seam me-2"></i>Material Estimates</h5>
+      </div>
+      <div class="card-body">
+        <template x-if="hasInput">
+          <div>
+            {# Adhesive #}
+            <div class="d-flex align-items-center p-3 border rounded mb-3">
+              <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                <i class="bi bi-droplet-fill text-primary"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-semibold">Adhesive Required</div>
+                <small class="text-muted" x-text="adhesiveType === 'aquaseal' ? 'Aquaseal' : 'Contact Cement'"></small>
+              </div>
+              <div class="text-end">
+                <span class="fs-5 fw-bold text-primary" x-text="adhesiveAmount.toFixed(1)"></span>
+                <small class="text-muted"> ml</small>
+              </div>
+            </div>
+
+            {# Patch Material (for patch/seam) #}
+            <template x-if="repairType === 'patch' || repairType === 'seam'">
+              <div class="d-flex align-items-center p-3 border rounded mb-3">
+                <div class="rounded-circle bg-success bg-opacity-10 p-2 me-3">
+                  <i class="bi bi-square text-success"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="fw-semibold">Patch Material</div>
+                  <small class="text-muted">Includes 15% waste factor</small>
+                </div>
+                <div class="text-end">
+                  <span class="fs-5 fw-bold text-success" x-text="patchArea.toFixed(1)"></span>
+                  <small class="text-muted"> cm<sup>2</sup></small>
+                </div>
+              </div>
+            </template>
+
+            {# Cure Time #}
+            <div class="d-flex align-items-center p-3 border rounded mb-3">
+              <div class="rounded-circle bg-warning bg-opacity-10 p-2 me-3">
+                <i class="bi bi-clock text-warning"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-semibold">Cure Time</div>
+                <small class="text-muted" x-text="cureTimeNote"></small>
+              </div>
+              <div class="text-end">
+                <span class="fs-5 fw-bold text-warning" x-text="cureTime"></span>
+                <small class="text-muted"> hours</small>
+              </div>
+            </div>
+
+            {# Summary Notes #}
+            <div class="alert alert-light mt-4">
+              <h6 class="alert-heading"><i class="bi bi-info-circle me-1"></i> Notes</h6>
+              <ul class="mb-0 small">
+                <li>Adhesive estimates include a small buffer for application waste.</li>
+                <li>Patch material area includes a 15% waste factor for cutting and trimming.</li>
+                <template x-if="materialType === 'neoprene'">
+                  <li>Neoprene repairs may require additional primer for best adhesion.</li>
+                </template>
+                <template x-if="repairType === 'zipper_replacement'">
+                  <li>Zipper replacement adhesive estimate covers both sides of the zipper tape.</li>
+                </template>
+              </ul>
+            </div>
+          </div>
+        </template>
+
+        <template x-if="!hasInput">
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-box-seam fs-1 d-block mb-3"></i>
+            <p>Enter repair details to see material estimates.</p>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function materialEstimator() {
+  return {
+    repairType: 'patch',
+    materialType: 'neoprene',
+    damageLength: null,
+    damageWidth: null,
+    numSeals: 1,
+    sealMaterial: 'latex',
+    zipperLength: null,
+    adhesiveType: 'aquaseal',
+
+    get hasInput() {
+      if (this.repairType === 'patch' || this.repairType === 'seam') {
+        return this.damageLength > 0 && this.damageWidth > 0;
+      }
+      if (this.repairType === 'seal_replacement') {
+        return this.numSeals > 0;
+      }
+      if (this.repairType === 'zipper_replacement') {
+        return this.zipperLength > 0;
+      }
+      return false;
+    },
+
+    get patchArea() {
+      // Patch area with 15% waste factor
+      if (this.repairType === 'patch' || this.repairType === 'seam') {
+        const rawArea = (this.damageLength || 0) * (this.damageWidth || 0);
+        return rawArea * 1.15;
+      }
+      return 0;
+    },
+
+    get adhesiveAmount() {
+      switch (this.repairType) {
+        case 'patch':
+        case 'seam': {
+          // ~5ml per sq cm of patch area
+          return this.patchArea * 5;
+        }
+        case 'seal_replacement': {
+          // ~10ml per seal (latex), ~15ml per seal (neoprene)
+          const perSeal = this.sealMaterial === 'latex' ? 10 : 15;
+          return (this.numSeals || 0) * perSeal;
+        }
+        case 'zipper_replacement': {
+          // ~3ml per cm of zipper length (both sides)
+          return (this.zipperLength || 0) * 3;
+        }
+        default:
+          return 0;
+      }
+    },
+
+    get cureTime() {
+      return this.adhesiveType === 'aquaseal' ? 24 : 4;
+    },
+
+    get cureTimeNote() {
+      return this.adhesiveType === 'aquaseal'
+        ? 'Full cure for Aquaseal urethane'
+        : 'Contact cement bond time';
+    }
+  };
+}
+</script>
+{% endblock %}

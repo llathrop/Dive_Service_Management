@@ -1,0 +1,59 @@
+{# HTMX partial fragment for search autocomplete dropdown.
+   Rendered without base.html -- returns just the HTML fragment. #}
+
+{% if q and (customers or items or inventory) %}
+<div class="list-group shadow-sm autocomplete-results">
+  {% if customers %}
+  <div class="list-group-item list-group-item-light py-1 px-3">
+    <small class="fw-bold text-muted">Customers</small>
+  </div>
+  {% for customer in customers %}
+  <a href="{{ url_for('customers.detail', id=customer.id) }}"
+     class="list-group-item list-group-item-action py-2 px-3">
+    <i class="bi bi-person me-2 text-muted"></i>
+    {{ customer.display_name }}
+    {% if customer.email %}
+    <small class="text-muted ms-2">{{ customer.email }}</small>
+    {% endif %}
+  </a>
+  {% endfor %}
+  {% endif %}
+
+  {% if items %}
+  <div class="list-group-item list-group-item-light py-1 px-3">
+    <small class="fw-bold text-muted">Service Items</small>
+  </div>
+  {% for item in items %}
+  <a href="{{ url_for('items.detail', id=item.id) }}"
+     class="list-group-item list-group-item-action py-2 px-3">
+    <i class="bi bi-tools me-2 text-muted"></i>
+    {{ item.name }}
+    {% if item.serial_number %}
+    <small class="text-muted ms-2">({{ item.serial_number }})</small>
+    {% endif %}
+  </a>
+  {% endfor %}
+  {% endif %}
+
+  {% if inventory %}
+  <div class="list-group-item list-group-item-light py-1 px-3">
+    <small class="fw-bold text-muted">Inventory</small>
+  </div>
+  {% for inv in inventory %}
+  <a href="{{ url_for('inventory.detail', id=inv.id) }}"
+     class="list-group-item list-group-item-action py-2 px-3">
+    <i class="bi bi-box-seam me-2 text-muted"></i>
+    {{ inv.name }}
+    {% if inv.sku %}
+    <small class="text-muted ms-2">({{ inv.sku }})</small>
+    {% endif %}
+  </a>
+  {% endfor %}
+  {% endif %}
+
+  <a href="{{ url_for('search.results', q=q) }}"
+     class="list-group-item list-group-item-action text-center py-2 text-primary">
+    <i class="bi bi-search me-1"></i> See all results for "{{ q }}"
+  </a>
+</div>
+{% endif %}

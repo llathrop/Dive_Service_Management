@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_checkbox, render_select, render_submit, render_form_errors %}
+
+{% block title %}{{ 'Edit Price List Item' if is_edit else 'New Price List Item' }} - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('price_list.list_items') }}">Price List</a></li>
+    {% if is_edit %}
+    <li class="breadcrumb-item"><a href="{{ url_for('price_list.detail', id=item.id) }}">{{ item.name }}</a></li>
+    <li class="breadcrumb-item active">Edit</li>
+    {% else %}
+    <li class="breadcrumb-item active">New Item</li>
+    {% endif %}
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">{{ 'Edit Price List Item' if is_edit else 'New Price List Item' }}</h1>
+
+{{ render_form_errors(form) }}
+
+<form method="POST"
+      action="{{ url_for('price_list.edit', id=item.id) if is_edit else url_for('price_list.create') }}">
+  {{ form.hidden_tag() }}
+
+  {# Basic Information #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Basic Information</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          {{ render_select(form.category_id) }}
+          {% if form.category_id.choices|length == 0 %}
+          <div class="form-text text-warning">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            No categories found. <a href="{{ url_for('price_list.categories') }}">Create one first</a>.
+          </div>
+          {% endif %}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.code, placeholder='Service code (optional)') }}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.sort_order, placeholder='0') }}
+        </div>
+      </div>
+      {{ render_field(form.name, placeholder='Service name') }}
+      {{ render_field(form.description, placeholder='Description (shown to customers)...') }}
+    </div>
+  </div>
+
+  {# Pricing #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Pricing</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          {{ render_field(form.price, placeholder='0.00') }}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.cost, placeholder='0.00 (optional)') }}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.price_tier, placeholder='e.g. Standard, Premium') }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4">
+          {{ render_checkbox(form.is_taxable) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Unit Configuration #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Unit Configuration</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          {{ render_checkbox(form.is_per_unit) }}
+        </div>
+        <div class="col-md-3">
+          {{ render_field(form.default_quantity, placeholder='1') }}
+        </div>
+        <div class="col-md-3">
+          {{ render_field(form.unit_label, placeholder='each') }}
+        </div>
+        <div class="col-md-3">
+          {{ render_checkbox(form.auto_deduct_parts) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Status & Notes #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Status &amp; Notes</h5>
+    </div>
+    <div class="card-body">
+      {{ render_checkbox(form.is_active) }}
+      {{ render_field(form.internal_notes, placeholder='Internal notes (not shown to customers)...') }}
+    </div>
+  </div>
+
+  {# Submit #}
+  <div class="d-flex gap-2">
+    {{ render_submit('Save Item', class='btn btn-primary') }}
+    <a href="{{ url_for('price_list.detail', id=item.id) if is_edit else url_for('price_list.list_items') }}"
+       class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

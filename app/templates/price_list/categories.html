@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_checkbox, render_submit, render_form_errors %}
+
+{% block title %}Price List Categories - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('price_list.list_items') }}">Price List</a></li>
+    <li class="breadcrumb-item active">Categories</li>
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">Price List Categories</h1>
+
+{# Existing Categories #}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Existing Categories</h5>
+  </div>
+  {% if categories %}
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Sort Order</th>
+          <th>Active</th>
+          <th>Items</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cat in categories %}
+        <tr>
+          <td><strong>{{ cat.name }}</strong></td>
+          <td>{{ cat.description or '' }}</td>
+          <td>{{ cat.sort_order }}</td>
+          <td>
+            {% if cat.is_active %}
+            <span class="badge bg-success">Active</span>
+            {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </td>
+          <td>{{ cat.items.count() }}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editCategoryModal{{ cat.id }}">
+              <i class="bi bi-pencil"></i> Edit
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body text-center text-muted">
+    <p>No categories yet. Create one below.</p>
+  </div>
+  {% endif %}
+</div>
+
+{# New Category Form #}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Add New Category</h5>
+  </div>
+  <div class="card-body">
+    {{ render_form_errors(form) }}
+    <form method="POST" action="{{ url_for('price_list.create_category') }}">
+      {{ form.hidden_tag() }}
+      <div class="row">
+        <div class="col-md-4">
+          {{ render_field(form.name, placeholder='Category name') }}
+        </div>
+        <div class="col-md-4">
+          {{ render_field(form.description, placeholder='Description (optional)') }}
+        </div>
+        <div class="col-md-2">
+          {{ render_field(form.sort_order, placeholder='0') }}
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          {{ render_submit('Add Category', class='btn btn-primary w-100') }}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Edit modals for each category #}
+{% for cat in categories %}
+<div class="modal fade" id="editCategoryModal{{ cat.id }}" tabindex="-1"
+     aria-labelledby="editCategoryModalLabel{{ cat.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('price_list.edit_category', id=cat.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editCategoryModalLabel{{ cat.id }}">Edit Category: {{ cat.name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-control" name="name" value="{{ cat.name }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" name="description">{{ cat.description or '' }}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Sort Order</label>
+            <input type="number" class="form-control" name="sort_order" value="{{ cat.sort_order }}">
+          </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" name="is_active" id="isActive{{ cat.id }}"
+                   {{ 'checked' if cat.is_active }}>
+            <label class="form-check-label" for="isActive{{ cat.id }}">Active</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

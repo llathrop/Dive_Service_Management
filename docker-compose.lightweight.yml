@@ -1,0 +1,51 @@
+# =============================================================================
+# Dive Service Management - Lightweight Override (Raspberry Pi)
+# =============================================================================
+# Use with:
+#   docker compose -f docker-compose.yml -f docker-compose.lightweight.yml up -d
+#
+# Changes from full deployment:
+#   - Removes Celery worker and beat containers (saves ~200-400MB RAM)
+#   - Web process runs Huey in-process for background tasks
+#   - Reduces container count from 5 to 3 (web, db, redis)
+#   - Estimated total RAM: ~400-500MB (vs. ~700-900MB with Celery)
+# =============================================================================
+
+services:
+  # Override web to enable in-process Huey task queue
+  web:
+    environment:
+      - DSM_DEPLOYMENT_PROFILE=lightweight
+      - DSM_WORKERS=1
+      - DSM_THREADS=2
+    command: >
+      gunicorn
+        --bind 0.0.0.0:8080
+        --workers 1
+        --threads 2
+        --access-logfile -
+        --error-logfile -
+        --timeout 120
+        "app:create_app()"
+
+  # Reduce MariaDB memory footprint
+  db:
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-dsm}
+      MARIADB_USER: ${MARIADB_USER:-dsm}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+
+  # Reduce Redis memory for Pi
+  redis:
+    command: redis-server --appendonly yes --maxmemory 32mb --maxmemory-policy allkeys-lru
+
+  # Remove Celery worker (Huey runs in-process instead)
+  worker:
+    profiles:
+      - disabled
+
+  # Remove Celery beat (Huey periodic tasks run in-process)
+  beat:
+    profiles:
+      - disabled

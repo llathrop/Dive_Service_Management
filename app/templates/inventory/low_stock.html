@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from 'macros/pagination.html' import render_pagination %}
+{% from 'macros/tables.html' import empty_state, record_count %}
+{% from 'macros/status_badges.html' import stock_level_badge %}
+
+{% block title %}Low Stock Items - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{{ url_for('inventory.list_items') }}">Inventory</a></li>
+        <li class="breadcrumb-item active">Low Stock</li>
+      </ol>
+    </nav>
+    <h1 class="h3 mb-0">Low Stock Items</h1>
+    {{ record_count(pagination) }}
+  </div>
+  <a href="{{ url_for('inventory.list_items') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Back to Inventory
+  </a>
+</div>
+
+{% if items %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>SKU</th>
+          <th>Category</th>
+          <th>In Stock</th>
+          <th>Reorder Level</th>
+          <th>Reorder Qty</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>
+            <a href="{{ url_for('inventory.detail', id=item.id) }}">{{ item.name }}</a>
+          </td>
+          <td><code>{{ item.sku or '' }}</code></td>
+          <td>{{ item.category }}</td>
+          <td><strong>{{ item.quantity_in_stock }}</strong></td>
+          <td>{{ item.reorder_level }}</td>
+          <td>{{ item.reorder_quantity or '-' }}</td>
+          <td>{{ stock_level_badge(item.quantity_in_stock, item.reorder_level) }}</td>
+          <td>
+            <a href="{{ url_for('inventory.detail', id=item.id) }}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye me-1"></i> View
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{{ render_pagination(pagination) }}
+{% else %}
+{{ empty_state('All inventory levels are healthy!', 'bi-check-circle') }}
+{% endif %}
+{% endblock %}

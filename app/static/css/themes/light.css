@@ -1,0 +1,32 @@
+/* ============================================================
+   Dive Service Management - Light Theme Overrides
+   ============================================================
+   Bootstrap 5.3 handles most light theme styling by default.
+   This file contains overrides for custom elements that need
+   specific light-theme treatment.
+   ============================================================ */
+
+[data-bs-theme="light"] {
+  /* Sidebar refinements */
+  --sidebar-hover-bg: rgba(0, 0, 0, 0.04);
+}
+
+[data-bs-theme="light"] .app-header {
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+[data-bs-theme="light"] .app-sidebar {
+  background-color: #fafbfc;
+}
+
+[data-bs-theme="light"] .sidebar-nav .nav-link:hover {
+  background-color: var(--sidebar-hover-bg);
+}
+
+[data-bs-theme="light"] .global-search-input {
+  background-color: #f8f9fa;
+}
+
+[data-bs-theme="light"] .app-footer {
+  background-color: #fafbfc;
+}

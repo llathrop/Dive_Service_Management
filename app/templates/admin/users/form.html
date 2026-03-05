@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit User' if is_edit else 'New User' }} - Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">
+    <i class="bi bi-{{ 'pencil' if is_edit else 'person-plus' }} me-2"></i>
+    {{ 'Edit User' if is_edit else 'New User' }}
+  </h1>
+  <a href="{{ url_for('admin.list_users') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Users
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('admin.edit_user', id=user.id) if is_edit else url_for('admin.create_user') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="username" name="username"
+                 value="{{ form_data.get('username', '') or (user.username if is_edit else '') }}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+          <input type="email" class="form-control" id="email" name="email"
+                 value="{{ form_data.get('email', '') or (user.email if is_edit else '') }}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="first_name" name="first_name"
+                 value="{{ form_data.get('first_name', '') or (user.first_name if is_edit else '') }}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="last_name" name="last_name"
+                 value="{{ form_data.get('last_name', '') or (user.last_name if is_edit else '') }}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="password" class="form-label">
+            Password {% if not is_edit %}<span class="text-danger">*</span>{% endif %}
+          </label>
+          <input type="password" class="form-control" id="password" name="password"
+                 {% if not is_edit %}required{% endif %}
+                 minlength="8">
+          {% if is_edit %}
+          <div class="form-text">Leave blank to keep current password.</div>
+          {% else %}
+          <div class="form-text">Minimum 8 characters.</div>
+          {% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Roles</label>
+          {% for role in roles %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}"
+                   id="role_{{ role.id }}"
+                   {% if is_edit and role in user.roles %}checked{% endif %}
+                   {% if form_data.getlist and role.id|string in form_data.getlist('roles') %}checked{% endif %}>
+            <label class="form-check-label" for="role_{{ role.id }}">
+              {{ role.name }}
+              {% if role.description %}
+              <span class="text-muted small">- {{ role.description }}</span>
+              {% endif %}
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>{{ 'Update User' if is_edit else 'Create User' }}
+        </button>
+        <a href="{{ url_for('admin.list_users') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+      </div>
+    </form>
+
+    {% if is_edit %}
+    <hr>
+    <h5>Password Reset</h5>
+    <form method="POST" action="{{ url_for('admin.reset_password', id=user.id) }}" class="row g-2 align-items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-auto">
+        <label for="new_password" class="form-label">New Password</label>
+        <input type="password" class="form-control" id="new_password" name="new_password" minlength="8" required>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-warning">
+          <i class="bi bi-key me-1"></i>Reset Password
+        </button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
