@@ -169,10 +169,9 @@ class TestFullServiceWorkflow:
             )
             assert adhesive_used is not None
 
-            # Verify fractional deduction uses round()
+            # Verify exact fractional deduction (no rounding)
             db_session.refresh(adhesive)
-            # round(2.5) = 2 on Python (banker's rounding), but stock was 20
-            expected_adhesive = 20 - round(Decimal("2.5"))
+            expected_adhesive = Decimal("20") - Decimal("2.5")  # = 17.5
             assert adhesive.quantity_in_stock == expected_adhesive
 
             # ── 11. Add labor entry ─────────────────────────────
