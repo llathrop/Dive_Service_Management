@@ -477,6 +477,26 @@ class TestPartsUsed:
         result = order_service.remove_part_used(99999)
         assert result is False
 
+    def test_fractional_quantity_deducted_exactly(self, app, db_session):
+        """Fractional part quantities are deducted exactly, with no rounding."""
+        order = _make_order(db_session)
+        si = _make_service_item(db_session)
+        oi = _make_order_item(db_session, order=order, service_item=si)
+        inv = _make_inventory_item(
+            db_session,
+            sku="SKU-FRAC-01",
+            quantity_in_stock=Decimal("10.00"),
+        )
+
+        order_service.add_part_used(
+            order_item_id=oi.id,
+            inventory_item_id=inv.id,
+            quantity=Decimal("2.75"),
+        )
+
+        db_session.refresh(inv)
+        assert inv.quantity_in_stock == Decimal("7.25")
+
 
 # =========================================================================
 # Labor Entries
