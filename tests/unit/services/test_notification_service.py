@@ -15,6 +15,7 @@ from app.extensions import db
 from app.models.inventory import InventoryItem
 from app.models.invoice import Invoice
 from app.models.notification import Notification
+from app.models.notification_read import NotificationRead
 from app.models.payment import Payment
 from app.models.service_order import ServiceOrder
 from app.services import notification_service
@@ -424,3 +425,155 @@ class TestNotifyPaymentReceived:
         assert notif.notification_type == "payment_received"
         assert "INV-2026-90001" in notif.title
         assert "$100.00" in notif.message
+
+
+# =========================================================================
+# Per-user broadcast read state (P0-2)
+# =========================================================================
+
+
+class TestBroadcastPerUserReadState:
+    """Tests for per-user read tracking on broadcast notifications."""
+
+    def test_broadcast_mark_read_is_per_user(self, app, db_session):
+        """Marking a broadcast read for user A does not affect user B."""
+        user_a = _make_admin_user(
+            app, db_session, username="bcast_a", email="bcast_a@example.com"
+        )
+        user_b = _make_tech_user(
+            app, db_session, username="bcast_b", email="bcast_b@example.com"
+        )
+
+        broadcast = notification_service.create_notification(
+            user_id=None,
+            notification_type="system",
+            title="System-wide announcement",
+            message="Broadcast body",
+        )
+
+        # User A marks the broadcast as read
+        result = notification_service.mark_as_read(broadcast.id, user_id=user_a.id)
+        assert result is not None
+
+        # User A should see it as read (unread count = 0)
+        assert notification_service.get_unread_count(user_a.id) == 0
+
+        # User B should still see it as unread (unread count = 1)
+        assert notification_service.get_unread_count(user_b.id) == 1
+
+        # The Notification row itself should NOT have is_read flipped
+        db_session.refresh(broadcast)
+        assert broadcast.is_read is False
+
+    def test_mark_all_read_handles_broadcasts_per_user(self, app, db_session):
+        """mark_all_read for user A leaves broadcasts unread for user B."""
+        user_a = _make_admin_user(
+            app, db_session, username="mall_a", email="mall_a@example.com"
+        )
+        user_b = _make_tech_user(
+            app, db_session, username="mall_b", email="mall_b@example.com"
+        )
+
+        # One direct notification for each user and one broadcast
+        notification_service.create_notification(
+            user_id=user_a.id,
+            notification_type="system",
+            title="Direct for A",
+            message="msg",
+        )
+        notification_service.create_notification(
+            user_id=user_b.id,
+            notification_type="system",
+            title="Direct for B",
+            message="msg",
+        )
+        notification_service.create_notification(
+            user_id=None,
+            notification_type="system",
+            title="Broadcast",
+            message="msg",
+        )
+
+        # Before: A sees 2 unread (1 direct + 1 broadcast)
+        assert notification_service.get_unread_count(user_a.id) == 2
+        # Before: B sees 2 unread (1 direct + 1 broadcast)
+        assert notification_service.get_unread_count(user_b.id) == 2
+
+        # Mark all read for user A
+        marked = notification_service.mark_all_read(user_a.id)
+        assert marked == 2
+
+        # A now sees 0 unread
+        assert notification_service.get_unread_count(user_a.id) == 0
+
+        # B still sees 2 unread — the broadcast and their own direct notification
+        assert notification_service.get_unread_count(user_b.id) == 2
+
+    def test_unread_count_includes_unread_broadcasts(self, app, db_session):
+        """get_unread_count correctly sums direct + broadcast unread per user."""
+        user_a = _make_admin_user(
+            app, db_session, username="cnt_a", email="cnt_a@example.com"
+        )
+        user_b = _make_tech_user(
+            app, db_session, username="cnt_b", email="cnt_b@example.com"
+        )
+
+        # 2 direct for A, 1 broadcast
+        notification_service.create_notification(
+            user_id=user_a.id,
+            notification_type="system",
+            title="Direct A-1",
+            message="msg",
+        )
+        notification_service.create_notification(
+            user_id=user_a.id,
+            notification_type="system",
+            title="Direct A-2",
+            message="msg",
+        )
+        broadcast = notification_service.create_notification(
+            user_id=None,
+            notification_type="system",
+            title="Broadcast",
+            message="msg",
+        )
+
+        # A: 2 direct + 1 broadcast = 3
+        assert notification_service.get_unread_count(user_a.id) == 3
+        # B: 0 direct + 1 broadcast = 1
+        assert notification_service.get_unread_count(user_b.id) == 1
+
+        # Mark broadcast read for A only
+        notification_service.mark_as_read(broadcast.id, user_id=user_a.id)
+
+        # A: 2 direct + 0 broadcast = 2
+        assert notification_service.get_unread_count(user_a.id) == 2
+        # B: 0 direct + 1 broadcast = 1 (unchanged)
+        assert notification_service.get_unread_count(user_b.id) == 1
+
+    def test_broadcast_mark_read_idempotent(self, app, db_session):
+        """Marking the same broadcast read twice does not create duplicate rows."""
+        user = _make_admin_user(
+            app, db_session, username="idem_u", email="idem_u@example.com"
+        )
+
+        broadcast = notification_service.create_notification(
+            user_id=None,
+            notification_type="system",
+            title="Idempotent test",
+            message="msg",
+        )
+
+        # Mark read twice
+        notification_service.mark_as_read(broadcast.id, user_id=user.id)
+        notification_service.mark_as_read(broadcast.id, user_id=user.id)
+
+        # Should have exactly one NotificationRead row
+        read_count = NotificationRead.query.filter_by(
+            notification_id=broadcast.id,
+            user_id=user.id,
+        ).count()
+        assert read_count == 1
+
+        # Unread count should be 0
+        assert notification_service.get_unread_count(user.id) == 0
