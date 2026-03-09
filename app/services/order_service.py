@@ -403,7 +403,7 @@ def remove_order_item(order_item_id):
     for part in order_item.parts_used.all():
         inv_item = db.session.get(InventoryItem, part.inventory_item_id)
         if inv_item is not None:
-            inv_item.quantity_in_stock += round(part.quantity)
+            inv_item.quantity_in_stock += part.quantity
 
     db.session.delete(order_item)
     db.session.commit()
@@ -499,7 +499,7 @@ def add_applied_service(order_item_id, data, added_by=None):
         for linked_part in price_list_item.linked_parts.all():
             inv_item = db.session.get(InventoryItem, linked_part.inventory_item_id)
             if inv_item is not None:
-                part_qty = round(linked_part.quantity)
+                part_qty = linked_part.quantity
                 add_part_used(
                     order_item_id=order_item_id,
                     inventory_item_id=linked_part.inventory_item_id,
@@ -540,7 +540,7 @@ def remove_applied_service(applied_service_id):
     for part in auto_parts:
         inv_item = db.session.get(InventoryItem, part.inventory_item_id)
         if inv_item is not None:
-            inv_item.quantity_in_stock += round(part.quantity)
+            inv_item.quantity_in_stock += part.quantity
         db.session.delete(part)
 
     db.session.delete(applied)
@@ -609,7 +609,7 @@ def add_part_used(
     db.session.add(part)
 
     # Deduct from inventory stock
-    inv_item.quantity_in_stock -= round(quantity)
+    inv_item.quantity_in_stock -= quantity
 
     # Only commit if this is a standalone call (not nested inside
     # add_applied_service which manages its own commit).
@@ -638,7 +638,7 @@ def remove_part_used(part_used_id):
     # Restore inventory
     inv_item = db.session.get(InventoryItem, part.inventory_item_id)
     if inv_item is not None:
-        inv_item.quantity_in_stock += round(part.quantity)
+        inv_item.quantity_in_stock += part.quantity
 
     db.session.delete(part)
     db.session.commit()
