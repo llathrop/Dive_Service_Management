@@ -7,8 +7,11 @@ such as low-stock alerts, order status changes, and payment receipts.
 
 from datetime import datetime, timezone
 
+from sqlalchemy import and_
+
 from app.extensions import db
 from app.models.notification import Notification
+from app.models.notification_read import NotificationRead
 from app.models.user import Role, User
 
 
@@ -57,7 +60,8 @@ def get_notifications(user_id, unread_only=False, page=1, per_page=20):
     """Return paginated notifications for a user, newest first.
 
     Includes both user-targeted notifications and broadcast notifications
-    (where user_id is NULL).
+    (where user_id is NULL).  For broadcasts, "unread" means no
+    :class:`NotificationRead` row exists for the given *user_id*.
 
     Args:
         user_id: The user ID to fetch notifications for.
@@ -68,15 +72,31 @@ def get_notifications(user_id, unread_only=False, page=1, per_page=20):
     Returns:
         A SQLAlchemy pagination object.
     """
-    query = Notification.query.filter(
-        db.or_(
-            Notification.user_id == user_id,
-            Notification.user_id.is_(None),
-        )
-    )
-
     if unread_only:
-        query = query.filter(Notification.is_read == False)  # noqa: E712
+        # Direct (user-targeted) unread notifications
+        direct_unread = Notification.query.filter(
+            Notification.user_id == user_id,
+            Notification.is_read == False,  # noqa: E712
+        )
+        # Broadcast notifications without a read receipt for this user
+        broadcast_unread = Notification.query.outerjoin(
+            NotificationRead,
+            and_(
+                NotificationRead.notification_id == Notification.id,
+                NotificationRead.user_id == user_id,
+            ),
+        ).filter(
+            Notification.user_id.is_(None),
+            NotificationRead.id.is_(None),
+        )
+        query = direct_unread.union(broadcast_unread)
+    else:
+        query = Notification.query.filter(
+            db.or_(
+                Notification.user_id == user_id,
+                Notification.user_id.is_(None),
+            )
+        )
 
     query = query.order_by(Notification.created_at.desc())
 
@@ -86,7 +106,8 @@ def get_notifications(user_id, unread_only=False, page=1, per_page=20):
 def get_unread_count(user_id):
     """Return the count of unread notifications for a user.
 
-    Counts both user-targeted and broadcast notifications.
+    Counts direct unread notifications (``is_read=False``) **plus** broadcast
+    notifications that have no :class:`NotificationRead` row for *user_id*.
 
     Args:
         user_id: The user ID to count unread notifications for.
@@ -94,23 +115,36 @@ def get_unread_count(user_id):
     Returns:
         An integer count of unread notifications.
     """
-    return Notification.query.filter(
-        db.or_(
-            Notification.user_id == user_id,
-            Notification.user_id.is_(None),
-        ),
+    # Direct (user-targeted) unread count
+    direct_count = Notification.query.filter(
+        Notification.user_id == user_id,
         Notification.is_read == False,  # noqa: E712
     ).count()
+
+    # Broadcast notifications this user has NOT read
+    broadcast_count = Notification.query.outerjoin(
+        NotificationRead,
+        and_(
+            NotificationRead.notification_id == Notification.id,
+            NotificationRead.user_id == user_id,
+        ),
+    ).filter(
+        Notification.user_id.is_(None),
+        NotificationRead.id.is_(None),
+    ).count()
+
+    return direct_count + broadcast_count
 
 
 def mark_as_read(notification_id, user_id=None):
     """Mark a single notification as read.
 
-    Sets ``is_read`` to True and records the ``read_at`` timestamp.
+    For **direct** notifications (``notification.user_id`` is set), this sets
+    ``is_read=True`` and records ``read_at`` on the notification row itself.
 
-    When *user_id* is provided the function verifies that the notification
-    belongs to that user before updating it.  Broadcast notifications
-    (``notification.user_id is None``) may be marked as read by any user.
+    For **broadcast** notifications (``notification.user_id is None``), a
+    per-user :class:`NotificationRead` row is inserted instead, so that other
+    users' read state is unaffected.
 
     Args:
         notification_id: The primary key of the notification.
@@ -126,40 +160,88 @@ def mark_as_read(notification_id, user_id=None):
     if notification is None:
         return None
 
-    if user_id is not None:
-        if notification.user_id is not None and notification.user_id != user_id:
+    # --- Direct (user-targeted) notification ---
+    if notification.user_id is not None:
+        if user_id is not None and notification.user_id != user_id:
             return None
+        notification.is_read = True
+        notification.read_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return notification
 
-    notification.is_read = True
-    notification.read_at = datetime.now(timezone.utc)
-    db.session.commit()
+    # --- Broadcast notification: per-user read receipt ---
+    if user_id is None:
+        # Cannot record a per-user read without knowing the user
+        return None
+
+    now = datetime.now(timezone.utc)
+    existing = NotificationRead.query.filter_by(
+        notification_id=notification_id,
+        user_id=user_id,
+    ).first()
+    if existing is None:
+        read_receipt = NotificationRead(
+            notification_id=notification_id,
+            user_id=user_id,
+            read_at=now,
+        )
+        db.session.add(read_receipt)
+        db.session.commit()
+
     return notification
 
 
 def mark_all_read(user_id):
     """Mark all unread notifications for a user as read.
 
-    Updates both user-targeted and broadcast notifications.
+    For **direct** notifications, bulk-updates ``is_read`` / ``read_at`` on
+    the notification rows.  For **broadcast** notifications, inserts
+    :class:`NotificationRead` rows for every broadcast that does not yet
+    have a read receipt for *user_id*.
 
     Args:
         user_id: The user ID whose notifications should be marked read.
 
     Returns:
-        The number of notifications that were updated.
+        The total number of notifications that were marked read (direct +
+        broadcast).
     """
     now = datetime.now(timezone.utc)
-    count = Notification.query.filter(
-        db.or_(
-            Notification.user_id == user_id,
-            Notification.user_id.is_(None),
-        ),
+
+    # --- Direct notifications ---
+    direct_count = Notification.query.filter(
+        Notification.user_id == user_id,
         Notification.is_read == False,  # noqa: E712
     ).update(
         {"is_read": True, "read_at": now},
         synchronize_session="fetch",
     )
+
+    # --- Broadcast notifications without a read receipt for this user ---
+    unread_broadcasts = (
+        Notification.query.outerjoin(
+            NotificationRead,
+            and_(
+                NotificationRead.notification_id == Notification.id,
+                NotificationRead.user_id == user_id,
+            ),
+        )
+        .filter(
+            Notification.user_id.is_(None),
+            NotificationRead.id.is_(None),
+        )
+        .all()
+    )
+    for broadcast in unread_broadcasts:
+        read_receipt = NotificationRead(
+            notification_id=broadcast.id,
+            user_id=user_id,
+            read_at=now,
+        )
+        db.session.add(read_receipt)
+
     db.session.commit()
-    return count
+    return direct_count + len(unread_broadcasts)
 
 
 # =========================================================================
