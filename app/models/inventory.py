@@ -39,8 +39,8 @@ class InventoryItem(TimestampMixin, SoftDeleteMixin, AuditMixin, db.Model):
     markup_percent = db.Column(db.Numeric(5, 2), nullable=True)
 
     # --- Stock ---
-    quantity_in_stock = db.Column(db.Integer, nullable=False, default=0)
-    reorder_level = db.Column(db.Integer, nullable=False, default=0)
+    quantity_in_stock = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    reorder_level = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     reorder_quantity = db.Column(db.Integer, nullable=True)
     unit_of_measure = db.Column(
         db.String(50), nullable=False, default="each"
