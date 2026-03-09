@@ -21,6 +21,7 @@ from app.models.applied_service import AppliedService
 from app.models.invoice import Invoice, InvoiceLineItem, invoice_orders
 from app.models.payment import Payment
 from app.models.notification import Notification
+from app.models.notification_read import NotificationRead
 
 __all__ = [
     "Role",
@@ -46,4 +47,5 @@ __all__ = [
     "invoice_orders",
     "Payment",
     "Notification",
+    "NotificationRead",
 ]
