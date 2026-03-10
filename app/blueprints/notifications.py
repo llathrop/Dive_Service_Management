@@ -12,7 +12,7 @@ notifications_bp = Blueprint("notifications", __name__, url_prefix="/notificatio
 def list_notifications():
     """List all notifications for the current user."""
     page = request.args.get("page", 1, type=int)
-    unread_only = request.args.get("unread_only", False, type=bool)
+    unread_only = request.args.get("unread_only", "").lower() in ("true", "1", "yes")
     notifications = notification_service.get_notifications(
         current_user.id, unread_only=unread_only, page=page
     )

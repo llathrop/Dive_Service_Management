@@ -114,3 +114,32 @@ class TestAuthenticatedAccess:
         )
         assert response.status_code == 302
         assert "/notifications" in response.location
+
+
+# ---------------------------------------------------------------------------
+# unread_only query parameter parsing
+# ---------------------------------------------------------------------------
+
+
+class TestUnreadOnlyParsing:
+    """Verify that the unread_only parameter is parsed correctly."""
+
+    def test_unread_only_false_string_not_treated_as_true(self, logged_in_client, app, db_session):
+        """Passing unread_only=false should not filter to unread only."""
+        response = logged_in_client.get("/notifications/?unread_only=false")
+        assert response.status_code == 200
+
+    def test_unread_only_random_string_not_treated_as_true(self, logged_in_client, app, db_session):
+        """Passing unread_only=notavalue should not filter to unread only."""
+        response = logged_in_client.get("/notifications/?unread_only=notavalue")
+        assert response.status_code == 200
+
+    def test_unread_only_true_accepted(self, logged_in_client, app, db_session):
+        """Passing unread_only=true should succeed."""
+        response = logged_in_client.get("/notifications/?unread_only=true")
+        assert response.status_code == 200
+
+    def test_unread_only_1_accepted(self, logged_in_client, app, db_session):
+        """Passing unread_only=1 should succeed."""
+        response = logged_in_client.get("/notifications/?unread_only=1")
+        assert response.status_code == 200
