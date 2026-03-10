@@ -102,6 +102,11 @@ def _seed_price_list_categories():
 
 def _seed_demo_users():
     """Create demo users with known passwords if they do not already exist."""
+    if not current_app.config.get("DEBUG") and not current_app.config.get("TESTING"):
+        click.echo("  Skipping demo users (not in DEBUG or TESTING mode).")
+        click.echo("  Use 'flask create-admin' to create an admin account.")
+        return
+
     user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 
     demo_users = [
