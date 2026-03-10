@@ -204,3 +204,38 @@
 - [x] .gitignore enhanced with credential/key exclusions
 
 **Tests**: 757 total, all passing
+
+### Post-Phase 6: Second Review Fix-ups (Complete)
+
+**Trigger**: CODEX and Gemini static reviews identified additional correctness, security, and resilience issues.
+
+**Critical (P0) Fixes**:
+
+- [x] P0-1: Inventory stock drift — changed `quantity_in_stock`/`reorder_level` from `Integer` to `Numeric(10,2)`, removed 5 `round()` calls in order_service.py ([PR #1](https://github.com/llathrop/Dive_Service_Management/pull/1))
+- [x] P0-2: Notification broadcast read state — added `NotificationRead` model for per-user broadcast tracking, rewrote notification_service with outerjoin pattern ([PR #2](https://github.com/llathrop/Dive_Service_Management/pull/2))
+- [x] P0-3: Order status/priority bypass — removed status/priority from `update_order()` generic loop, added priority allowlist validation, guarded `change_status()` against empty values, added `DataRequired()` to form ([PR #3](https://github.com/llathrop/Dive_Service_Management/pull/3))
+
+**High Priority (P1) Fixes**:
+
+- [x] P1-1+P1-6: Invoice lifecycle — added `INVOICE_STATUS_TRANSITIONS` state machine, `change_status()` function, removed status from `update_invoice()`, added negative `unit_price` guard for non-discount line items ([PR #4](https://github.com/llathrop/Dive_Service_Management/pull/4))
+- [x] P1-4: Security posture — `ProductionConfig.init_app()` rejects default secrets at startup, `_seed_demo_users()` skips in production mode ([PR #5](https://github.com/llathrop/Dive_Service_Management/pull/5))
+- [x] P1-5: Crash resilience — `try/except ValueError` on add_part/add_labor/add_note routes, fixed `unread_only` bool parsing in notifications ([PR #6](https://github.com/llathrop/Dive_Service_Management/pull/6))
+
+**Deferred to future sprints**:
+
+- P1-2: Service layer refactoring for Phase 2 blueprints (customers, items, inventory, price_list, search)
+- P2-1: Search FULLTEXT and export streaming/pagination for large datasets
+- P2-2: Module splitting and repeated mapping logic consolidation
+
+**Ignored (with rationale)**:
+
+- P1-3: Documentation drift — addressed via this PROGRESS.md update and MEMORY.md sync
+- P2-3: Repo hygiene (empty dirs, placeholder comments) — low risk, cleanup only
+- P3-2: `populate_obj` usage inconsistency — cosmetic, not a correctness issue
+
+**Database migrations**: 2 new migrations added
+
+- `a1b2c3d4e5f6`: Inventory columns `Integer` → `Numeric(10,2)`
+- `b2c3d4e5f6a7`: `notification_reads` table for per-user broadcast read tracking
+
+**Tests**: 802 total, all passing
