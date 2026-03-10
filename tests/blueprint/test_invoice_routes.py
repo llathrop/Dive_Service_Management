@@ -291,10 +291,11 @@ class TestAdminCRUD:
             f"/invoices/{inv_id}/edit",
             data={
                 "customer_id": str(cid),
-                "status": "sent",
+                "status": "draft",
                 "issue_date": date.today().isoformat(),
-                "tax_rate": "0.0000",
+                "tax_rate": "0.0800",
                 "discount_amount": "0.00",
+                "notes": "Edited",
             },
             follow_redirects=False,
         )
@@ -302,7 +303,9 @@ class TestAdminCRUD:
 
         with app.app_context():
             updated = db.session.get(Invoice, inv_id)
-            assert updated.status == "sent"
+            assert updated.notes == "Edited"
+            # Status is not changed via edit — use change_status route
+            assert updated.status == "draft"
 
     def test_admin_can_void_invoice(self, admin_client, app, db_session):
         with app.app_context():
@@ -431,3 +434,44 @@ class TestInvoiceSearch:
         response = logged_in_client.get("/invoices/?status=sent")
         assert response.status_code == 200
         assert b"INV-2026-88888" in response.data
+
+
+# ---------------------------------------------------------------------------
+# Status transition validation (P1-1)
+# ---------------------------------------------------------------------------
+
+class TestStatusTransitionRoutes:
+    """Verify that invalid status transitions are rejected at the route level."""
+
+    def test_invalid_transition_flashes_error(self, admin_client, app, db_session):
+        """Attempting an invalid transition (draft -> paid) flashes an error."""
+        with app.app_context():
+            invoice = _create_invoice(db_session, status="draft")
+            inv_id = invoice.id
+        response = admin_client.post(
+            f"/invoices/{inv_id}/status",
+            data={"new_status": "paid"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Cannot change status" in response.data
+
+        with app.app_context():
+            updated = db.session.get(Invoice, inv_id)
+            assert updated.status == "draft"  # unchanged
+
+    def test_valid_transition_succeeds(self, admin_client, app, db_session):
+        """A valid transition (draft -> sent) succeeds."""
+        with app.app_context():
+            invoice = _create_invoice(db_session, status="draft")
+            inv_id = invoice.id
+        response = admin_client.post(
+            f"/invoices/{inv_id}/status",
+            data={"new_status": "sent"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+
+        with app.app_context():
+            updated = db.session.get(Invoice, inv_id)
+            assert updated.status == "sent"
