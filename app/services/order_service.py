@@ -211,8 +211,6 @@ def update_order(order_id, data):
 
     for field in (
         "customer_id",
-        "status",
-        "priority",
         "assigned_tech_id",
         "date_received",
         "date_promised",
@@ -233,6 +231,12 @@ def update_order(order_id, data):
     ):
         if field in data:
             setattr(order, field, data[field])
+
+    # Priority requires explicit validation; status must go through change_status().
+    if "priority" in data:
+        valid_priorities = {"low", "normal", "high", "rush"}
+        if data["priority"] in valid_priorities:
+            order.priority = data["priority"]
 
     db.session.commit()
     return order
@@ -323,6 +327,10 @@ def change_status(order_id, new_status, user_id=None):
         transition was valid and applied, False otherwise.
     """
     order = get_order(order_id)
+
+    if not new_status:
+        return (order, False)
+
     current_status = order.status
 
     allowed = STATUS_TRANSITIONS.get(current_status, [])
