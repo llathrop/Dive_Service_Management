@@ -175,7 +175,6 @@ def edit(id):
     if form.validate_on_submit():
         data = {
             "customer_id": form.customer_id.data,
-            "status": form.status.data,
             "issue_date": form.issue_date.data,
             "due_date": form.due_date.data,
             "tax_rate": form.tax_rate.data,
@@ -225,28 +224,29 @@ def void_invoice(id):
 @login_required
 @roles_accepted("admin", "technician")
 def change_status(id):
-    """Change the status of an invoice."""
-    from app.models.invoice import VALID_STATUSES
-
+    """Change the status of an invoice using validated transitions."""
     new_status = request.form.get("new_status", "").strip()
     if not new_status:
         flash("No status provided.", "error")
         return redirect(url_for("invoices.detail", id=id))
 
-    if new_status not in VALID_STATUSES:
-        flash("Invalid status.", "error")
-        return redirect(url_for("invoices.detail", id=id))
-
-    invoice = invoice_service.get_invoice(id)
+    invoice, success = invoice_service.change_status(id, new_status)
     if invoice is None:
         flash("Invoice not found.", "error")
         return redirect(url_for("invoices.list_invoices"))
 
-    invoice = invoice_service.update_invoice(id, {"status": new_status})
-    flash(
-        f"Invoice status changed to {invoice.display_status}.",
-        "success",
-    )
+    if not success:
+        flash(
+            f"Cannot change status from "
+            f"'{invoice.display_status}' to "
+            f"'{new_status.replace('_', ' ').title()}'.",
+            "error",
+        )
+    else:
+        flash(
+            f"Invoice status changed to {invoice.display_status}.",
+            "success",
+        )
     return redirect(url_for("invoices.detail", id=id))
 
 
@@ -269,11 +269,14 @@ def add_line_item(id):
             "quantity": form.quantity.data,
             "unit_price": form.unit_price.data,
         }
-        result = invoice_service.add_line_item(id, data)
-        if result is None:
-            flash("Invoice not found.", "error")
-        else:
-            flash("Line item added.", "success")
+        try:
+            result = invoice_service.add_line_item(id, data)
+            if result is None:
+                flash("Invoice not found.", "error")
+            else:
+                flash("Line item added.", "success")
+        except ValueError as exc:
+            flash(str(exc), "error")
     else:
         for field, errors in form.errors.items():
             for error in errors:

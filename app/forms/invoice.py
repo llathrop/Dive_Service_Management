@@ -19,7 +19,7 @@ from wtforms import (
     SubmitField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Length, NumberRange, Optional
+from wtforms.validators import DataRequired, Length, NumberRange, Optional, ValidationError
 
 from app.forms.order import coerce_int_or_none
 
@@ -151,6 +151,13 @@ class InvoiceLineItemForm(FlaskForm):
         validators=[DataRequired()],
     )
     submit = SubmitField("Add Line Item")
+
+    def validate_unit_price(self, field):
+        """Only discount lines may have negative unit price."""
+        if field.data is not None and field.data < 0:
+            line_type = self.line_type.data if hasattr(self, "line_type") and self.line_type else None
+            if line_type != "discount":
+                raise ValidationError("Unit price must be non-negative for non-discount line items.")
 
 
 class PaymentForm(FlaskForm):
