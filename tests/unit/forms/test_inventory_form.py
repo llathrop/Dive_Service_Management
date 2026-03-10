@@ -67,6 +67,37 @@ class TestInventoryItemFormValid:
             )
             assert form.validate(), form.errors
 
+    def test_valid_decimal_quantities(self, app):
+        """Decimal values accepted for quantity_in_stock and reorder_level."""
+        with app.test_request_context():
+            form = InventoryItemForm(
+                formdata=MultiDict([
+                    ("name", "Neoprene Tape"),
+                    ("category", "Adhesives"),
+                    ("unit_of_measure", "ft"),
+                    ("quantity_in_stock", "12.50"),
+                    ("reorder_level", "3.25"),
+                ])
+            )
+            assert form.validate(), form.errors
+            from decimal import Decimal
+            assert form.quantity_in_stock.data == Decimal("12.50")
+            assert form.reorder_level.data == Decimal("3.25")
+
+    def test_negative_quantity_rejected(self, app):
+        """Negative quantity_in_stock should fail validation."""
+        with app.test_request_context():
+            form = InventoryItemForm(
+                formdata=MultiDict([
+                    ("name", "Bad Item"),
+                    ("category", "Parts"),
+                    ("unit_of_measure", "each"),
+                    ("quantity_in_stock", "-5"),
+                ])
+            )
+            assert not form.validate()
+            assert "quantity_in_stock" in form.errors
+
 
 # ---------------------------------------------------------------------------
 # InventoryItemForm — invalid data
@@ -189,6 +220,28 @@ class TestStockAdjustmentForm:
                 formdata=MultiDict([
                     ("adjustment", "-5"),
                     ("reason", "Used in repair"),
+                ])
+            )
+            assert form.validate(), form.errors
+
+    def test_valid_decimal_adjustment(self, app):
+        """Decimal adjustments are accepted (e.g., 2.5 ft of tape)."""
+        with app.test_request_context():
+            form = StockAdjustmentForm(
+                formdata=MultiDict([
+                    ("adjustment", "2.5"),
+                    ("reason", "Partial roll received"),
+                ])
+            )
+            assert form.validate(), form.errors
+
+    def test_valid_negative_decimal_adjustment(self, app):
+        """Negative decimal adjustments are accepted."""
+        with app.test_request_context():
+            form = StockAdjustmentForm(
+                formdata=MultiDict([
+                    ("adjustment", "-0.75"),
+                    ("reason", "Used partial unit"),
                 ])
             )
             assert form.validate(), form.errors

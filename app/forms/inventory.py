@@ -61,19 +61,21 @@ class InventoryItemForm(FlaskForm):
         places=2,
         validators=[Optional()],
     )
-    quantity_in_stock = IntegerField(
+    quantity_in_stock = DecimalField(
         "Quantity in Stock",
+        places=2,
         default=0,
-        validators=[Optional()],
+        validators=[Optional(), NumberRange(min=0)],
     )
-    reorder_level = IntegerField(
+    reorder_level = DecimalField(
         "Reorder Level",
+        places=2,
         default=0,
-        validators=[Optional()],
+        validators=[Optional(), NumberRange(min=0)],
     )
     reorder_quantity = IntegerField(
         "Reorder Quantity",
-        validators=[Optional()],
+        validators=[Optional(), NumberRange(min=0)],
     )
     unit_of_measure = SelectField(
         "Unit of Measure",
@@ -145,11 +147,13 @@ class StockAdjustmentForm(FlaskForm):
     """Form for adjusting the stock level of an inventory item.
 
     The ``adjustment`` value can be positive (stock in) or negative
-    (stock out / correction).
+    (stock out / correction).  Supports decimal quantities for
+    fractional units (e.g., 2.5 ft of tape).
     """
 
-    adjustment = IntegerField(
+    adjustment = DecimalField(
         "Adjustment (+/-)",
+        places=2,
         validators=[DataRequired()],
     )
     reason = StringField(
