@@ -94,3 +94,8 @@ Desktop.ini
 
 # ---------- Playwright / MCP ephemeral outputs ----------
 .playwright-mcp/
+
+# ---------- Claude Code / AI tooling ----------
+.claude/
+MEMORY.md
+test_uat_eval.py

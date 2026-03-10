@@ -1,258 +1,280 @@
-# CODEX Project Re-Review (2026-03-04)
+# CODEX Project Re-Review (2026-03-10)
 
-## Scope and Constraints
-- Static re-review only. No tests were run and no code was changed.
-- Required documents reviewed first: `README.plan`, `PROJECT_BLUEPRINT.md`, `MEMORY.md`, `PROGRESS.md`.
-- Codebase re-reviewed across blueprints, services, models, migrations, templates, and tests.
-- Because another agent is active, changed/stale documentation and key implementation files were re-checked before writing this report.
+## Scope and Method
+- This report overwrites the prior CODEX review.
+- Per request, I did **not** run project test suites and did **not** change code.
+- Required docs were re-read first, in order:
+  - `README.plan`
+  - `PROJECT_BLUEPRINT.md`
+  - `MEMORY.md`
+  - `PROGRESS.md`
+- I also reviewed `GEMINI-PROJECT_REVIEW.md` and carried forward only still-valid findings.
+- I re-reviewed code, templates, migrations, and tests, and used targeted UAT/runtime probes (non-test scripts) for high-risk behaviors.
+
+## Key Re-Validation Since Prior Review
+These prior critical items are now fixed and should remain closed:
+- Inventory model columns changed to decimal (`app/models/inventory.py:42-43`).
+- Per-user broadcast notification read tracking implemented (`app/models/notification_read.py`, `app/services/notification_service.py`).
+- Invoice status transition validation exists (`app/services/invoice_service.py:41-50`, `231-258`).
+- Refund math is type-aware in payment aggregation (`app/services/invoice_service.py:579-589`).
+- Health check now catches specific SQLAlchemy exceptions (`app/blueprints/health.py:28-33`).
 
 ## Executive Assessment
-The project shows meaningful implementation progress, but it does **not** currently support a "Phase 6 complete" quality bar. There are multiple high-risk correctness/security issues, substantial documentation drift, and testing strategy gaps that would make production readiness and junior onboarding fragile.
+The project has improved materially, but the current implementation still falls short of the “Phase 6 complete / production-ready” bar claimed in docs. The top risks are now **incomplete inventory decimal migration**, **negative stock integrity holes**, and **documentation/testing drift that obscures actual behavior and readiness**.
 
 ## Priority Summary
 | ID | Priority | Area | Issue | Suggested Fix Window |
 |---|---|---|---|---|
-| P0-1 | Critical | Data Integrity | Fractional part usage is truncated during inventory deduction/restoration, causing stock drift | Immediate (before more production data) |
-| P0-2 | Critical | Security | Notification mark-read lacks ownership checks | Immediate |
-| P0-3 | Critical | Reliability | Order/invoice number generation is race-prone under concurrency | Immediate |
-| P0-4 | Critical | Billing Correctness | Refund/deposit/payment math is not type-aware; refunds can increase paid totals | Immediate |
-| P1-1 | High | Delivery Governance | Progress/memory/docs conflict with actual implementation state | This sprint |
-| P1-2 | High | Scope Completeness | Several blueprint-planned capabilities are missing/incomplete while marked complete | This sprint + next sprint |
-| P1-3 | High | Architecture | Service-layer pattern is inconsistently applied; duplication and drift growing | Next sprint |
-| P1-4 | High | Validation/Workflow | State and business-rule invariants are weak or bypassable | Next sprint |
-| P1-5 | High | Testing | Validation/UAT strategy is incomplete and inconsistent with documented gates | Immediate planning + staged implementation |
-| P2-1 | Medium | Performance | Current search/export/report patterns will degrade at scale | Next 1-2 sprints |
-| P2-2 | Medium | Maintainability | Large route/service modules and repeated mapping logic reduce junior onboarding speed | Next 1-2 sprints |
-| P2-3 | Medium | Repo Hygiene | Placeholder/unused artifacts and metadata issues add confusion | Next cleanup pass |
-| P2-4 | Medium | Observability/Crash Triage | Health endpoint uses broad exception handling that masks root-cause diagnostics | Next sprint |
+| P0-1 | Critical | Data Integrity | Decimal inventory migration is incomplete across forms/routes/tests | Immediate |
+| P0-2 | Critical | Data Integrity / Crash | Order part usage can drive inventory negative | Immediate |
+| P1-1 | High | Billing Correctness / UX | Tax-rate semantics and display are inconsistent and misleading | This sprint |
+| P1-2 | High | Workflow UX | Order/invoice edit forms expose status fields that are ignored by update paths | This sprint |
+| P1-3 | High | Architecture | “Thin blueprints, fat services” pattern is still inconsistent | Next sprint |
+| P1-4 | High | Config/Security Ops | Config hierarchy docs conflict with app init order for production secret checks | Next sprint |
+| P1-5 | High | Documentation Governance | MEMORY/PROGRESS/UAT docs materially diverge from code reality | Immediate |
+| P1-6 | High | Test Quality | UAT and core tests remain too shallow for edge/environment realism | Immediate planning |
+| P2-1 | Medium | Scalability | Search/export/report patterns still rely on `ILIKE`, `.all()`, and Python grouping | Next 1-2 sprints |
+| P2-2 | Medium | Maintainability | Large files and duplicated workflow constants increase onboarding cost | Next 1-2 sprints |
+| P2-3 | Medium | Repo Hygiene | Empty/stale artifacts and unresolved template references create noise | Cleanup pass |
 
 ---
 
 ## Detailed Findings
 
-### P0-1: Inventory accounting bug from fractional quantity truncation
+### P0-1: Decimal inventory migration is incomplete
 **Evidence**
-- `PartUsedForm` allows decimal quantities (`app/forms/parts_used.py:34-39`).
-- `PartUsed.quantity` stores numeric decimals (`app/models/parts_used.py:47`).
-- Inventory updates cast quantity to `int(...)`, truncating decimals (`app/services/order_service.py:394`, `app/services/order_service.py:490`, `app/services/order_service.py:600`, `app/services/order_service.py:629`).
+- Inventory model now uses decimals (`app/models/inventory.py:42-43`).
+- Inventory forms still enforce integers:
+  - `quantity_in_stock` / `reorder_level` are `IntegerField` (`app/forms/inventory.py:64-73`).
+  - stock adjustment is `IntegerField` (`app/forms/inventory.py:151-154`).
+- Inventory blueprint logic is integer-oriented (`app/blueprints/inventory.py:154-155`, `237-241`, `248`).
+- Test suites are still primarily integer-based for inventory route/form behavior (`tests/unit/forms/test_inventory_form.py`, `tests/blueprint/test_inventory_routes.py`).
+- Runtime probe (UAT app context):
+  - Posting `quantity_in_stock='2.5'` and `reorder_level='1.25'` to `InventoryItemForm` fails with `"Not a valid integer value."`.
 
 **Impact**
-- Billed quantity can differ from stock deduction quantity.
-- Reversals/restores are also truncated, compounding inventory inaccuracy over time.
+- The domain model supports fractional stock, but UI and route layers reject it.
+- Team can think decimal support is complete while production users cannot enter valid fractional inventory data.
 
-**Fix window and approach**
-- Immediate.
-- Choose one consistent domain rule: integer stock units everywhere, or decimal-capable stock everywhere.
-- Align form validation, model types, service math, and tests to the same rule.
-
-### P0-2: Notification authorization gap (cross-user mark-read)
-**Evidence**
-- Route marks by raw notification id only (`app/blueprints/notifications.py:34-39`).
-- Service `mark_as_read` loads by id with no current-user scope check (`app/services/notification_service.py:106-124`).
-- Route/service tests verify success paths but do not test cross-user access denial (`tests/blueprint/test_notification_routes.py:89-116`, `tests/unit/services/test_notification_service.py:226-250`).
-
-**Impact**
-- Any authenticated user can potentially mark another user’s notification as read by id guessing.
-
-**Fix window and approach**
-- Immediate.
-- Enforce ownership/broadcast checks at service boundary and verify with explicit negative tests.
-
-### P0-3: Race condition in sequential number generation
-**Evidence**
-- Order numbers are generated by "read max -> increment" (`app/services/order_service.py:251-290`).
-- Invoice numbers use the same pattern (`app/services/invoice_service.py:213-252`).
-- Creation functions call generators before insert commit (`app/services/order_service.py:152-182`, `app/services/invoice_service.py:125-152`, `app/services/invoice_service.py:283-291`).
-
-**Impact**
-- Concurrent requests can produce duplicates and IntegrityErrors.
-- Users see intermittent failures under real multi-user load.
-
-**Fix window and approach**
-- Immediate.
-- Move to transaction-safe sequencing (DB-backed sequence/counter, locking strategy, or retry-on-conflict policy with deterministic regeneration).
-
-### P0-4: Payment/refund logic is financially incorrect
-**Evidence**
-- Payment types include `refund` (`app/models/payment.py:19`, `app/forms/invoice.py:159-166`).
-- Payment amount validator only allows positive amounts (`app/forms/invoice.py:167-171`).
-- `record_payment()` sums all payment amounts regardless type (`app/services/invoice_service.py:515-529`).
-
-**Impact**
-- Refunds entered through current workflow can increase paid totals instead of reducing them.
-- Invoice status transitions can become wrong (`paid`/`partially_paid` misclassification).
-
-**Fix window and approach**
-- Immediate.
-- Define explicit signed or typed ledger behavior (payment/deposit/refund treatment), then enforce consistently in form/service/model and add dedicated refund tests.
+**Suggested fix window and approach**
+- **Immediate**.
+- Complete decimal migration end-to-end: forms, route logic/formatting, and tests.
+- Decide precision/rounding/display policy once and apply consistently across model, forms, templates, and exports.
 
 ---
 
-### P1-1: Documentation/progress state is not trustworthy
+### P0-2: Part usage can push stock negative
 **Evidence**
-- `PROGRESS.md` marks phases 3-6 complete (`PROGRESS.md:105-168`).
-- `MEMORY.md` still says current phase is phase 1 complete / phase 2 next (`MEMORY.md:59-64`).
-- Multiple files still carry "placeholder/not yet implemented" for later phases (examples below).
+- `add_part_used()` deducts stock directly with no floor check (`app/services/order_service.py:620`).
+- Runtime probe in UAT web container:
+  - inventory started at `1.00`,
+  - adding part usage of `5.00`,
+  - resulting stock became `-4.00`.
+- There is negative-stock protection in inventory manual adjustment (`app/blueprints/inventory.py:238-243`), but not in order-part consumption flow.
 
 **Impact**
-- Team cannot rely on status docs for planning or handoffs.
-- Junior contributors will waste time reconciling conflicting source-of-truth docs.
+- Core inventory invariants are not enforced in the main consumption path.
+- Leads to invalid stock states, broken reorder signals, and unreliable valuation/usage reports.
 
-**Fix window and approach**
-- This sprint.
-- Define one authoritative progress artifact and require doc updates as part of completion criteria.
-
-### P1-2: Claimed scope completion does not match implemented scope
-**Evidence (selected)**
-- README/blueprint call for validation workflow tests and phase gates (`README.plan:93-116`, `PROJECT_BLUEPRINT.md:2677-2692`, `PROJECT_BLUEPRINT.md:2764-2774`) but `tests/validation/` is empty.
-- UAT phase files for orders/invoices/reports/tools are skipped placeholders (`tests/uat/test_uat_orders.py:5-45`, `tests/uat/test_uat_invoices.py:5-35`, `tests/uat/test_uat_reports.py:5-30`, `tests/uat/test_uat_tools.py:5-25`).
-- End-to-end UAT still skips phase 3-5 steps (`tests/uat/test_uat_e2e.py:97-136`).
-- Search design expects broad FULLTEXT behavior (`README.plan:69-72`, `PROJECT_BLUEPRINT.md:1281-1302`) but implementation is simple `ilike` over only customers/items/inventory (`app/blueprints/search.py:3-77`).
-- Import/export scope in docs includes JSON/PDF/import workflows and background processing (`README.plan:29`, `PROJECT_BLUEPRINT.md:1353-1376`) while current export routes only support CSV/XLSX (`app/blueprints/export.py:1-91`).
-- Reports roadmap specifies seven categories (`README.plan:81-84`) while current hub/routes provide five (`app/blueprints/reports.py:12-69`, `app/templates/reports/hub.html:13-123`).
-- Planned tool behavior includes workflow integration (e.g., leak logs/service conversion) but leak tool explicitly stores session-only browser data (`app/templates/tools/leak_test_log.html:216-220`).
-- Model/table scope in docs includes additional entities (e.g., attachments/saved searches) but those model implementations are absent in `app/models/`.
-
-**Impact**
-- Project can be mistakenly treated as production-ready while substantial feature contract is still open.
-
-**Fix window and approach**
-- This sprint + next sprint.
-- Re-baseline scope: either narrow docs to actual MVP or complete missing capabilities before claiming phase completion.
-
-### P1-3: Architecture consistency is degrading
-**Evidence**
-- Service package states blueprints should use service layer (`app/services/__init__.py:3-4`).
-- Newer modules largely do; older modules still embed direct query/business handling (examples: `app/blueprints/customers.py`, `app/blueprints/items.py`, `app/blueprints/inventory.py`, `app/blueprints/price_list.py`, `app/blueprints/search.py`).
-- Search service exists but route layer does not use it (`app/services/search_service.py` vs `app/blueprints/search.py`).
-
-**Impact**
-- Increased duplication and inconsistent business rules.
-- Harder for junior devs to identify the "right" layer to modify.
-
-**Fix window and approach**
-- Next sprint.
-- Finish architectural consolidation by domain, enforce via contribution guidelines and review checklist.
-
-### P1-4: Workflow and data invariants are too easy to bypass
-**Evidence**
-- Invoice status change route accepts raw form value without allowlist validation (`app/blueprints/invoices.py:224-244`).
-- `update_invoice()` sets status directly with no domain validation (`app/services/invoice_service.py:169-188`).
-- Order edit path can set status directly (`app/blueprints/orders.py:248-276`, `app/services/order_service.py:185-226`), bypassing transition rules used elsewhere.
-- `add_part_used()` does not prevent negative stock on direct/service calls (`app/services/order_service.py:575-607`).
-- Domain constraints are mostly in forms/routes; model/database constraints are minimal for status/quantity invariants.
-
-**Impact**
-- Invalid states can be introduced by non-UI paths, concurrency, or future integrations.
-
-**Fix window and approach**
-- Next sprint.
-- Centralize invariant checks in services and reinforce with DB-level constraints where feasible.
-
-### P1-5: Test strategy does not meet documented quality bar
-**Evidence**
-- Validation suite marker exists (`pyproject.toml:22`) but validation test implementation is effectively missing (`tests/validation/`).
-- UAT schedule claims phase gate usage (`tests/uat/UAT_PLAN.md:26-39`) but phase 3-5 UAT files are still placeholders/skipped.
-- No tests for key edge cases found in this review: fractional parts, refund math, notification cross-user access, number-generation concurrency.
-- Test stack is SQLite-first (`app/config.py:102`), while production target emphasizes MariaDB behavior.
-- No browser matrix/mobile/theme/font variance coverage in UAT fixtures (`tests/uat/conftest.py:40-45`).
-- Despite documented `freezegun` usage expectations (`README.plan:103`), there are no time-freezing tests (`freezegun`/`freeze_time`) in `tests/` for date-sensitive logic.
-
-**Impact**
-- Reported high coverage can hide untested failure modes and environment-specific regressions.
-
-**Fix window and approach**
-- Immediate planning, staged implementation over next 1-2 sprints.
-- Add targeted risk-driven tests first (security, billing math, inventory integrity, concurrency, MariaDB parity), then expand UAT matrix.
+**Suggested fix window and approach**
+- **Immediate**.
+- Enforce non-negative stock invariants in service-layer deduction logic (including auto-deduct paths), with explicit behavior for insufficient stock.
+- Add targeted tests for insufficient inventory and concurrent deductions.
 
 ---
 
-### P2-1: Efficiency/scalability concerns for real-world data sizes
+### P1-1: Tax-rate semantics and display are inconsistent/misleading
 **Evidence**
-- Search relies on multi-column `ilike` scans (`app/blueprints/search.py:35-77`, `app/services/search_service.py:58-153`).
-- Export reads full datasets into memory (`query.all()` across export functions; e.g., `app/services/export_service.py:137`, `app/services/export_service.py:179`, `app/services/export_service.py:222`, `app/services/export_service.py:261`).
-- Revenue monthly aggregation pulls rows and groups in Python (`app/services/report_service.py:89-105`).
-- Order summary traverses dynamic relationships with repeated `.all()` calls (`app/services/order_service.py:750-764`).
+- Invoice form enforces `tax_rate` as decimal fraction `0..1` (`app/forms/invoice.py:67-72`).
+- UAT doc instructs entering `8.25` for 8.25% (`docs/uat/UAT-07-invoices.md:46`).
+- Invoice totals use fractional rate (`app/models/invoice.py:190-191`), but detail template labels it as percent without scaling (`app/templates/invoices/detail.html:160`).
 
 **Impact**
-- Slowdowns and memory pressure will appear as data volume grows.
+- Operators can enter incorrect tax values or misread displayed percentages.
+- Billing correctness and user trust are affected even when math logic is technically correct for fraction inputs.
 
-**Fix window and approach**
-- Next 1-2 sprints.
-- Prioritize query/index strategy and streaming/export pagination for larger datasets.
-
-### P2-2: Junior contributor readability is weaker than it should be
-**Evidence**
-- Very large modules: `orders.py` (605 lines), `order_service.py` (788), `invoices.py` (356), `invoice_service.py` (548).
-- Frequent repeated field mapping and choice-population code in route handlers (`app/blueprints/orders.py`, `app/blueprints/invoices.py`).
-- Pattern inconsistency (service-first vs direct ORM) increases cognitive overhead.
-
-**Impact**
-- Slower onboarding and higher regression risk for less experienced contributors.
-
-**Fix window and approach**
-- Next 1-2 sprints.
-- Split by sub-domain/use-case and move repeated mapping/population logic into reusable helpers/services.
-
-### P2-3: Repository hygiene and stale placeholders need cleanup
-**Evidence**
-- Placeholder comments conflict with claimed completion: dashboard "stub" (`app/blueprints/dashboard.py:3-5`), notification polling placeholder (`app/static/js/app.js:96-116`).
-- Admin nav link is non-functional placeholder (`app/templates/base.html:243-245`).
-- Empty placeholder packages/files: `app/tasks/__init__.py`, `app/utils/__init__.py`, `tests/validation/__init__.py`.
-- Workspace artifact directory `.playwright-mcp/` appears to contain ephemeral run outputs.
-- Packaging metadata mismatch: `pyproject.toml` references `README.md` (`pyproject.toml:9`) but repository has no `README.md`.
-
-**Impact**
-- Increases confusion, especially for new contributors and release automation.
-
-**Fix window and approach**
-- Next cleanup pass.
-- Remove or quarantine artifacts/placeholders and align metadata/documentation with actual repo contents.
-
-### P2-4: Broad exception handling hides actionable failure causes
-**Evidence**
-- Health check DB probe uses `except Exception` (`app/blueprints/health.py:24-29`).
-
-**Impact**
-- Endpoint still returns degraded status, but operational root-cause detail is masked for crash triage and production debugging.
-
-**Fix window and approach**
-- Next sprint.
-- Catch expected DB operational exceptions explicitly and log unexpected failures with enough structured context for debugging.
+**Suggested fix window and approach**
+- **This sprint**.
+- Standardize tax input/display semantics (fraction vs percent) in form labels/help text, docs/UAT, and rendered invoice detail.
 
 ---
 
-## Security and Crash Review (Surface-Level)
-### Key patterns to correct
-- Authorization checks should be enforced in service layer for user-scoped resources.
-- Business-critical numeric operations need atomicity and invariant enforcement (inventory, invoice totals, numbering).
-- Free-form status updates should be blocked by allowlists and transition rules.
-- Concurrency-sensitive workflows should be tested against MariaDB transaction behavior, not SQLite only.
-- Operational endpoints should avoid broad exception catches that suppress actionable diagnostics.
+### P1-2: Edit forms expose status fields that updates intentionally ignore
+**Evidence**
+- Order edit form shows editable status (`app/templates/orders/form.html:68-71`).
+- Order edit route submits `status` (`app/blueprints/orders.py:260`), but service update ignores status and requires transition path (`app/services/order_service.py:235-240`), confirmed by tests (`tests/unit/services/test_order_service.py:293-303`).
+- Invoice edit form similarly shows status (`app/templates/invoices/form.html:38-40`), but update path does not apply status (`app/services/invoice_service.py:192-204`), and tests assert this (`tests/blueprint/test_invoice_routes.py:307-308`, `tests/unit/services/test_invoice_service.py:930-942`).
 
-### Glaring concrete issues observed
-- Cross-user notification mark-read access.
-- Refund/payment arithmetic inconsistency.
-- Race-prone document numbering.
-- Inventory quantity truncation leading to stock drift.
+**Impact**
+- UX contradicts domain rules.
+- Junior contributors and users get a misleading mental model of status lifecycle behavior.
 
-## Test Gaps That Should Be Addressed Next
-No tests were run in this review. Suggested execution plan after fixes:
-1. Add/enable missing **validation** suite for documented workflows.
-2. Implement currently skipped UAT phase files (`orders`, `invoices`, `reports`, `tools`) and remove stale skip markers.
-3. Add targeted tests for:
-   - Notification ownership enforcement.
-   - Refund/deposit/payment math behavior.
-   - Fractional/integer inventory semantics.
-   - Concurrent order/invoice creation collisions.
-   - Negative stock prevention under concurrent updates.
-   - Deterministic date-sensitive behavior (overdue/aging/promised-date logic) using time-freezing.
-4. Run critical suites against **MariaDB** in CI (not only SQLite) for parity.
-5. Add browser coverage for at least one mobile viewport and one non-Chromium engine, plus theme/font smoke checks.
+**Suggested fix window and approach**
+- **This sprint**.
+- Align UI with actual workflow: either remove edit-form status controls or route edits through validated transition logic with clear feedback.
 
-## Recommended Sequencing
-1. Fix P0 items first and add tests for each before any feature expansion.
-2. Re-baseline documentation/progress to match reality.
-3. Consolidate architecture (service boundaries + invariants).
-4. Close testing strategy gaps and reinstate phase-gate credibility.
-5. Address P2 scalability/onboarding/hygiene cleanup.
+---
+
+### P1-3: Architecture still deviates from declared service-layer pattern
+**Evidence**
+- Services package explicitly states blueprints should call services (`app/services/__init__.py:3-4`).
+- Phase-2 blueprints still do direct ORM/session writes (examples: `app/blueprints/customers.py`, `items.py`, `inventory.py`, `price_list.py`, plus admin routes).
+- Several service modules remain largely unused by blueprints (`customer_service`, `inventory_service`, `price_list_service`, `search_service`, `tag_service`).
+
+**Impact**
+- Increases duplicate logic and inconsistent behavior across domains.
+- Makes onboarding harder: contributors cannot rely on one consistent layer for business rules.
+
+**Suggested fix window and approach**
+- **Next sprint**.
+- Finish refactoring high-churn phase-2 blueprints to service calls.
+- Define and enforce a contribution rule: business logic in services, not routes.
+
+---
+
+### P1-4: Config hierarchy documentation conflicts with initialization order
+**Evidence**
+- Config docs state hierarchy includes `instance/config.py` above app defaults (`app/config.py:3`, `PROJECT_BLUEPRINT.md:1752-1757`).
+- App factory runs `config_class.init_app(app)` **before** loading `instance/config.py` (`app/__init__.py:55-62`).
+- `ProductionConfig.init_app` performs strict default-secret checks (`app/config.py:97-109`).
+
+**Impact**
+- If a deployment relies on `instance/config.py` for secret overrides, startup validation can fail before those values are loaded.
+- Operational behavior diverges from documented config model.
+
+**Suggested fix window and approach**
+- **Next sprint**.
+- Reconcile order-of-operations with documented hierarchy and document exactly which sources are valid for production secrets.
+
+---
+
+### P1-5: Documentation drift remains significant
+**Evidence**
+- `MEMORY.md` still states current phase is “1 complete, phase 2 next” (`MEMORY.md:61-64`) while `PROGRESS.md` claims post-phase-6 completion (`PROGRESS.md:156-241`).
+- `MEMORY.md` lists blueprints/tables not present in code (e.g., `billing`, `import_data`, `api`; `system_config`, `saved_searches`, `attachments`) (`MEMORY.md:27`, `39`).
+- Actual registered blueprints are 16 and do not include those entries (`app/__init__.py:116-146`).
+- `tests/uat/UAT_PLAN.md` still marks orders/invoices/reports/tools as placeholders (`tests/uat/UAT_PLAN.md:130-133`) despite real test files existing (`tests/uat/test_uat_orders.py`, `test_uat_invoices.py`, `test_uat_reports.py`, `test_uat_tools.py`).
+- UAT docs still reference `http://localhost:8080` while UAT compose exposes `8081` (`docs/uat/UAT-05-price-list.md:10`, `UAT-06-service-orders.md:10`, `UAT-07-invoices.md:10`, `UAT-08-reports.md:10`; `docker-compose.uat.yml:20`).
+- UAT order status terminology does not match implemented status set (`docs/uat/UAT-06-service-orders.md:107-142` vs `app/models/service_order.py:23-33`).
+
+**Impact**
+- Team planning and onboarding become unreliable.
+- QA scripts encourage incorrect data entry and wrong expectations.
+
+**Suggested fix window and approach**
+- **Immediate**.
+- Re-baseline docs against current code and gate “complete” status on doc parity checks.
+
+---
+
+### P1-6: Test quality and realism are still below project claims
+**Evidence**
+- Core test stack is SQLite in-memory (`tests/conftest.py:21`; `app/config.py:116`), not MariaDB parity by default.
+- UAT tests contain many conditional assertions that can silently pass without validating behavior (examples: `tests/uat/test_uat_orders.py:44`, `54`; `tests/uat/test_uat_invoices.py:31`; `tests/uat/test_uat_e2e.py:109-117`, `133`, `174`; `tests/uat/test_uat_price_list.py:36-40`; `tests/uat/test_uat_customers.py:58`, `78`).
+- UAT fixture is fixed desktop viewport only (`tests/uat/conftest.py:44`).
+- UAT Dockerfile installs Chromium only (`Dockerfile.uat:45`).
+- Missing coverage for important edge/business risks remains visible:
+  - no insufficient-stock tests for order part deduction path,
+  - no explicit cross-user negative tests for notifications mark-read behavior.
+
+**Impact**
+- High coverage numbers may still miss realistic breakage modes.
+- Browser/device/theme/config variance risk is largely untested.
+
+**Suggested fix window and approach**
+- **Immediate planning**, staged over next sprint.
+- Prioritize risk-based tests: negative stock, insufficient stock, concurrency, auth ownership negatives, MariaDB parity, mobile/browser matrix.
+
+---
+
+### P2-1: Scalability bottlenecks remain in search/export/reporting
+**Evidence**
+- Search is still `ILIKE`-based in both blueprint and service (`app/blueprints/search.py:35-77`, `app/services/search_service.py:58-153`) despite FULLTEXT requirements (`README.plan:69-72`, `PROJECT_BLUEPRINT.md:1281-1302`).
+- Exports materialize full result sets with `.all()` (e.g., `app/services/export_service.py:137`, `179`, `222`, `261`, `310`, `351`, `394`, `433`).
+- Revenue monthly aggregation uses Python-side grouping (`app/services/report_service.py:89-105`).
+- Order/invoice aggregation paths iterate nested dynamic relationships with repeated `.all()` (e.g., `app/services/order_service.py:770-784`, `app/services/invoice_service.py:357-393`).
+
+**Impact**
+- Performance and memory behavior will degrade with real historical data volumes.
+
+**Suggested fix window and approach**
+- **Next 1-2 sprints**.
+- Move to indexed search strategy, chunked/streaming exports, and SQL-side aggregation where practical.
+
+---
+
+### P2-2: Maintainability/onboarding friction is still high
+**Evidence**
+- Large multi-responsibility files:
+  - `app/services/order_service.py` (808 lines),
+  - `app/services/invoice_service.py` (624),
+  - `app/blueprints/orders.py` (614),
+  - `app/blueprints/invoices.py` (365).
+- Workflow constants duplicated across models/forms/services/templates (status sets and transition maps in multiple locations), e.g.:
+  - `app/services/order_service.py:35-45`
+  - `app/forms/order.py:29-39`
+  - `app/models/service_order.py:23-33`
+  - `app/templates/orders/detail.html:10-32`
+  - similar duplication in invoice equivalents.
+
+**Impact**
+- More places to update for each policy change.
+- Junior developers have a harder time identifying the authoritative source of truth.
+
+**Suggested fix window and approach**
+- **Next 1-2 sprints**.
+- Split large modules by use-case and centralize status/transition constants in one domain layer.
+
+---
+
+### P2-3: Repo hygiene and stale artifacts still need cleanup
+**Evidence**
+- Empty template/static directories remain (`app/templates/admin/settings`, `app/templates/admin/data`, `app/templates/billing`, `app/templates/partials`, `app/static/img`, `app/static/vendor`).
+- Tag macro references missing endpoint (`app/templates/macros/tags.html:23` references `api.tag_suggestions`, no `api` blueprint exists).
+- Migration file ownership anomaly persists (`migrations/versions/46a737a590f6_phase_2_customers_service_items_drysuit_.py` owned by `dnsmasq:systemd-journal`).
+
+**Impact**
+- Adds noise for onboarding and release hygiene.
+
+**Suggested fix window and approach**
+- **Cleanup pass** after P0/P1 fixes.
+- Remove or consolidate dead artifacts; resolve ownership/permissions consistency.
+
+---
+
+## Surface Security and Crash Pattern Review
+Current pattern-level concerns to correct:
+- Inventory/financial invariants must be enforced in service layer, not only in selected routes/forms.
+- Documentation promises (lockout, config hierarchy, feature readiness) should match deployed behavior to avoid operational/security assumptions.
+- Negative-path tests should explicitly verify ownership and invalid-input handling for critical routes/services.
+
+Notable specific risk observed now:
+- `add_part_used` allowing negative stock is a concrete integrity defect (see P0-2).
+
+## Suggested Fix Sequence (When and How)
+1. **Immediate (P0)**: close inventory integrity holes (decimal path completion + no-negative-stock invariant), then backfill targeted tests.
+2. **This sprint (P1)**: resolve billing/status UX mismatches and documentation/UAT drift.
+3. **Next sprint (P1/P2)**: complete service-layer consolidation and config hierarchy alignment.
+4. **Next 1-2 sprints (P2)**: address scalability and module decomposition.
+5. **Cleanup pass (P2)**: remove stale artifacts and clean migration ownership/hygiene.
+
+## Recommended Tests to Run After Fixes
+Do not run until the team is ready (per request). Recommended next execution set:
+1. Inventory decimal acceptance tests (form + route + service + export) including fractional stock adjustment.
+2. Insufficient stock and concurrent part deduction tests (service + route).
+3. MariaDB-backed CI subset for transactions, constraints, numeric precision, and collation/search behavior.
+4. Billing UX tests for tax input/display semantics and rounding.
+5. UAT hardening:
+   - remove conditional “if exists/visible” soft assertions,
+   - add at least one mobile viewport,
+   - add at least one non-Chromium browser run,
+   - add theme/font smoke checks.
+6. Security negative tests:
+   - cross-user notification read attempts,
+   - tampered status transitions,
+   - invalid payloads across key write routes.
+
+## Runtime Probe Appendix (Non-Test Validation)
+- Environment check: UAT stack is served on `http://localhost:8081` (`docker-compose.uat.yml:20`), not `8080`.
+- Probe 1 (inventory form): fractional `quantity_in_stock`/`reorder_level` fails validation as integer.
+- Probe 2 (service layer): consuming quantity `5.00` from stock `1.00` produced `inventory_after = -4.00`.
