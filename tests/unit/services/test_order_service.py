@@ -290,6 +290,29 @@ class TestUpdateOrder:
         # Unchanged fields
         assert updated.status == "intake"
 
+    def test_update_order_cannot_change_status_directly(self, app, db_session):
+        """update_order() ignores status in the data dict; status must go through change_status()."""
+        order = _make_order(db_session, status="intake")
+
+        updated = order_service.update_order(
+            order.id,
+            {"status": "completed", "description": "Trying to skip workflow"},
+        )
+
+        assert updated.status == "intake"
+        assert updated.description == "Trying to skip workflow"
+
+    def test_update_order_rejects_invalid_priority(self, app, db_session):
+        """update_order() does not apply an invalid priority value."""
+        order = _make_order(db_session, priority="normal")
+
+        updated = order_service.update_order(
+            order.id,
+            {"priority": "ultra_urgent"},
+        )
+
+        assert updated.priority == "normal"
+
 
 # =========================================================================
 # delete_order
@@ -371,6 +394,24 @@ class TestChangeStatus:
         result_order, success = order_service.change_status(order.id, "intake")
 
         assert success is True
+        assert result_order.status == "intake"
+
+    def test_change_status_rejects_empty(self, app, db_session):
+        """change_status() with an empty string returns (order, False)."""
+        order = _make_order(db_session, status="intake")
+
+        result_order, success = order_service.change_status(order.id, "")
+
+        assert success is False
+        assert result_order.status == "intake"
+
+    def test_change_status_rejects_none(self, app, db_session):
+        """change_status() with None returns (order, False)."""
+        order = _make_order(db_session, status="intake")
+
+        result_order, success = order_service.change_status(order.id, None)
+
+        assert success is False
         assert result_order.status == "intake"
 
 

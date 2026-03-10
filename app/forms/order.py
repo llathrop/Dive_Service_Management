@@ -64,11 +64,13 @@ class ServiceOrderForm(FlaskForm):
     status = SelectField(
         "Status",
         choices=[("", "-- Select --")] + VALID_STATUSES,
+        validators=[DataRequired()],
         default="intake",
     )
     priority = SelectField(
         "Priority",
         choices=[("", "-- Select --")] + VALID_PRIORITIES,
+        validators=[DataRequired()],
         default="normal",
     )
     assigned_tech_id = SelectField(
