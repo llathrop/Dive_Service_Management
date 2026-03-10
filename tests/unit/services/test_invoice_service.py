@@ -351,17 +351,17 @@ class TestUpdateInvoice:
     """Tests for update_invoice()."""
 
     def test_update_invoice(self, app, db_session):
-        """update_invoice() updates specified fields."""
+        """update_invoice() updates specified fields (but not status)."""
         invoice = _make_invoice(db_session)
 
         updated = invoice_service.update_invoice(
             invoice.id,
-            {"notes": "Updated notes", "status": "sent"},
+            {"notes": "Updated notes"},
         )
 
         assert updated is not None
         assert updated.notes == "Updated notes"
-        assert updated.status == "sent"
+        assert updated.status == "draft"  # status unchanged — use change_status()
 
     def test_update_invoice_recalculates_totals(self, app, db_session):
         """update_invoice() recalculates totals when tax_rate changes."""
@@ -854,3 +854,126 @@ class TestGenerateFromOrder:
         assert "part" in types
         assert "labor" in types
         assert len(items) == 3
+
+
+# =========================================================================
+# change_status (P1-1)
+# =========================================================================
+
+
+class TestChangeStatus:
+    """Tests for change_status() transition validation."""
+
+    def test_invoice_change_status_valid_transition(self, app, db_session):
+        """draft -> sent succeeds."""
+        invoice = _make_invoice(db_session, status="draft")
+
+        result_invoice, success = invoice_service.change_status(invoice.id, "sent")
+
+        assert success is True
+        assert result_invoice is not None
+        assert result_invoice.status == "sent"
+
+    def test_invoice_change_status_invalid_transition(self, app, db_session):
+        """draft -> paid fails (not in allowed transitions)."""
+        invoice = _make_invoice(db_session, status="draft")
+
+        result_invoice, success = invoice_service.change_status(invoice.id, "paid")
+
+        assert success is False
+        assert result_invoice is not None
+        assert result_invoice.status == "draft"  # unchanged
+
+    def test_invoice_change_status_void_is_terminal(self, app, db_session):
+        """void -> anything fails (void is terminal)."""
+        invoice = _make_invoice(db_session, status="void")
+
+        for target in ["draft", "sent", "paid", "refunded"]:
+            result_invoice, success = invoice_service.change_status(invoice.id, target)
+            assert success is False
+            assert result_invoice.status == "void"
+
+    def test_invoice_change_status_paid_to_refunded(self, app, db_session):
+        """paid -> refunded succeeds."""
+        invoice = _make_invoice(db_session, status="paid")
+
+        result_invoice, success = invoice_service.change_status(invoice.id, "refunded")
+
+        assert success is True
+        assert result_invoice.status == "refunded"
+
+    def test_invoice_change_status_sets_paid_date(self, app, db_session):
+        """Transitioning to 'paid' sets paid_date to today."""
+        invoice = _make_invoice(db_session, status="sent")
+
+        result_invoice, success = invoice_service.change_status(invoice.id, "paid")
+
+        assert success is True
+        assert result_invoice.paid_date == date.today()
+
+    def test_invoice_change_status_not_found(self, app, db_session):
+        """change_status() returns (None, False) for a non-existent ID."""
+        result_invoice, success = invoice_service.change_status(99999, "sent")
+
+        assert result_invoice is None
+        assert success is False
+
+    def test_invoice_change_status_empty_status(self, app, db_session):
+        """change_status() with empty new_status returns (invoice, False)."""
+        invoice = _make_invoice(db_session, status="draft")
+
+        result_invoice, success = invoice_service.change_status(invoice.id, "")
+
+        assert success is False
+        assert result_invoice is not None
+
+    def test_update_invoice_does_not_change_status(self, app, db_session):
+        """status in data dict is ignored by update_invoice()."""
+        invoice = _make_invoice(db_session, status="draft")
+
+        updated = invoice_service.update_invoice(
+            invoice.id,
+            {"status": "paid", "notes": "Updated"},
+        )
+
+        assert updated is not None
+        assert updated.notes == "Updated"
+        assert updated.status == "draft"  # status unchanged
+
+
+# =========================================================================
+# Line Item negative price validation (P1-6)
+# =========================================================================
+
+
+class TestLineItemNegativePrice:
+    """Tests for negative unit_price validation in add_line_item."""
+
+    def test_add_line_item_negative_price_non_discount_fails(self, app, db_session):
+        """ValueError raised when unit_price < 0 for non-discount type."""
+        invoice = _make_invoice(db_session)
+
+        data = {
+            "line_type": "service",
+            "description": "Negative service",
+            "quantity": Decimal("1.00"),
+            "unit_price": Decimal("-50.00"),
+        }
+        with pytest.raises(ValueError, match="non-negative"):
+            invoice_service.add_line_item(invoice.id, data)
+
+    def test_add_line_item_negative_price_discount_allowed(self, app, db_session):
+        """Discount line items may have negative unit_price."""
+        invoice = _make_invoice(db_session)
+
+        data = {
+            "line_type": "discount",
+            "description": "Coupon discount",
+            "quantity": Decimal("1.00"),
+            "unit_price": Decimal("-25.00"),
+        }
+        item = invoice_service.add_line_item(invoice.id, data)
+
+        assert item is not None
+        assert item.unit_price == Decimal("-25.00")
+        assert item.line_total == Decimal("-25.00")
