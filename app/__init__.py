@@ -51,6 +51,10 @@ def create_app(config_class=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_class)
 
+    # Run config-class-specific validation (e.g. ProductionConfig checks secrets)
+    if hasattr(config_class, 'init_app'):
+        config_class.init_app(app)
+
     # Ensure the instance folder exists (Flask doesn't create it automatically)
     os.makedirs(app.instance_path, exist_ok=True)
 

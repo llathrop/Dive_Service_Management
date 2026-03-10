@@ -94,6 +94,20 @@ class ProductionConfig(Config):
     # In production, SECRET_KEY and SECURITY_PASSWORD_SALT MUST be set via env vars.
     # The defaults in Config are only for development convenience.
 
+    @classmethod
+    def init_app(cls, app):
+        """Validate production configuration at startup."""
+        dangerous_defaults = {
+            "SECRET_KEY": "change-me-in-production",
+            "SECURITY_PASSWORD_SALT": "change-me-salt-in-production",
+        }
+        for key, dangerous_value in dangerous_defaults.items():
+            if app.config.get(key) == dangerous_value:
+                raise RuntimeError(
+                    f"SECURITY ERROR: {key} is still set to the default value. "
+                    f"Set the DSM_{key} environment variable before running in production."
+                )
+
 
 class TestingConfig(Config):
     """Testing configuration with in-memory SQLite and optimizations."""
