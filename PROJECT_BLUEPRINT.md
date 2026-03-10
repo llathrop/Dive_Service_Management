@@ -1432,9 +1432,10 @@ Five containers orchestrated via Docker Compose (three in lightweight Pi profile
 
 **1. `dsm-web` (Application Container)**
 - Base image: `python:3.12-slim` (multi-arch: amd64, arm64)
-- Runs: Gunicorn with Flask app
+- Runs: Gunicorn with Flask app, via `docker-entrypoint.sh`
+- **Entrypoint** (`docker-entrypoint.sh`): On startup, if the process is gunicorn, automatically runs `flask db upgrade` (applies any pending migrations) and `flask seed-db` (ensures roles, categories, and defaults exist) before starting the server. Worker and beat containers skip this step.
 - Exposes: port 8080 (configurable)
-- Volumes: 
+- Volumes:
   - `./uploads:/app/uploads` (uploaded logos, import files)
   - `./logs:/app/logs` (application logs)
   - `./instance:/app/instance` (Flask instance folder for local config overrides)
@@ -1472,7 +1473,25 @@ Five containers orchestrated via Docker Compose (three in lightweight Pi profile
 - No port exposure
 - Resource limits: `mem_limit: 128m`
 
-### 8.2 Docker Compose Configuration
+### 8.2 Hard Constraints: Data Persistence and Upgrades
+
+These are non-negotiable requirements for the production deployment:
+
+1. **Database persistence**: The production database MUST use a named Docker volume (`dsm-db-data`) so that all data survives container restarts, host reboots, and image rebuilds. User-created data (customers, orders, invoices, users) must never be lost due to routine container operations.
+
+2. **Upload/file persistence**: All user-uploaded files (logos, imports, exports, attachments) MUST be stored on bind-mounted host directories (`./uploads/`, `./logs/`, `./instance/`) that persist independently of the container lifecycle.
+
+3. **Automatic schema migration on startup**: The web container's entrypoint script (`docker-entrypoint.sh`) MUST run `flask db upgrade` before starting the application server. This ensures that when the application code is updated (e.g., `docker compose pull && docker compose up -d`), any new Alembic migration scripts are applied automatically without manual intervention. The application must be able to detect that the database schema is from a prior version and upgrade to the current version.
+
+4. **Automatic seeding on startup**: The entrypoint MUST also run `flask seed-db` to ensure required reference data (roles, price list categories) exists. The seed command must be idempotent — it skips records that already exist.
+
+5. **Migration-only for schema changes**: Every database schema change MUST be accompanied by an Alembic migration script. Direct DDL changes against production are not permitted. The migration chain must be linear and unbroken so that `flask db upgrade` can always advance from any prior state to HEAD.
+
+6. **UAT environment is ephemeral**: The UAT compose (`docker-compose.uat.yml`) intentionally uses `tmpfs` for the database — it gets a fresh copy each time. UAT is for testing only; production data lives exclusively in the production compose.
+
+7. **Graceful migration failures**: If `flask db upgrade` fails on startup (e.g., due to a corrupt migration chain), the entrypoint logs a warning but still attempts to start the application. This allows debugging access via the running container rather than a crash loop.
+
+### 8.3 Docker Compose Configuration
 
 ```yaml
 # docker-compose.yml structure
@@ -1554,7 +1573,7 @@ networks:
     driver: bridge
 ```
 
-### 8.3 ARM/x86 Compatibility
+### 8.4 ARM/x86 Compatibility
 
 - All base images (`python:3.12-slim`, `mariadb:11-lts`, `redis:7-alpine`) provide multi-architecture images supporting both `linux/amd64` and `linux/arm64`
 - The application Dockerfile uses no architecture-specific dependencies
@@ -1564,7 +1583,7 @@ networks:
 - Build for specific platform: `docker compose build --platform linux/arm64`
 - Multi-arch build for registry: `docker buildx build --platform linux/amd64,linux/arm64 -t dsm-web:latest .`
 
-### 8.4 Networking
+### 8.5 Networking
 
 - All containers share `dsm-net` bridge network
 - Only `dsm-web` port is exposed to host (configurable via `DSM_PORT` env var)
@@ -1572,7 +1591,7 @@ networks:
 - Network adapter binding: Gunicorn binds to `0.0.0.0:8080` inside container; Docker `-p` flag controls host binding (e.g., `-p 192.168.1.100:8080:8080` to bind to specific adapter)
 - Docker Compose `ports` syntax: `"${DSM_BIND_ADDRESS:-0.0.0.0}:${DSM_PORT:-8080}:8080"`
 
-### 8.5 Dockerfile
+### 8.6 Dockerfile
 
 ```dockerfile
 # Multi-stage build
@@ -1610,10 +1629,12 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
+# Run migrations and seed on startup, then start gunicorn
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "4", "app:create_app()"]
 ```
 
-### 8.6 Lightweight Deployment Profile (Pi-Optimized)
+### 8.7 Lightweight Deployment Profile (Pi-Optimized)
 
 A `docker-compose.lightweight.yml` override file provides a reduced-resource configuration for Raspberry Pi:
 
@@ -1626,7 +1647,7 @@ Usage: `docker compose -f docker-compose.yml -f docker-compose.lightweight.yml u
 
 The setup script auto-detects Pi hardware and offers the lightweight profile during first-time setup.
 
-### 8.7 Deployment Script and First-Time Setup
+### 8.8 Deployment Script and First-Time Setup
 
 A single interactive setup script (`scripts/setup.sh`) handles first-time installation on a fresh host. The goal is: clone the repo, run one script, answer a few prompts, and the system is running.
 
