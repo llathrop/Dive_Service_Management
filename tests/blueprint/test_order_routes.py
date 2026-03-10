@@ -666,6 +666,33 @@ class TestPartsUsed:
             inv_item = db.session.get(InventoryItem, inv_id)
             assert inv_item.quantity_in_stock == 8  # 10 - 2
 
+    def test_add_part_catches_value_error(self, logged_in_client, app, db_session):
+        """When add_part_used raises ValueError, the error is flashed, not a 500."""
+        from unittest.mock import patch
+
+        with app.app_context():
+            order, oi, _, _ = _create_order_with_item(db_session)
+            oi_id = oi.id
+            inv = _create_inventory_item(db_session)
+            inv_id = inv.id
+
+        with patch(
+            "app.blueprints.orders.order_service.add_part_used",
+            side_effect=ValueError("Inventory item 99999 not found."),
+        ):
+            response = logged_in_client.post(
+                f"/orders/items/{oi_id}/parts/add",
+                data={
+                    "inventory_item_id": str(inv_id),
+                    "quantity": "1.00",
+                    "unit_price_at_use": "5.00",
+                },
+                follow_redirects=True,
+            )
+        # Should redirect with flash, not 500
+        assert response.status_code == 200
+        assert b"not found" in response.data
+
     def test_remove_part_restores_inventory(self, logged_in_client, app, db_session):
         with app.app_context():
             order, oi, _, _ = _create_order_with_item(db_session)
