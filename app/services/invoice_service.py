@@ -38,6 +38,17 @@ SORTABLE_FIELDS = {
 
 INVOICE_NUMBER_PATTERN = re.compile(r"^INV-(\d{4})-(\d{5})$")
 
+INVOICE_STATUS_TRANSITIONS = {
+    "draft": {"sent", "void"},
+    "sent": {"viewed", "partially_paid", "paid", "overdue", "void"},
+    "viewed": {"partially_paid", "paid", "overdue", "void"},
+    "partially_paid": {"paid", "overdue", "void"},
+    "paid": {"refunded"},
+    "overdue": {"partially_paid", "paid", "void"},
+    "void": set(),
+    "refunded": set(),
+}
+
 
 # =========================================================================
 # Invoice CRUD
@@ -180,7 +191,6 @@ def update_invoice(invoice_id, data):
 
     for field in (
         "customer_id",
-        "status",
         "issue_date",
         "due_date",
         "tax_rate",
@@ -216,6 +226,36 @@ def void_invoice(invoice_id):
     invoice.status = "void"
     db.session.commit()
     return invoice
+
+
+def change_status(invoice_id, new_status):
+    """Transition invoice to new status with validation.
+
+    Only transitions allowed by INVOICE_STATUS_TRANSITIONS are permitted.
+    When transitioning to 'paid', automatically sets the paid_date to today.
+
+    Args:
+        invoice_id: The primary key of the invoice.
+        new_status: The desired new status string.
+
+    Returns:
+        A tuple of (invoice, success).  ``invoice`` is the Invoice instance
+        (or None if not found); ``success`` is True when the transition
+        was applied, False otherwise.
+    """
+    invoice = get_invoice(invoice_id)
+    if invoice is None:
+        return None, False
+    if not new_status:
+        return invoice, False
+    allowed = INVOICE_STATUS_TRANSITIONS.get(invoice.status, set())
+    if new_status not in allowed:
+        return invoice, False
+    invoice.status = new_status
+    if new_status == "paid":
+        invoice.paid_date = date.today()
+    db.session.commit()
+    return invoice, True
 
 
 # =========================================================================
@@ -445,6 +485,10 @@ def add_line_item(invoice_id, data):
 
     quantity = Decimal(str(data.get("quantity", 1)))
     unit_price = Decimal(str(data["unit_price"]))
+
+    if unit_price < 0 and data["line_type"] != "discount":
+        raise ValueError("Unit price must be non-negative for non-discount line items.")
+
     line_total = quantity * unit_price
 
     line_item = InvoiceLineItem(
