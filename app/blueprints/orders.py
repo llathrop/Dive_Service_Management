@@ -464,15 +464,18 @@ def add_part(item_id):
     ]
 
     if form.validate_on_submit():
-        order_service.add_part_used(
-            order_item_id=item_id,
-            inventory_item_id=form.inventory_item_id.data,
-            quantity=form.quantity.data,
-            unit_price_at_use=form.unit_price_at_use.data,
-            notes=form.notes.data,
-            added_by=current_user.id,
-        )
-        flash("Part added.", "success")
+        try:
+            order_service.add_part_used(
+                order_item_id=item_id,
+                inventory_item_id=form.inventory_item_id.data,
+                quantity=form.quantity.data,
+                unit_price_at_use=form.unit_price_at_use.data,
+                notes=form.notes.data,
+                added_by=current_user.id,
+            )
+            flash("Part added.", "success")
+        except ValueError as exc:
+            flash(str(exc), "error")
     else:
         for field, errors in form.errors.items():
             for error in errors:
@@ -526,15 +529,18 @@ def add_labor(item_id):
     form.tech_id.choices = [("", "-- Select --")] + _get_tech_choices()
 
     if form.validate_on_submit():
-        order_service.add_labor_entry(
-            order_item_id=item_id,
-            tech_id=form.tech_id.data,
-            hours=form.hours.data,
-            hourly_rate=form.hourly_rate.data,
-            description=form.description.data,
-            work_date=form.work_date.data,
-        )
-        flash("Labor entry added.", "success")
+        try:
+            order_service.add_labor_entry(
+                order_item_id=item_id,
+                tech_id=form.tech_id.data,
+                hours=form.hours.data,
+                hourly_rate=form.hourly_rate.data,
+                description=form.description.data,
+                work_date=form.work_date.data,
+            )
+            flash("Labor entry added.", "success")
+        except ValueError as exc:
+            flash(str(exc), "error")
     else:
         for field, errors in form.errors.items():
             for error in errors:
@@ -585,13 +591,16 @@ def add_note(item_id):
     form = ServiceNoteForm()
 
     if form.validate_on_submit():
-        order_service.add_service_note(
-            order_item_id=item_id,
-            note_text=form.note_text.data,
-            note_type=form.note_type.data,
-            created_by=current_user.id,
-        )
-        flash("Note added.", "success")
+        try:
+            order_service.add_service_note(
+                order_item_id=item_id,
+                note_text=form.note_text.data,
+                note_type=form.note_type.data,
+                created_by=current_user.id,
+            )
+            flash("Note added.", "success")
+        except ValueError as exc:
+            flash(str(exc), "error")
     else:
         for field, errors in form.errors.items():
             for error in errors:
