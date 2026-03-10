@@ -591,10 +591,21 @@ def add_part_used(
 
     Returns:
         The newly created PartUsed instance.
+
+    Raises:
+        ValueError: If inventory item not found or insufficient stock.
     """
     inv_item = db.session.get(InventoryItem, inventory_item_id)
     if inv_item is None:
         raise ValueError(f"Inventory item {inventory_item_id} not found.")
+
+    # Prevent deductions that would drive stock negative
+    new_stock = inv_item.quantity_in_stock - quantity
+    if new_stock < 0:
+        raise ValueError(
+            f"Insufficient stock for '{inv_item.name}': "
+            f"have {inv_item.quantity_in_stock}, need {quantity}."
+        )
 
     # Snapshot cost from inventory
     unit_cost = inv_item.purchase_cost if inv_item.purchase_cost is not None else Decimal("0.00")
@@ -616,8 +627,8 @@ def add_part_used(
     )
     db.session.add(part)
 
-    # Deduct from inventory stock
-    inv_item.quantity_in_stock -= quantity
+    # Deduct from inventory stock (already validated non-negative above)
+    inv_item.quantity_in_stock = new_stock
 
     # Only commit if this is a standalone call (not nested inside
     # add_applied_service which manages its own commit).

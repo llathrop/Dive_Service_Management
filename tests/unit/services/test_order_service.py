@@ -538,6 +538,49 @@ class TestPartsUsed:
         db_session.refresh(inv)
         assert inv.quantity_in_stock == Decimal("7.25")
 
+    def test_add_part_used_rejects_negative_stock(self, app, db_session):
+        """add_part_used() raises ValueError when deduction exceeds stock."""
+        order = _make_order(db_session)
+        si = _make_service_item(db_session)
+        oi = _make_order_item(db_session, order=order, service_item=si)
+        inv = _make_inventory_item(
+            db_session,
+            sku="SKU-NEG-GUARD",
+            quantity_in_stock=Decimal("3.00"),
+        )
+
+        with pytest.raises(ValueError, match="Insufficient stock"):
+            order_service.add_part_used(
+                order_item_id=oi.id,
+                inventory_item_id=inv.id,
+                quantity=Decimal("5.00"),
+            )
+
+        # Stock should be unchanged
+        db_session.refresh(inv)
+        assert inv.quantity_in_stock == Decimal("3.00")
+
+    def test_add_part_used_allows_exact_depletion(self, app, db_session):
+        """Deducting exactly all remaining stock should succeed (stock → 0)."""
+        order = _make_order(db_session)
+        si = _make_service_item(db_session)
+        oi = _make_order_item(db_session, order=order, service_item=si)
+        inv = _make_inventory_item(
+            db_session,
+            sku="SKU-EXACT-DEPLETE",
+            quantity_in_stock=Decimal("5.00"),
+        )
+
+        part = order_service.add_part_used(
+            order_item_id=oi.id,
+            inventory_item_id=inv.id,
+            quantity=Decimal("5.00"),
+        )
+
+        assert part.id is not None
+        db_session.refresh(inv)
+        assert inv.quantity_in_stock == Decimal("0.00")
+
 
 # =========================================================================
 # Labor Entries
