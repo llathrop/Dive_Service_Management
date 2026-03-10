@@ -420,3 +420,81 @@ class TestPaymentForm:
                 ])
             )
             assert form.validate(), form.errors
+
+
+# ---------------------------------------------------------------------------
+# InvoiceLineItemForm -- negative unit_price validation (P1-6)
+# ---------------------------------------------------------------------------
+
+
+class TestLineItemFormNegativePrice:
+    """Tests for the unit_price sign constraint on InvoiceLineItemForm."""
+
+    def test_line_item_form_rejects_negative_for_service(self, app):
+        """Form validation fails when unit_price is negative for a service line."""
+        with app.test_request_context():
+            form = InvoiceLineItemForm(
+                formdata=MultiDict([
+                    ("line_type", "service"),
+                    ("description", "Negative service"),
+                    ("quantity", "1.00"),
+                    ("unit_price", "-50.00"),
+                ])
+            )
+            assert not form.validate()
+            assert "unit_price" in form.errors
+
+    def test_line_item_form_allows_negative_for_discount(self, app):
+        """Form validation passes when unit_price is negative for a discount line."""
+        with app.test_request_context():
+            form = InvoiceLineItemForm(
+                formdata=MultiDict([
+                    ("line_type", "discount"),
+                    ("description", "Coupon discount"),
+                    ("quantity", "1.00"),
+                    ("unit_price", "-25.00"),
+                ])
+            )
+            assert form.validate(), form.errors
+
+    def test_line_item_form_rejects_negative_for_labor(self, app):
+        """Form validation fails when unit_price is negative for a labor line."""
+        with app.test_request_context():
+            form = InvoiceLineItemForm(
+                formdata=MultiDict([
+                    ("line_type", "labor"),
+                    ("description", "Negative labor"),
+                    ("quantity", "1.00"),
+                    ("unit_price", "-10.00"),
+                ])
+            )
+            assert not form.validate()
+            assert "unit_price" in form.errors
+
+    def test_line_item_form_rejects_negative_for_part(self, app):
+        """Form validation fails when unit_price is negative for a part line."""
+        with app.test_request_context():
+            form = InvoiceLineItemForm(
+                formdata=MultiDict([
+                    ("line_type", "part"),
+                    ("description", "Negative part"),
+                    ("quantity", "1.00"),
+                    ("unit_price", "-5.00"),
+                ])
+            )
+            assert not form.validate()
+            assert "unit_price" in form.errors
+
+    def test_line_item_form_rejects_negative_for_fee(self, app):
+        """Form validation fails when unit_price is negative for a fee line."""
+        with app.test_request_context():
+            form = InvoiceLineItemForm(
+                formdata=MultiDict([
+                    ("line_type", "fee"),
+                    ("description", "Negative fee"),
+                    ("quantity", "1.00"),
+                    ("unit_price", "-15.00"),
+                ])
+            )
+            assert not form.validate()
+            assert "unit_price" in form.errors
