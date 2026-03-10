@@ -134,6 +134,38 @@ class TestServiceOrderFormInvalid:
             assert not form.validate()
             assert "estimated_total" in form.errors
 
+    def test_order_form_requires_status(self, app, db_session):
+        """Order form with blank status should fail validation."""
+        with app.test_request_context():
+            form = ServiceOrderForm(
+                formdata=MultiDict([
+                    ("customer_id", "1"),
+                    ("status", ""),
+                    ("priority", "normal"),
+                    ("date_received", date.today().isoformat()),
+                ])
+            )
+            form.customer_id.choices = [("", "-- Select --"), (1, "Test Customer")]
+            form.assigned_tech_id.choices = [("", "-- Select --")]
+            assert not form.validate()
+            assert "status" in form.errors
+
+    def test_order_form_requires_priority(self, app, db_session):
+        """Order form with blank priority should fail validation."""
+        with app.test_request_context():
+            form = ServiceOrderForm(
+                formdata=MultiDict([
+                    ("customer_id", "1"),
+                    ("status", "intake"),
+                    ("priority", ""),
+                    ("date_received", date.today().isoformat()),
+                ])
+            )
+            form.customer_id.choices = [("", "-- Select --"), (1, "Test Customer")]
+            form.assigned_tech_id.choices = [("", "-- Select --")]
+            assert not form.validate()
+            assert "priority" in form.errors
+
 
 # ---------------------------------------------------------------------------
 # ServiceOrderForm -- defaults
