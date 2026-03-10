@@ -51,23 +51,23 @@ cp .env.example .env
 # Edit .env with your settings (database passwords, secret key)
 
 # Build and start containers
+# Migrations and database seeding run automatically on startup
 docker compose up -d --build
 
-# Run database migrations
-docker compose exec web flask db upgrade
-
-# Seed default data (roles, demo users, price list categories)
-docker compose exec web flask seed-db
-
-# Create an admin user (interactive)
+# Create an admin user (first time only)
 docker compose exec web flask create-admin
 ```
 
 The application will be available at `http://localhost:8080`.
 
+Database migrations and default seeding (roles, price list categories) run
+automatically each time the web container starts via `docker-entrypoint.sh`.
+You do not need to run `flask db upgrade` or `flask seed-db` manually.
+
 ### Demo Accounts
 
-After running `flask seed-db`, these accounts are available:
+After seeding (automatic on startup), these demo accounts are available
+in development/testing mode (`DSM_DEBUG=true`):
 
 | Email | Password | Role |
 |-------|----------|------|
@@ -136,7 +136,7 @@ app/
   static/              # CSS, JS, images
   cli/                 # Flask CLI commands
 migrations/            # Alembic database migrations
-tests/                 # Test suite (757+ tests)
+tests/                 # Test suite (802 tests)
   smoke/               # Application startup and health tests
   unit/                # Model and service unit tests
   blueprint/           # Route and view tests

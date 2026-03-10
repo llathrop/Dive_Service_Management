@@ -203,7 +203,7 @@
 - [x] README.md created for GitHub
 - [x] .gitignore enhanced with credential/key exclusions
 
-**Tests**: 757 total, all passing
+**Tests**: 757 total, all passing (802 after review fix-ups below)
 
 ### Post-Phase 6: Second Review Fix-ups (Complete)
 
@@ -239,3 +239,19 @@
 - `b2c3d4e5f6a7`: `notification_reads` table for per-user broadcast read tracking
 
 **Tests**: 802 total, all passing
+
+### Infrastructure: Auto-Migration and Persistence (Complete)
+
+- [x] `docker-entrypoint.sh` — web container auto-runs `flask db upgrade` and `flask seed-db` on startup; worker/beat containers skip migration step
+- [x] `Dockerfile` — added `ENTRYPOINT ["./docker-entrypoint.sh"]` before `CMD`
+- [x] `Dockerfile.uat` — added `default-libmysqlclient-dev` and simplified pip install (requirements-dev.txt includes requirements.txt transitively)
+- [x] `PROJECT_BLUEPRINT.md` section 8.2 — documented hard constraints for data persistence and auto-upgrade
+- [x] `README.md` — updated setup instructions to reflect automatic migration/seeding
+- [x] `.gitignore` — added exclusions for `.claude/`, `MEMORY.md`, `test_uat_eval.py`
+
+**Hard constraints documented**:
+
+1. Production DB must use named Docker volume for persistence across restarts
+2. App must auto-detect and upgrade prior DB schema versions on startup
+3. All schema changes must have Alembic migration scripts
+4. Database seeding must be idempotent and run automatically
