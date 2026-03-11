@@ -22,6 +22,7 @@ from app.models.invoice import Invoice, InvoiceLineItem, invoice_orders
 from app.models.payment import Payment
 from app.models.notification import Notification
 from app.models.notification_read import NotificationRead
+from app.models.system_config import SystemConfig
 
 __all__ = [
     "Role",
@@ -48,4 +49,5 @@ __all__ = [
     "Payment",
     "Notification",
     "NotificationRead",
+    "SystemConfig",
 ]
