@@ -439,6 +439,76 @@ def download_backup():
     )
 
 
+# ── CSV Import ──────────────────────────────────────────────────────
+
+VALID_IMPORT_TYPES = {"customers", "inventory"}
+
+
+@admin_bp.route("/data/import", methods=["GET", "POST"])
+@roles_required("admin")
+def import_data():
+    """CSV import page — upload, preview, and confirm import."""
+    from app.services import import_service
+
+    entity_type = request.args.get("type", "customers")
+    if entity_type not in VALID_IMPORT_TYPES:
+        entity_type = "customers"
+
+    if request.method == "POST":
+        action = request.form.get("action", "preview")
+        entity_type = request.form.get("entity_type", "customers")
+
+        if action == "preview":
+            file = request.files.get("csv_file")
+            if not file or not file.filename:
+                flash("Please select a CSV file to upload.", "error")
+                return redirect(url_for("admin.import_data", type=entity_type))
+
+            content = file.read().decode("utf-8-sig")
+            result = import_service.parse_csv(content, entity_type)
+
+            return render_template(
+                "admin/import_preview.html",
+                entity_type=entity_type,
+                result=result,
+                csv_content=content,
+            )
+
+        elif action == "confirm":
+            content = request.form.get("csv_content", "")
+            result = import_service.parse_csv(content, entity_type)
+
+            if result["errors"]:
+                flash(f"Import has {len(result['errors'])} validation error(s). Fix the CSV and try again.", "error")
+                return render_template(
+                    "admin/import_preview.html",
+                    entity_type=entity_type,
+                    result=result,
+                    csv_content=content,
+                )
+
+            if entity_type == "customers":
+                outcome = import_service.import_customers(result["rows"])
+            else:
+                outcome = import_service.import_inventory(result["rows"])
+
+            if outcome["errors"]:
+                for err in outcome["errors"]:
+                    flash(f"Row {err['row']}: {err['message']}", "error")
+
+            flash(
+                f"Import complete: {outcome['imported']} imported, "
+                f"{outcome['skipped']} skipped (duplicates).",
+                "success",
+            )
+            return redirect(url_for("admin.data_management"))
+
+    return render_template(
+        "admin/import_form.html",
+        entity_type=entity_type,
+    )
+
+
 # ── Helpers ─────────────────────────────────────────────────────────
 
 def _get_datastore():
