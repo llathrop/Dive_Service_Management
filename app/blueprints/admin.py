@@ -232,11 +232,159 @@ def reset_password(id):
 
 # ── System Settings ─────────────────────────────────────────────────
 
-@admin_bp.route("/settings")
+# Form class → list of (config_key, form_field_name) mappings
+_SETTINGS_TABS = {
+    "company": {
+        "label": "Company",
+        "icon": "bi-building",
+        "fields": {
+            "company.name": "company_name",
+            "company.address": "company_address",
+            "company.phone": "company_phone",
+            "company.email": "company_email",
+            "company.website": "company_website",
+        },
+    },
+    "service": {
+        "label": "Service",
+        "icon": "bi-wrench",
+        "fields": {
+            "service.order_prefix": "order_prefix",
+            "service.default_labor_rate": "default_labor_rate",
+            "service.rush_fee_default": "rush_fee_default",
+        },
+    },
+    "invoice_tax": {
+        "label": "Invoice & Tax",
+        "icon": "bi-receipt",
+        "fields": {
+            "invoice.prefix": "invoice_prefix",
+            "invoice.default_terms": "default_terms",
+            "invoice.default_due_days": "default_due_days",
+            "invoice.footer_text": "footer_text",
+            "tax.default_rate": "tax_rate",
+            "tax.label": "tax_label",
+        },
+    },
+    "display": {
+        "label": "Display",
+        "icon": "bi-palette",
+        "fields": {
+            "display.date_format": "date_format",
+            "display.currency_symbol": "currency_symbol",
+            "display.currency_code": "currency_code",
+            "display.pagination_size": "pagination_size",
+        },
+    },
+    "notification": {
+        "label": "Notifications",
+        "icon": "bi-bell",
+        "fields": {
+            "notification.low_stock_check_hours": "low_stock_check_hours",
+            "notification.overdue_check_time": "overdue_check_time",
+            "notification.retention_days": "retention_days",
+            "notification.order_due_warning_days": "order_due_warning_days",
+        },
+    },
+    "security": {
+        "label": "Security",
+        "icon": "bi-shield-lock",
+        "fields": {
+            "security.password_min_length": "password_min_length",
+            "security.lockout_attempts": "lockout_attempts",
+            "security.lockout_duration_minutes": "lockout_duration_minutes",
+            "security.session_lifetime_hours": "session_lifetime_hours",
+        },
+    },
+}
+
+_FORM_CLASSES = {
+    "company": "CompanySettingsForm",
+    "service": "ServiceSettingsForm",
+    "invoice_tax": "InvoiceTaxSettingsForm",
+    "display": "DisplaySettingsForm",
+    "notification": "NotificationSettingsForm",
+    "security": "SecuritySettingsForm",
+}
+
+
+def _get_form_class(tab_key):
+    """Import and return the form class for a settings tab."""
+    import app.forms.settings as settings_forms
+    return getattr(settings_forms, _FORM_CLASSES[tab_key])
+
+
+def _populate_form(form, tab_key):
+    """Fill a form with current config values from the database."""
+    from app.services import config_service
+
+    fields = _SETTINGS_TABS[tab_key]["fields"]
+    for config_key, field_name in fields.items():
+        field = getattr(form, field_name, None)
+        if field is not None:
+            value = config_service.get_config(config_key)
+            if value is not None:
+                field.data = value
+
+
+def _save_form(form, tab_key, user_id):
+    """Save form data back to config_service."""
+    from app.services import config_service
+
+    fields = _SETTINGS_TABS[tab_key]["fields"]
+    updates = {}
+    for config_key, field_name in fields.items():
+        field = getattr(form, field_name, None)
+        if field is not None:
+            updates[config_key] = field.data
+    return config_service.bulk_set(updates, user_id=user_id)
+
+
+@admin_bp.route("/settings", methods=["GET", "POST"])
 @roles_required("admin")
 def settings():
-    """System settings overview page."""
-    return render_template("admin/settings.html")
+    """System settings — tabbed form with all categories."""
+    from app.services import config_service
+
+    active_tab = request.args.get("tab", "company")
+    if active_tab not in _SETTINGS_TABS:
+        active_tab = "company"
+
+    # Build all forms (for rendering all tabs)
+    forms = {}
+    for tab_key in _SETTINGS_TABS:
+        FormClass = _get_form_class(tab_key)
+        if request.method == "POST" and request.form.get("tab") == tab_key:
+            forms[tab_key] = FormClass()
+        else:
+            forms[tab_key] = FormClass(formdata=None)
+            _populate_form(forms[tab_key], tab_key)
+
+    if request.method == "POST":
+        submitted_tab = request.form.get("tab", "company")
+        if submitted_tab in forms and forms[submitted_tab].validate_on_submit():
+            count = _save_form(
+                forms[submitted_tab], submitted_tab, current_user.id
+            )
+            flash(f"Settings updated ({count} values saved).", "success")
+            return redirect(url_for("admin.settings", tab=submitted_tab))
+        else:
+            active_tab = submitted_tab
+
+    # Build env-locked info for template
+    locked_keys = {}
+    for tab_key, tab_info in _SETTINGS_TABS.items():
+        for config_key in tab_info["fields"]:
+            if config_service.is_env_locked(config_key):
+                locked_keys[config_key] = True
+
+    return render_template(
+        "admin/settings.html",
+        forms=forms,
+        tabs=_SETTINGS_TABS,
+        active_tab=active_tab,
+        locked_keys=locked_keys,
+    )
 
 
 # ── Data Management ─────────────────────────────────────────────────
