@@ -307,6 +307,21 @@ class TestAdminCRUD:
             # Status is not changed via edit — use change_status route
             assert updated.status == "draft"
 
+    def test_tax_rate_displays_as_percentage(self, admin_client, app, db_session):
+        """Tax rate stored as 0.0825 should display as '8.25%' on detail page."""
+        with app.app_context():
+            invoice = _create_invoice(
+                db_session,
+                tax_rate=Decimal("0.0825"),
+                tax_amount=Decimal("8.25"),
+                total=Decimal("108.25"),
+                balance_due=Decimal("108.25"),
+            )
+            inv_id = invoice.id
+        response = admin_client.get(f"/invoices/{inv_id}")
+        assert response.status_code == 200
+        assert b"8.25%" in response.data
+
     def test_admin_can_void_invoice(self, admin_client, app, db_session):
         with app.app_context():
             invoice = _create_invoice(db_session, status="sent")
