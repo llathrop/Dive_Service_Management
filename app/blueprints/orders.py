@@ -255,9 +255,9 @@ def edit(id):
     _populate_order_form_choices(form)
 
     if form.validate_on_submit():
+        # Status is not included here — use the change_status route instead.
         data = {
             "customer_id": form.customer_id.data,
-            "status": form.status.data,
             "priority": form.priority.data,
             "assigned_tech_id": form.assigned_tech_id.data,
             "date_received": form.date_received.data,
