@@ -197,7 +197,31 @@
     </div>
   </div>
 
-  {# Future: Import, Audit Log, Logs #}
+  {# Import Data #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-file-earmark-arrow-up me-1"></i> Import Data</h5>
+      </div>
+      <div class="card-body">
+        <p>Upload CSV files to import customers or inventory items:</p>
+        <div class="d-grid gap-2">
+          <a href="{{ url_for('admin.import_data', type='customers') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-people me-1"></i>Import Customers (CSV)
+          </a>
+          <a href="{{ url_for('admin.import_data', type='inventory') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-box-seam me-1"></i>Import Inventory (CSV)
+          </a>
+        </div>
+        <p class="text-muted small mt-2 mb-0">
+          CSV files must match the export format. Download a template from the
+          import page.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {# Future: Audit Log, Logs #}
   <div class="col-md-6">
     <div class="card h-100">
       <div class="card-header">
@@ -206,16 +230,16 @@
       <div class="card-body">
         <ul class="list-unstyled mb-0">
           <li class="mb-2">
-            <i class="bi bi-file-earmark-arrow-up text-muted me-1"></i>
-            <strong>CSV Import</strong> — Upload customers and inventory from CSV files
-          </li>
-          <li class="mb-2">
             <i class="bi bi-journal-text text-muted me-1"></i>
             <strong>Audit Log</strong> — Track all data changes with user attribution
           </li>
-          <li>
+          <li class="mb-2">
             <i class="bi bi-terminal text-muted me-1"></i>
             <strong>System Logs</strong> — View application and Docker container logs
+          </li>
+          <li>
+            <i class="bi bi-file-earmark-arrow-up text-muted me-1"></i>
+            <strong>Advanced Import</strong> — Column mapping wizard for arbitrary CSV/XLSX layouts
           </li>
         </ul>
       </div>
