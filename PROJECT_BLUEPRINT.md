@@ -1189,10 +1189,14 @@ The price list is a first-class section in the left nav, not buried in admin set
   - Notification retention period
 
 - **Data Management** (`/admin/data`)
-  - Import data (upload CSV/JSON/XLSX with mapping interface)
-  - Export all data (backup)
-  - Database statistics
-  - Audit log viewer with filters
+  - One-click database backup download (via mariadb-dump)
+  - Live database statistics (table sizes, row counts, DB version)
+  - Migration status (current revision, pending migrations)
+  - Export all data (CSV/XLSX format selector)
+  - Simplified CSV import for customers and inventory (fixed column order, preview + confirm)
+  - *Future*: Import with column mapping wizard (drag-and-drop mapping for arbitrary CSV/XLSX)
+  - *Future*: Audit log viewer with filters (requires AuditLog model from section 2.15)
+  - *Future*: Generalized logging access (login/logout events, notification history, app logs, Docker logs)
 
 - **Integration Settings** (`/admin/settings/integrations`) -- Placeholder for future
   - QuickBooks connection settings
@@ -1802,6 +1806,8 @@ All prefixed with `DSM_` for namespacing.
 | `DSM_MAX_CONTENT_LENGTH` | `16777216` | Max upload size (16MB) |
 
 ### 9.3 Database-Stored Configuration (editable via Admin UI)
+
+> **Implementation status**: The `system_config` table and `config_service.py` are being implemented as part of the Admin Overhaul (PR A). The tabbed settings UI (PR B) will make all entries below editable from `/admin/settings`. Settings controlled by environment variables (e.g., `DSM_SECRET_KEY`, `DSM_DATABASE_URL`) are shown as read-only in the UI with an explanation that they are ENV-locked.
 
 Organized by category in the `system_config` table:
 
