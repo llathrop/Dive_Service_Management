@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Import {{ entity_type|title }} - Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">
+    <i class="bi bi-file-earmark-arrow-up me-2"></i>Import {{ entity_type|title }}
+  </h1>
+  <a href="{{ url_for('admin.data_management') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Data Management
+  </a>
+</div>
+
+<div class="row g-3">
+  {# Import type selector #}
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs">
+          <li class="nav-item">
+            <a class="nav-link{% if entity_type == 'customers' %} active{% endif %}"
+               href="{{ url_for('admin.import_data', type='customers') }}">
+              <i class="bi bi-people me-1"></i>Customers
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link{% if entity_type == 'inventory' %} active{% endif %}"
+               href="{{ url_for('admin.import_data', type='inventory') }}">
+              <i class="bi bi-box-seam me-1"></i>Inventory
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data"
+              action="{{ url_for('admin.import_data', type=entity_type) }}">
+          <input type="hidden" name="action" value="preview">
+          <input type="hidden" name="entity_type" value="{{ entity_type }}">
+
+          <div class="mb-3">
+            <label for="csv_file" class="form-label">CSV File</label>
+            <input type="file" class="form-control" id="csv_file" name="csv_file"
+                   accept=".csv,text/csv" required>
+            <div class="form-text">
+              Upload a CSV file matching the export format. The first row must be column headers.
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-eye me-1"></i>Preview Import
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# Column reference #}
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="card-title mb-0">Expected Columns</h6>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush small">
+          {% if entity_type == 'customers' %}
+            <li class="list-group-item">Type <span class="text-muted">(individual/business)</span></li>
+            <li class="list-group-item">First Name</li>
+            <li class="list-group-item">Last Name</li>
+            <li class="list-group-item">Business Name</li>
+            <li class="list-group-item">Contact Person</li>
+            <li class="list-group-item">Email</li>
+            <li class="list-group-item">Phone</li>
+            <li class="list-group-item">Address, City, State, Postal Code, Country</li>
+            <li class="list-group-item">Preferred Contact, Tax Exempt, Notes</li>
+          {% else %}
+            <li class="list-group-item">SKU</li>
+            <li class="list-group-item">Name <span class="text-danger">*</span></li>
+            <li class="list-group-item">Category <span class="text-danger">*</span></li>
+            <li class="list-group-item">Subcategory, Manufacturer</li>
+            <li class="list-group-item">Purchase Cost, Resale Price</li>
+            <li class="list-group-item">Quantity, Reorder Level</li>
+            <li class="list-group-item">Unit, Location, Notes</li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    <div class="card mt-3">
+      <div class="card-body">
+        <p class="small text-muted mb-1">
+          <i class="bi bi-lightbulb me-1"></i>
+          <strong>Tip:</strong> Export existing data first to get a CSV template
+          with the correct column format.
+        </p>
+        {% if entity_type == 'customers' %}
+        <a href="{{ url_for('export.export_customers', format='csv') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-download me-1"></i>Download Template
+        </a>
+        {% else %}
+        <a href="{{ url_for('export.export_inventory', format='csv') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-download me-1"></i>Download Template
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

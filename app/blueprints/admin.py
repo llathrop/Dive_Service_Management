@@ -232,11 +232,159 @@ def reset_password(id):
 
 # ── System Settings ─────────────────────────────────────────────────
 
-@admin_bp.route("/settings")
+# Form class → list of (config_key, form_field_name) mappings
+_SETTINGS_TABS = {
+    "company": {
+        "label": "Company",
+        "icon": "bi-building",
+        "fields": {
+            "company.name": "company_name",
+            "company.address": "company_address",
+            "company.phone": "company_phone",
+            "company.email": "company_email",
+            "company.website": "company_website",
+        },
+    },
+    "service": {
+        "label": "Service",
+        "icon": "bi-wrench",
+        "fields": {
+            "service.order_prefix": "order_prefix",
+            "service.default_labor_rate": "default_labor_rate",
+            "service.rush_fee_default": "rush_fee_default",
+        },
+    },
+    "invoice_tax": {
+        "label": "Invoice & Tax",
+        "icon": "bi-receipt",
+        "fields": {
+            "invoice.prefix": "invoice_prefix",
+            "invoice.default_terms": "default_terms",
+            "invoice.default_due_days": "default_due_days",
+            "invoice.footer_text": "footer_text",
+            "tax.default_rate": "tax_rate",
+            "tax.label": "tax_label",
+        },
+    },
+    "display": {
+        "label": "Display",
+        "icon": "bi-palette",
+        "fields": {
+            "display.date_format": "date_format",
+            "display.currency_symbol": "currency_symbol",
+            "display.currency_code": "currency_code",
+            "display.pagination_size": "pagination_size",
+        },
+    },
+    "notification": {
+        "label": "Notifications",
+        "icon": "bi-bell",
+        "fields": {
+            "notification.low_stock_check_hours": "low_stock_check_hours",
+            "notification.overdue_check_time": "overdue_check_time",
+            "notification.retention_days": "retention_days",
+            "notification.order_due_warning_days": "order_due_warning_days",
+        },
+    },
+    "security": {
+        "label": "Security",
+        "icon": "bi-shield-lock",
+        "fields": {
+            "security.password_min_length": "password_min_length",
+            "security.lockout_attempts": "lockout_attempts",
+            "security.lockout_duration_minutes": "lockout_duration_minutes",
+            "security.session_lifetime_hours": "session_lifetime_hours",
+        },
+    },
+}
+
+_FORM_CLASSES = {
+    "company": "CompanySettingsForm",
+    "service": "ServiceSettingsForm",
+    "invoice_tax": "InvoiceTaxSettingsForm",
+    "display": "DisplaySettingsForm",
+    "notification": "NotificationSettingsForm",
+    "security": "SecuritySettingsForm",
+}
+
+
+def _get_form_class(tab_key):
+    """Import and return the form class for a settings tab."""
+    import app.forms.settings as settings_forms
+    return getattr(settings_forms, _FORM_CLASSES[tab_key])
+
+
+def _populate_form(form, tab_key):
+    """Fill a form with current config values from the database."""
+    from app.services import config_service
+
+    fields = _SETTINGS_TABS[tab_key]["fields"]
+    for config_key, field_name in fields.items():
+        field = getattr(form, field_name, None)
+        if field is not None:
+            value = config_service.get_config(config_key)
+            if value is not None:
+                field.data = value
+
+
+def _save_form(form, tab_key, user_id):
+    """Save form data back to config_service."""
+    from app.services import config_service
+
+    fields = _SETTINGS_TABS[tab_key]["fields"]
+    updates = {}
+    for config_key, field_name in fields.items():
+        field = getattr(form, field_name, None)
+        if field is not None:
+            updates[config_key] = field.data
+    return config_service.bulk_set(updates, user_id=user_id)
+
+
+@admin_bp.route("/settings", methods=["GET", "POST"])
 @roles_required("admin")
 def settings():
-    """System settings overview page."""
-    return render_template("admin/settings.html")
+    """System settings — tabbed form with all categories."""
+    from app.services import config_service
+
+    active_tab = request.args.get("tab", "company")
+    if active_tab not in _SETTINGS_TABS:
+        active_tab = "company"
+
+    # Build all forms (for rendering all tabs)
+    forms = {}
+    for tab_key in _SETTINGS_TABS:
+        FormClass = _get_form_class(tab_key)
+        if request.method == "POST" and request.form.get("tab") == tab_key:
+            forms[tab_key] = FormClass()
+        else:
+            forms[tab_key] = FormClass(formdata=None)
+            _populate_form(forms[tab_key], tab_key)
+
+    if request.method == "POST":
+        submitted_tab = request.form.get("tab", "company")
+        if submitted_tab in forms and forms[submitted_tab].validate_on_submit():
+            count = _save_form(
+                forms[submitted_tab], submitted_tab, current_user.id
+            )
+            flash(f"Settings updated ({count} values saved).", "success")
+            return redirect(url_for("admin.settings", tab=submitted_tab))
+        else:
+            active_tab = submitted_tab
+
+    # Build env-locked info for template
+    locked_keys = {}
+    for tab_key, tab_info in _SETTINGS_TABS.items():
+        for config_key in tab_info["fields"]:
+            if config_service.is_env_locked(config_key):
+                locked_keys[config_key] = True
+
+    return render_template(
+        "admin/settings.html",
+        forms=forms,
+        tabs=_SETTINGS_TABS,
+        active_tab=active_tab,
+        locked_keys=locked_keys,
+    )
 
 
 # ── Data Management ─────────────────────────────────────────────────
@@ -244,20 +392,121 @@ def settings():
 @admin_bp.route("/data")
 @roles_required("admin")
 def data_management():
-    """Data management hub (backup info, DB stats)."""
-    from app.models.customer import Customer
-    from app.models.inventory import InventoryItem
-    from app.models.invoice import Invoice
-    from app.models.service_order import ServiceOrder
+    """Data management hub with live DB stats, backup, export, migration info."""
+    from app.services import data_management_service
 
-    stats = {
-        "users": db.session.query(func.count(User.id)).scalar(),
-        "customers": db.session.query(func.count(Customer.id)).scalar(),
-        "orders": db.session.query(func.count(ServiceOrder.id)).scalar(),
-        "inventory": db.session.query(func.count(InventoryItem.id)).scalar(),
-        "invoices": db.session.query(func.count(Invoice.id)).scalar(),
-    }
-    return render_template("admin/data.html", stats=stats)
+    table_stats = data_management_service.get_table_stats()
+    db_version = data_management_service.get_db_version()
+    db_size = data_management_service.get_db_size()
+    migration = data_management_service.get_migration_status()
+
+    # Summary stats for the top cards
+    stats = {}
+    for entry in table_stats:
+        stats[entry["table"]] = entry["rows"]
+
+    return render_template(
+        "admin/data.html",
+        table_stats=table_stats,
+        db_version=db_version,
+        db_size=db_size,
+        migration=migration,
+        stats=stats,
+    )
+
+
+@admin_bp.route("/data/backup")
+@roles_required("admin")
+def download_backup():
+    """Download a SQL backup of the database."""
+    from datetime import datetime
+    from flask import Response
+    from app.services import data_management_service
+
+    try:
+        sql_dump = data_management_service.create_backup_sql()
+    except RuntimeError as e:
+        flash(str(e), "error")
+        return redirect(url_for("admin.data_management"))
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"dsm_backup_{timestamp}.sql"
+
+    return Response(
+        sql_dump,
+        mimetype="application/sql",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+# ── CSV Import ──────────────────────────────────────────────────────
+
+VALID_IMPORT_TYPES = {"customers", "inventory"}
+
+
+@admin_bp.route("/data/import", methods=["GET", "POST"])
+@roles_required("admin")
+def import_data():
+    """CSV import page — upload, preview, and confirm import."""
+    from app.services import import_service
+
+    entity_type = request.args.get("type", "customers")
+    if entity_type not in VALID_IMPORT_TYPES:
+        entity_type = "customers"
+
+    if request.method == "POST":
+        action = request.form.get("action", "preview")
+        entity_type = request.form.get("entity_type", "customers")
+
+        if action == "preview":
+            file = request.files.get("csv_file")
+            if not file or not file.filename:
+                flash("Please select a CSV file to upload.", "error")
+                return redirect(url_for("admin.import_data", type=entity_type))
+
+            content = file.read().decode("utf-8-sig")
+            result = import_service.parse_csv(content, entity_type)
+
+            return render_template(
+                "admin/import_preview.html",
+                entity_type=entity_type,
+                result=result,
+                csv_content=content,
+            )
+
+        elif action == "confirm":
+            content = request.form.get("csv_content", "")
+            result = import_service.parse_csv(content, entity_type)
+
+            if result["errors"]:
+                flash(f"Import has {len(result['errors'])} validation error(s). Fix the CSV and try again.", "error")
+                return render_template(
+                    "admin/import_preview.html",
+                    entity_type=entity_type,
+                    result=result,
+                    csv_content=content,
+                )
+
+            if entity_type == "customers":
+                outcome = import_service.import_customers(result["rows"])
+            else:
+                outcome = import_service.import_inventory(result["rows"])
+
+            if outcome["errors"]:
+                for err in outcome["errors"]:
+                    flash(f"Row {err['row']}: {err['message']}", "error")
+
+            flash(
+                f"Import complete: {outcome['imported']} imported, "
+                f"{outcome['skipped']} skipped (duplicates).",
+                "success",
+            )
+            return redirect(url_for("admin.data_management"))
+
+    return render_template(
+        "admin/import_form.html",
+        entity_type=entity_type,
+    )
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
