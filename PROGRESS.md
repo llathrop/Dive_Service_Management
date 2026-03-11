@@ -283,3 +283,45 @@
 - P2-4: Repo hygiene cleanup
 
 **Tests**: 809+ total, all passing
+
+### Admin Overhaul: Settings & Data Management (Planned)
+
+**Trigger**: Admin System Settings and Data Management pages are entirely read-only. All configurable settings should be editable from the web UI.
+
+**Implementation Plan — 4 PRs**:
+
+**PR A: SystemConfig Foundation** (prerequisite for all others)
+- SystemConfig model (`system_config` table per PROJECT_BLUEPRINT.md section 9.3)
+- Alembic migration for new table
+- `config_service.py` with `get_config(key)`, `set_config(key, value)`, type coercion, ENV override locking
+- Seed ~25 default config entries via `flask seed-db` (company, invoice, tax, service, notification, display, security categories)
+- ~25 tests covering model, service, seeding, ENV override behavior
+
+**PR B: Editable Settings UI**
+- Replace read-only settings.html with tabbed form layout (6 tabs: Company, Service, Invoice/Tax, Display, Notifications, Security)
+- WTForms for each settings category, pre-populated from `config_service`
+- POST routes to save settings back to `system_config` table
+- ENV-locked settings shown as read-only with explanation
+- Infrastructure info cards (DB engine, Redis status) remain read-only with useful diagnostics
+- Wire config values into app logic (e.g., `invoice.default_terms`, `tax.default_rate`)
+- ~35 tests covering form rendering, save, ENV locking, validation
+
+**PR C: Actionable Data Management**
+- `data_management_service.py` for live DB info queries (table sizes, row counts, DB version)
+- One-click backup download button (triggers `mariadb-dump` inside DB container, streams result)
+- Enhanced export section with format selector and current filter state
+- Migration status display (current revision, pending migrations)
+- DB statistics dashboard with real table sizes and index info
+- ~20 tests covering service layer, backup endpoint, stats display
+
+**PR D: Simplified CSV Import**
+- CSV import for customers and inventory (fixed column order matching export format)
+- Upload → preview (first 10 rows) → confirm → import workflow
+- Validation with error reporting (row-by-row)
+- ~20 tests covering upload, validation, import, error cases
+
+**Future Items (not in current sprint)**:
+
+- [ ] **Import with column mapping wizard** — drag-and-drop column mapping UI for arbitrary CSV/XLSX layouts, auto-detect columns, support all entity types (PR D only does fixed-format CSV for customers + inventory)
+- [ ] **Audit log viewer** — queryable audit_log table with filters by entity, user, action, date range; displayed in Admin > Data Management (requires AuditLog model from blueprint section 2.15)
+- [ ] **Generalized logging access** — unified log viewer in Admin showing login/logout events, notification history, application logs (from Flask logger), and Docker container logs (via Docker API or log file mounts); filterable by severity, source, and date range

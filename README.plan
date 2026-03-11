@@ -114,3 +114,22 @@ Phase gates require all tests passing and coverage check before advancing to the
 6. **Production Readiness** (Weeks 15--16): documentation, Docker optimization, security review, performance testing on Pi, backup/restore, final regression + coverage
 
 Tests are written incrementally within each phase---not in Phase 6. Each phase has a test gate.
+
+---
+
+## Post-Phase 6: Admin Overhaul
+
+The Admin System Settings and Data Management pages are being upgraded from read-only informational displays to fully functional management interfaces:
+
+- **PR A**: SystemConfig model + config_service.py + seed data (DB-stored settings with ENV override locking)
+- **PR B**: Tabbed editable settings UI (Company, Service, Invoice/Tax, Display, Notifications, Security)
+- **PR C**: Actionable Data Management (live DB stats, one-click backup, migration status)
+- **PR D**: Simplified CSV import for customers and inventory (fixed column order)
+
+---
+
+## Future Items
+
+- **Import with column mapping wizard**: Drag-and-drop column mapping for arbitrary CSV/XLSX layouts, auto-detect columns, support all entity types
+- **Audit log**: Queryable `audit_log` table (per blueprint section 2.15) with filters by entity, user, action, date range; displayed in Admin > Data Management
+- **Generalized logging access**: Unified log viewer in Admin showing login/logout events, notification history, application logs, and Docker container logs; filterable by severity, source, and date range
