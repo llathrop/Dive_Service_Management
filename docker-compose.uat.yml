@@ -8,6 +8,9 @@
 #   docker compose -f docker-compose.uat.yml down -v
 # =============================================================================
 
+# Separate project name prevents conflicts with production compose
+name: dsm-uat
+
 services:
   # ---------------------------------------------------------------------------
   # Flask App (live server for UAT)
