@@ -159,7 +159,66 @@ def _seed_demo_users():
 def _seed_system_config():
     """Seed default system_config entries.
 
-    The SystemConfig model does not exist yet (Phase 2+).  For now this
-    is a placeholder that simply prints a message.
+    Creates one row per config key if it does not already exist.
+    Existing rows are never overwritten so that admin edits persist.
     """
-    click.echo("  System config seeding: skipped (SystemConfig model not yet implemented).")
+    from app.models.system_config import SystemConfig
+
+    defaults = [
+        # --- Company ---
+        ("company.name", "Dive Service Management", "string", "company", "Company name displayed in header and invoices"),
+        ("company.address", "", "string", "company", "Company street address"),
+        ("company.phone", "", "string", "company", "Company phone number"),
+        ("company.email", "", "string", "company", "Company contact email"),
+        ("company.logo_path", "", "string", "company", "Path to uploaded logo file"),
+        ("company.website", "", "string", "company", "Company website URL"),
+        # --- Invoice ---
+        ("invoice.prefix", "INV", "string", "invoice", "Invoice number prefix"),
+        ("invoice.next_number", "1", "integer", "invoice", "Next invoice sequential number"),
+        ("invoice.default_terms", "Net 30", "string", "invoice", "Default payment terms text"),
+        ("invoice.default_due_days", "30", "integer", "invoice", "Days until invoice is due"),
+        ("invoice.footer_text", "", "string", "invoice", "Text printed at bottom of invoices"),
+        # --- Tax ---
+        ("tax.default_rate", "0.0000", "float", "tax", "Default tax rate as decimal (e.g. 0.0825 = 8.25%)"),
+        ("tax.label", "Sales Tax", "string", "tax", "Tax label on invoices"),
+        # --- Service ---
+        ("service.order_prefix", "SO", "string", "service", "Order number prefix"),
+        ("service.next_order_number", "1", "integer", "service", "Next order sequential number"),
+        ("service.default_labor_rate", "75.00", "float", "service", "Default hourly labor rate"),
+        ("service.rush_fee_default", "50.00", "float", "service", "Default rush fee"),
+        # --- Notification ---
+        ("notification.low_stock_check_hours", "6", "integer", "notification", "Hours between low stock checks"),
+        ("notification.overdue_check_time", "08:00", "string", "notification", "Time of day for overdue invoice checks"),
+        ("notification.retention_days", "90", "integer", "notification", "Days to keep notifications before cleanup"),
+        ("notification.order_due_warning_days", "2", "integer", "notification", "Days before due date to warn"),
+        # --- Display ---
+        ("display.date_format", "%Y-%m-%d", "string", "display", "Date display format"),
+        ("display.currency_symbol", "$", "string", "display", "Currency symbol"),
+        ("display.currency_code", "USD", "string", "display", "ISO currency code"),
+        ("display.pagination_size", "25", "integer", "display", "Default rows per page"),
+        # --- Security ---
+        ("security.password_min_length", "8", "integer", "security", "Minimum password length"),
+        ("security.lockout_attempts", "5", "integer", "security", "Failed login attempts before lockout"),
+        ("security.lockout_duration_minutes", "15", "integer", "security", "Account lockout duration in minutes"),
+        ("security.session_lifetime_hours", "24", "integer", "security", "Session lifetime in hours"),
+    ]
+
+    created_count = 0
+    for key, value, config_type, category, description in defaults:
+        existing = SystemConfig.query.filter_by(config_key=key).first()
+        if existing is None:
+            entry = SystemConfig(
+                config_key=key,
+                config_value=value,
+                config_type=config_type,
+                category=category,
+                description=description,
+            )
+            db.session.add(entry)
+            created_count += 1
+
+    if created_count > 0:
+        db.session.commit()
+        click.echo(f"  {created_count} system config entries created.")
+    else:
+        click.echo("  All system config entries already exist. Nothing to do.")
