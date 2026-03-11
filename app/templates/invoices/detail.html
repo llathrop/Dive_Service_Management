@@ -157,7 +157,7 @@
           <dt class="col-7">Subtotal</dt>
           <dd class="col-5 text-end">${{ "%.2f"|format(invoice.subtotal) }}</dd>
           {% if invoice.tax_amount is not none and invoice.tax_amount > 0 %}
-          <dt class="col-7">Tax ({{ "%.2f"|format(invoice.tax_rate) }}%)</dt>
+          <dt class="col-7">Tax ({{ "%.2f"|format(invoice.tax_rate * 100) }}%)</dt>
           <dd class="col-5 text-end">${{ "%.2f"|format(invoice.tax_amount) }}</dd>
           {% endif %}
           {% if invoice.discount_amount is not none and invoice.discount_amount > 0 %}
