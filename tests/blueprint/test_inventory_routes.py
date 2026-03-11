@@ -336,6 +336,68 @@ class TestTechnicianCRUD:
             item = db.session.get(InventoryItem, item_id)
             assert item.quantity_in_stock == 7
 
+    def test_create_with_decimal_quantity(self, logged_in_client, app, db_session):
+        """Decimal quantity_in_stock and reorder_level are accepted."""
+        from decimal import Decimal
+        response = logged_in_client.post(
+            "/inventory/new",
+            data={
+                "name": "Neoprene Tape",
+                "category": "Adhesives",
+                "sku": "TAPE-001",
+                "quantity_in_stock": "12.50",
+                "reorder_level": "3.25",
+                "unit_of_measure": "ft",
+                "is_active": "y",
+            },
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+
+        with app.app_context():
+            item = InventoryItem.query.filter_by(name="Neoprene Tape").first()
+            assert item is not None
+            assert item.quantity_in_stock == Decimal("12.50")
+            assert item.reorder_level == Decimal("3.25")
+
+    def test_adjust_stock_decimal(self, logged_in_client, app, db_session):
+        """Decimal stock adjustments work correctly."""
+        from decimal import Decimal
+        with app.app_context():
+            item = _create_inventory_item(
+                db_session, quantity_in_stock=10, sku="DEC-ADJ-001"
+            )
+            item_id = item.id
+        response = logged_in_client.post(
+            f"/inventory/{item_id}/adjust",
+            data={"adjustment": "2.5", "reason": "Partial restock"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+
+        with app.app_context():
+            item = db.session.get(InventoryItem, item_id)
+            assert item.quantity_in_stock == Decimal("12.50")
+
+    def test_adjust_stock_negative_decimal(self, logged_in_client, app, db_session):
+        """Negative decimal adjustments deduct fractional quantities."""
+        from decimal import Decimal
+        with app.app_context():
+            item = _create_inventory_item(
+                db_session, quantity_in_stock=10, sku="DEC-NEG-001"
+            )
+            item_id = item.id
+        response = logged_in_client.post(
+            f"/inventory/{item_id}/adjust",
+            data={"adjustment": "-1.75", "reason": "Used partial"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+
+        with app.app_context():
+            item = db.session.get(InventoryItem, item_id)
+            assert item.quantity_in_stock == Decimal("8.25")
+
     def test_adjust_stock_deleted_returns_404(
         self, logged_in_client, app, db_session
     ):
