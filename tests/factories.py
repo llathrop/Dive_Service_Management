@@ -470,3 +470,23 @@ class NotificationFactory(BaseFactory):
     message = Faker("sentence", nb_words=8)
     severity = "info"
     is_read = False
+
+
+# ---------------------------------------------------------------------------
+# SystemConfig factory
+# ---------------------------------------------------------------------------
+
+from app.models.system_config import SystemConfig
+
+
+class SystemConfigFactory(BaseFactory):
+    """Factory for the SystemConfig model."""
+
+    class Meta:
+        model = SystemConfig
+
+    config_key = factory.Sequence(lambda n: f"test.key_{n}")
+    config_value = "test_value"
+    config_type = "string"
+    category = "company"
+    description = "Test config entry"

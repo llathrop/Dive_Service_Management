@@ -116,3 +116,36 @@ class TestSeedDemoUsersProductionGuard:
 
         # The seed command should attempt to create demo users
         assert "Skipping demo users" not in result.output
+
+
+class TestSeedSystemConfig:
+    """Verify that _seed_system_config populates system_config entries."""
+
+    def test_seed_creates_system_config_entries(self, app):
+        """_seed_system_config should create all default rows."""
+        from app.cli.seed import _seed_system_config
+        from app.models.system_config import SystemConfig
+
+        with app.app_context():
+            _seed_system_config()
+
+            entries = SystemConfig.query.all()
+            assert len(entries) >= 25  # We seed ~29 entries
+            keys = {e.config_key for e in entries}
+            assert "company.name" in keys
+            assert "tax.default_rate" in keys
+            assert "security.password_min_length" in keys
+
+    def test_seed_is_idempotent(self, app):
+        """Running _seed_system_config twice should not duplicate entries."""
+        from app.cli.seed import _seed_system_config
+        from app.models.system_config import SystemConfig
+
+        with app.app_context():
+            _seed_system_config()
+            count_first = SystemConfig.query.count()
+
+            _seed_system_config()
+            count_second = SystemConfig.query.count()
+
+            assert count_first == count_second
