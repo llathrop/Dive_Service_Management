@@ -237,7 +237,7 @@ def adjust_stock(id):
         new_qty = item.quantity_in_stock + form.adjustment.data
         if new_qty < 0:
             flash(
-                f"Cannot adjust by {form.adjustment.data:+d}: "
+                f"Cannot adjust by {form.adjustment.data:+}: "
                 f"would result in negative stock ({new_qty}).",
                 "danger",
             )
@@ -245,7 +245,7 @@ def adjust_stock(id):
             item.quantity_in_stock = new_qty
             db.session.commit()
             flash(
-                f"Stock adjusted by {form.adjustment.data:+d}. "
+                f"Stock adjusted by {form.adjustment.data:+}. "
                 f"New quantity: {item.quantity_in_stock}.",
                 "success",
             )
