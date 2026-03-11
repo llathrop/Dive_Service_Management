@@ -35,15 +35,16 @@
           {{ render_select(form.customer_id) }}
         </div>
         <div class="col-md-6">
-          {% if is_edit %}
-          {{ render_select(form.status) }}
-          {% else %}
           <div class="mb-3">
             <label class="form-label">Status</label>
+            {% if is_edit %}
+            <input type="text" class="form-control" value="{{ invoice.status|replace('_', ' ')|title }}" disabled>
+            <div class="form-text">Use the status buttons on the invoice detail page to change status.</div>
+            {% else %}
             <input type="text" class="form-control" value="Draft" disabled>
             <div class="form-text">New invoices start in Draft status.</div>
+            {% endif %}
           </div>
-          {% endif %}
         </div>
       </div>
     </div>
