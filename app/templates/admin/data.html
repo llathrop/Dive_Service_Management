@@ -12,70 +12,59 @@
   </a>
 </div>
 
-{# Database Statistics #}
+{# Database Info Cards #}
 <div class="row g-3 mb-4">
-  <div class="col-sm-6 col-xl">
+  <div class="col-sm-6 col-lg-3">
     <div class="card text-center">
       <div class="card-body py-3">
-        <h3 class="mb-1">{{ stats.users }}</h3>
-        <small class="text-muted">Users</small>
+        <h5 class="mb-1">{{ db_version }}</h5>
+        <small class="text-muted">Database Engine</small>
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl">
+  {% if db_size %}
+  <div class="col-sm-6 col-lg-3">
     <div class="card text-center">
       <div class="card-body py-3">
-        <h3 class="mb-1">{{ stats.customers }}</h3>
-        <small class="text-muted">Customers</small>
+        <h5 class="mb-1">{{ db_size }}</h5>
+        <small class="text-muted">Database Size</small>
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl">
+  {% endif %}
+  <div class="col-sm-6 col-lg-3">
     <div class="card text-center">
       <div class="card-body py-3">
-        <h3 class="mb-1">{{ stats.orders }}</h3>
-        <small class="text-muted">Orders</small>
+        <h5 class="mb-1">{{ table_stats|length }}</h5>
+        <small class="text-muted">Tables</small>
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl">
+  <div class="col-sm-6 col-lg-3">
     <div class="card text-center">
       <div class="card-body py-3">
-        <h3 class="mb-1">{{ stats.inventory }}</h3>
-        <small class="text-muted">Inventory Items</small>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-xl">
-    <div class="card text-center">
-      <div class="card-body py-3">
-        <h3 class="mb-1">{{ stats.invoices }}</h3>
-        <small class="text-muted">Invoices</small>
+        <h5 class="mb-1"><code>{{ migration.current[:12] }}...</code></h5>
+        <small class="text-muted">Migration Revision</small>
       </div>
     </div>
   </div>
 </div>
 
 <div class="row g-3">
-  {# Backup Instructions #}
+  {# Backup #}
   <div class="col-md-6">
     <div class="card h-100">
       <div class="card-header">
         <h5 class="card-title mb-0"><i class="bi bi-download me-1"></i> Backup</h5>
       </div>
       <div class="card-body">
-        <p>Create a database backup using the Docker CLI:</p>
-        <div class="bg-body-tertiary p-3 rounded mb-3">
-          <code class="d-block mb-2">
-            # Full database backup (MariaDB)<br>
-            docker compose exec db mariadb-dump \<br>
-            &nbsp;&nbsp;-u $MARIADB_USER -p$MARIADB_PASSWORD \<br>
-            &nbsp;&nbsp;$MARIADB_DATABASE > backup_$(date +%Y%m%d).sql
-          </code>
-        </div>
+        <p>Download a complete SQL dump of the database.</p>
+        <a href="{{ url_for('admin.download_backup') }}" class="btn btn-primary mb-3">
+          <i class="bi bi-cloud-download me-1"></i>Download Backup
+        </a>
         <p class="text-muted small mb-0">
-          Backups should be scheduled via cron or a similar scheduler for production use.
-          Store backups in a separate location from the application server.
+          For production use, schedule regular backups via cron. Store backups
+          in a separate location from the application server.
         </p>
       </div>
     </div>
@@ -91,15 +80,15 @@
         <p>Restore a database from a backup file:</p>
         <div class="bg-body-tertiary p-3 rounded mb-3">
           <code class="d-block mb-2">
-            # Restore from backup file<br>
             docker compose exec -T db mariadb \<br>
             &nbsp;&nbsp;-u $MARIADB_USER -p$MARIADB_PASSWORD \<br>
-            &nbsp;&nbsp;$MARIADB_DATABASE < backup_20260305.sql
+            &nbsp;&nbsp;$MARIADB_DATABASE &lt; backup_file.sql
           </code>
         </div>
         <div class="alert alert-warning mb-0">
           <i class="bi bi-exclamation-triangle me-1"></i>
-          <strong>Warning:</strong> Restoring a backup will overwrite all current data. Always create a fresh backup before restoring.
+          <strong>Warning:</strong> Restoring a backup will overwrite all current data.
+          Always create a fresh backup before restoring.
         </div>
       </div>
     </div>
@@ -113,19 +102,70 @@
       </div>
       <div class="card-body">
         <p>Export application data in CSV or XLSX format:</p>
-        <div class="d-grid gap-2">
-          <a href="{{ url_for('export.export_customers', format='csv') }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-filetype-csv me-1"></i>Export Customers (CSV)
-          </a>
-          <a href="{{ url_for('export.export_inventory', format='csv') }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-filetype-csv me-1"></i>Export Inventory (CSV)
-          </a>
-          <a href="{{ url_for('export.export_orders', format='csv') }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-filetype-csv me-1"></i>Export Orders (CSV)
-          </a>
-          <a href="{{ url_for('export.export_invoices', format='csv') }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-filetype-csv me-1"></i>Export Invoices (CSV)
-          </a>
+        <div class="row g-2">
+          <div class="col-6">
+            <h6 class="text-muted small">CSV</h6>
+            <div class="d-grid gap-1">
+              <a href="{{ url_for('export.export_customers', format='csv') }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-filetype-csv me-1"></i>Customers
+              </a>
+              <a href="{{ url_for('export.export_inventory', format='csv') }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-filetype-csv me-1"></i>Inventory
+              </a>
+              <a href="{{ url_for('export.export_orders', format='csv') }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-filetype-csv me-1"></i>Orders
+              </a>
+              <a href="{{ url_for('export.export_invoices', format='csv') }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-filetype-csv me-1"></i>Invoices
+              </a>
+            </div>
+          </div>
+          <div class="col-6">
+            <h6 class="text-muted small">XLSX</h6>
+            <div class="d-grid gap-1">
+              <a href="{{ url_for('export.export_customers', format='xlsx') }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Customers
+              </a>
+              <a href="{{ url_for('export.export_inventory', format='xlsx') }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Inventory
+              </a>
+              <a href="{{ url_for('export.export_orders', format='xlsx') }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Orders
+              </a>
+              <a href="{{ url_for('export.export_invoices', format='xlsx') }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Invoices
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Table Statistics #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-bar-chart me-1"></i> Table Statistics</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+          <table class="table table-sm table-striped mb-0">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>Table</th>
+                <th class="text-end">Rows</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in table_stats %}
+              <tr>
+                <td><code>{{ entry.table }}</code></td>
+                <td class="text-end">{{ entry.rows }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -138,17 +178,70 @@
         <h5 class="card-title mb-0"><i class="bi bi-arrow-repeat me-1"></i> Database Migrations</h5>
       </div>
       <div class="card-body">
-        <p>Manage database schema with Alembic migrations:</p>
-        <div class="bg-body-tertiary p-3 rounded mb-3">
+        <dl class="mb-3">
+          <dt>Current Revision</dt>
+          <dd><code>{{ migration.current }}</code></dd>
+          <dt>Migration Tool</dt>
+          <dd>Flask-Migrate (Alembic)</dd>
+        </dl>
+        <p class="text-muted small">Migrations run automatically on container startup via
+        <code>docker-entrypoint.sh</code>. Manual commands:</p>
+        <div class="bg-body-tertiary p-3 rounded">
           <code class="d-block mb-1">
-            # Check current migration<br>
-            docker compose exec web flask db current<br><br>
-            # Apply pending migrations<br>
-            docker compose exec web flask db upgrade<br><br>
-            # Roll back last migration<br>
+            docker compose exec web flask db current<br>
+            docker compose exec web flask db upgrade<br>
             docker compose exec web flask db downgrade
           </code>
         </div>
+      </div>
+    </div>
+  </div>
+
+  {# Import Data #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-file-earmark-arrow-up me-1"></i> Import Data</h5>
+      </div>
+      <div class="card-body">
+        <p>Upload CSV files to import customers or inventory items:</p>
+        <div class="d-grid gap-2">
+          <a href="{{ url_for('admin.import_data', type='customers') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-people me-1"></i>Import Customers (CSV)
+          </a>
+          <a href="{{ url_for('admin.import_data', type='inventory') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-box-seam me-1"></i>Import Inventory (CSV)
+          </a>
+        </div>
+        <p class="text-muted small mt-2 mb-0">
+          CSV files must match the export format. Download a template from the
+          import page.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {# Future: Audit Log, Logs #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-clock-history me-1"></i> Coming Soon</h5>
+      </div>
+      <div class="card-body">
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2">
+            <i class="bi bi-journal-text text-muted me-1"></i>
+            <strong>Audit Log</strong> — Track all data changes with user attribution
+          </li>
+          <li class="mb-2">
+            <i class="bi bi-terminal text-muted me-1"></i>
+            <strong>System Logs</strong> — View application and Docker container logs
+          </li>
+          <li>
+            <i class="bi bi-file-earmark-arrow-up text-muted me-1"></i>
+            <strong>Advanced Import</strong> — Column mapping wizard for arbitrary CSV/XLSX layouts
+          </li>
+        </ul>
       </div>
     </div>
   </div>
