@@ -392,20 +392,51 @@ def settings():
 @admin_bp.route("/data")
 @roles_required("admin")
 def data_management():
-    """Data management hub (backup info, DB stats)."""
-    from app.models.customer import Customer
-    from app.models.inventory import InventoryItem
-    from app.models.invoice import Invoice
-    from app.models.service_order import ServiceOrder
+    """Data management hub with live DB stats, backup, export, migration info."""
+    from app.services import data_management_service
 
-    stats = {
-        "users": db.session.query(func.count(User.id)).scalar(),
-        "customers": db.session.query(func.count(Customer.id)).scalar(),
-        "orders": db.session.query(func.count(ServiceOrder.id)).scalar(),
-        "inventory": db.session.query(func.count(InventoryItem.id)).scalar(),
-        "invoices": db.session.query(func.count(Invoice.id)).scalar(),
-    }
-    return render_template("admin/data.html", stats=stats)
+    table_stats = data_management_service.get_table_stats()
+    db_version = data_management_service.get_db_version()
+    db_size = data_management_service.get_db_size()
+    migration = data_management_service.get_migration_status()
+
+    # Summary stats for the top cards
+    stats = {}
+    for entry in table_stats:
+        stats[entry["table"]] = entry["rows"]
+
+    return render_template(
+        "admin/data.html",
+        table_stats=table_stats,
+        db_version=db_version,
+        db_size=db_size,
+        migration=migration,
+        stats=stats,
+    )
+
+
+@admin_bp.route("/data/backup")
+@roles_required("admin")
+def download_backup():
+    """Download a SQL backup of the database."""
+    from datetime import datetime
+    from flask import Response
+    from app.services import data_management_service
+
+    try:
+        sql_dump = data_management_service.create_backup_sql()
+    except RuntimeError as e:
+        flash(str(e), "error")
+        return redirect(url_for("admin.data_management"))
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"dsm_backup_{timestamp}.sql"
+
+    return Response(
+        sql_dump,
+        mimetype="application/sql",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
