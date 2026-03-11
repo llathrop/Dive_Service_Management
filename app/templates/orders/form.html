@@ -58,32 +58,28 @@
     </div>
   </div>
 
-  {# Status & Priority (edit only for status) #}
+  {# Status & Priority #}
   <div class="card mb-4">
     <div class="card-header">
       <h5 class="card-title mb-0">Status & Priority</h5>
     </div>
     <div class="card-body">
       <div class="row">
-        {% if is_edit %}
-        <div class="col-md-6">
-          {{ render_select(form.status) }}
-        </div>
-        <div class="col-md-6">
-          {{ render_select(form.priority) }}
-        </div>
-        {% else %}
         <div class="col-md-6">
           {{ render_select(form.priority) }}
         </div>
         <div class="col-md-6">
           <div class="mb-3">
             <label class="form-label">Status</label>
+            {% if is_edit %}
+            <input type="text" class="form-control" value="{{ order.status|replace('_', ' ')|title }}" disabled>
+            <div class="form-text">Use the status buttons on the order detail page to change status.</div>
+            {% else %}
             <input type="text" class="form-control" value="Intake" disabled>
             <div class="form-text">New orders start in Intake status.</div>
+            {% endif %}
           </div>
         </div>
-        {% endif %}
       </div>
     </div>
   </div>
