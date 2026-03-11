@@ -255,3 +255,31 @@
 2. App must auto-detect and upgrade prior DB schema versions on startup
 3. All schema changes must have Alembic migration scripts
 4. Database seeding must be idempotent and run automatically
+
+### Post-Phase 6: Third Review Fix-ups — CODEX Re-Review (In Progress)
+
+**Trigger**: CODEX static re-review (2026-03-04, updated 2026-03-10) identified remaining correctness and usability issues.
+
+**Critical (P0) Fixes**:
+
+- [x] P0-1: Inventory form decimal truncation — `IntegerField` → `DecimalField` for `quantity_in_stock`, `reorder_level`, and stock adjustment fields ([PR #9](https://github.com/llathrop/Dive_Service_Management/pull/9))
+- [x] P0-2: Negative stock prevention — `add_part_used()` now raises `ValueError` when deduction exceeds available stock ([PR #10](https://github.com/llathrop/Dive_Service_Management/pull/10))
+
+**High Priority (P1) Fixes**:
+
+- [x] P1-1: Worker/beat healthchecks — added `celery inspect ping` for worker, `pgrep` for beat in docker-compose.yml ([PR #11](https://github.com/llathrop/Dive_Service_Management/pull/11))
+- [x] P1-2: Fail-fast entrypoint — migration/seeding failures now exit 1 in production mode ([PR #15](https://github.com/llathrop/Dive_Service_Management/pull/15))
+- [x] P1-3: Tax rate display — template now multiplies by 100 before showing %, form placeholder clarified ([PR #16](https://github.com/llathrop/Dive_Service_Management/pull/16))
+- [x] P1-4: Misleading status fields — removed editable status dropdowns from order/invoice edit forms ([PR #17](https://github.com/llathrop/Dive_Service_Management/pull/17))
+- [x] P1-7: Documentation drift — PROGRESS.md, MEMORY.md updated to match current state
+
+**Deferred to future sprints**:
+
+- P1-5: Service layer refactoring for Phase 2 blueprints
+- P1-8: Test quality gaps (MariaDB parity tests, time-freezing, validation suite)
+- P2-1: Scalability (FULLTEXT search, streaming exports)
+- P2-2: Module splitting for maintainability
+- P2-3: Broadcast notification UI alignment
+- P2-4: Repo hygiene cleanup
+
+**Tests**: 809+ total, all passing
