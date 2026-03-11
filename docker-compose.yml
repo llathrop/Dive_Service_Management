@@ -97,6 +97,12 @@ services:
     restart: unless-stopped
     networks:
       - dsm-net
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.celery_app inspect ping --timeout 10 2>/dev/null | grep -q OK"]
+      interval: 60s
+      timeout: 15s
+      start_period: 30s
+      retries: 3
 
   # ---------------------------------------------------------------------------
   # Celery Beat (scheduled tasks: low-stock checks, overdue reminders)
@@ -113,6 +119,12 @@ services:
     restart: unless-stopped
     networks:
       - dsm-net
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' > /dev/null"]
+      interval: 60s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
 
 # ---------------------------------------------------------------------------
 # Persistent Volumes
