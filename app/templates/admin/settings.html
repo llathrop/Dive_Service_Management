@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/forms.html" import render_field, render_form_errors %}
 
 {% block title %}System Settings - Admin{% endblock %}
 
@@ -12,54 +13,78 @@
   </a>
 </div>
 
-<div class="row g-3">
-  {# Application Settings #}
-  <div class="col-md-6">
-    <div class="card h-100">
-      <div class="card-header">
-        <h5 class="card-title mb-0"><i class="bi bi-building me-1"></i> Company Information</h5>
-      </div>
-      <div class="card-body">
-        <p class="text-muted">Company name, address, contact information, and logo are configured via environment variables in the <code>.env</code> file.</p>
-        <dl class="mb-0">
-          <dt>Configuration File</dt>
-          <dd><code>.env</code> (project root)</dd>
-          <dt>Key Variables</dt>
-          <dd>
-            <code>DSM_SECRET_KEY</code>, <code>DSM_DATABASE_URL</code>,
-            <code>DSM_PORT</code>, <code>DSM_BIND_ADDRESS</code>
-          </dd>
-        </dl>
-      </div>
-    </div>
-  </div>
+{# Tab navigation #}
+<ul class="nav nav-tabs mb-4" role="tablist">
+  {% for tab_key, tab_info in tabs.items() %}
+  <li class="nav-item" role="presentation">
+    <a class="nav-link{% if tab_key == active_tab %} active{% endif %}"
+       href="{{ url_for('admin.settings', tab=tab_key) }}"
+       role="tab">
+      <i class="{{ tab_info.icon }} me-1"></i>{{ tab_info.label }}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
 
-  {# Security Settings #}
-  <div class="col-md-6">
-    <div class="card h-100">
-      <div class="card-header">
-        <h5 class="card-title mb-0"><i class="bi bi-shield-lock me-1"></i> Security</h5>
-      </div>
-      <div class="card-body">
-        <dl class="mb-0">
-          <dt>Password Hashing</dt>
-          <dd>argon2 (via Flask-Security-Too)</dd>
-          <dt>Session Management</dt>
-          <dd>Server-side sessions with CSRF protection</dd>
-          <dt>Authentication</dt>
-          <dd>Role-based access control (admin, technician, viewer)</dd>
-          <dt>Manage Users</dt>
-          <dd><a href="{{ url_for('admin.list_users') }}">User Management</a></dd>
-        </dl>
-      </div>
-    </div>
-  </div>
+{# Tab content — only show the active tab's form #}
+{% set form = forms[active_tab] %}
+{% set tab_info = tabs[active_tab] %}
 
-  {# Database Settings #}
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title mb-0">
+      <i class="{{ tab_info.icon }} me-1"></i> {{ tab_info.label }} Settings
+    </h5>
+  </div>
+  <div class="card-body">
+    {{ render_form_errors(form) }}
+
+    <form method="POST" action="{{ url_for('admin.settings', tab=active_tab) }}">
+      {{ form.hidden_tag() }}
+      <input type="hidden" name="tab" value="{{ active_tab }}">
+
+      {% for config_key, field_name in tab_info.fields.items() %}
+        {% set field = form[field_name] %}
+        {% set is_locked = locked_keys.get(config_key, false) %}
+
+        {% if is_locked %}
+        <div class="mb-3">
+          <label class="form-label">
+            {{ field.label.text }}
+            <span class="badge bg-secondary ms-1" title="Controlled by environment variable">
+              <i class="bi bi-lock-fill"></i> ENV
+            </span>
+          </label>
+          <input type="text" class="form-control" value="{{ field.data or '' }}" disabled>
+          <div class="form-text text-muted">
+            This setting is controlled by an environment variable and cannot be changed here.
+          </div>
+        </div>
+        {% else %}
+          {% if field.description %}
+            {{ render_field(field, help_text=field.description) }}
+          {% else %}
+            {{ render_field(field) }}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+
+      <div class="mt-3">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>Save {{ tab_info.label }} Settings
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Infrastructure info cards (read-only) #}
+{% if active_tab == 'company' %}
+<div class="row g-3 mt-3">
   <div class="col-md-6">
-    <div class="card h-100">
+    <div class="card">
       <div class="card-header">
-        <h5 class="card-title mb-0"><i class="bi bi-database me-1"></i> Database</h5>
+        <h6 class="card-title mb-0"><i class="bi bi-database me-1"></i> Database</h6>
       </div>
       <div class="card-body">
         <dl class="mb-0">
@@ -73,63 +98,23 @@
       </div>
     </div>
   </div>
-
-  {# Service Defaults #}
   <div class="col-md-6">
-    <div class="card h-100">
+    <div class="card">
       <div class="card-header">
-        <h5 class="card-title mb-0"><i class="bi bi-wrench me-1"></i> Service Defaults</h5>
-      </div>
-      <div class="card-body">
-        <p class="text-muted">Service order and invoice configuration defaults.</p>
-        <dl class="mb-0">
-          <dt>Order Number Format</dt>
-          <dd>SO-YYYY-NNNNN (auto-generated)</dd>
-          <dt>Invoice Number Format</dt>
-          <dd>INV-YYYY-NNNNN (auto-generated)</dd>
-          <dt>Default Priority</dt>
-          <dd>Normal</dd>
-        </dl>
-      </div>
-    </div>
-  </div>
-
-  {# Display Settings #}
-  <div class="col-md-6">
-    <div class="card h-100">
-      <div class="card-header">
-        <h5 class="card-title mb-0"><i class="bi bi-palette me-1"></i> Display</h5>
+        <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-1"></i> Authentication</h6>
       </div>
       <div class="card-body">
         <dl class="mb-0">
-          <dt>Theme</dt>
-          <dd>Light / Dark / Auto (user preference via header toggle)</dd>
-          <dt>Pagination</dt>
-          <dd>25 items per page (default)</dd>
-          <dt>Frontend Libraries</dt>
-          <dd>Bootstrap 5.3, HTMX 2.0, Alpine.js 3.14, Chart.js</dd>
-        </dl>
-      </div>
-    </div>
-  </div>
-
-  {# Notification Settings #}
-  <div class="col-md-6">
-    <div class="card h-100">
-      <div class="card-header">
-        <h5 class="card-title mb-0"><i class="bi bi-bell me-1"></i> Notifications</h5>
-      </div>
-      <div class="card-body">
-        <dl class="mb-0">
-          <dt>In-App Notifications</dt>
-          <dd>Enabled (low stock, order status, payments)</dd>
-          <dt>Email Notifications</dt>
-          <dd>Not yet configured (future feature)</dd>
-          <dt>Notification Bell</dt>
-          <dd>Updates via polling (60s interval)</dd>
+          <dt>Password Hashing</dt>
+          <dd>argon2 (via Flask-Security-Too)</dd>
+          <dt>Session Management</dt>
+          <dd>Server-side sessions with CSRF protection</dd>
+          <dt>Authentication</dt>
+          <dd>Role-based access control (admin, technician, viewer)</dd>
         </dl>
       </div>
     </div>
   </div>
 </div>
+{% endif %}
 {% endblock %}
