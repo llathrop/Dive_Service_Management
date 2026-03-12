@@ -1,6 +1,6 @@
 """Add system_config table for database-stored application settings.
 
-Revision ID: c3d4e5f6a7b8
+Revision ID: d4e5f6a7b8c9
 Revises: b2c3d4e5f6a7
 Create Date: 2026-03-11
 """
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'c3d4e5f6a7b8'
+revision = 'd4e5f6a7b8c9'
 down_revision = 'b2c3d4e5f6a7'
 branch_labels = None
 depends_on = None
