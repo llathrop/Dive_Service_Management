@@ -101,6 +101,9 @@ generate_secret() {
 get_compose_cmd() {
     # Build the docker compose command with appropriate files
     local cmd="docker compose -f ${COMPOSE_FILE}"
+    if [[ -f "${PROJECT_DIR}/docker-compose.override.yml" ]]; then
+        cmd="${cmd} -f ${PROJECT_DIR}/docker-compose.override.yml"
+    fi
     if [[ "${LIGHTWEIGHT}" == "true" ]]; then
         cmd="${cmd} -f ${COMPOSE_LIGHTWEIGHT}"
     fi
@@ -612,7 +615,30 @@ cmd_start() {
 
     log_info "Starting all containers..."
     ${compose_cmd} up -d
-    log_info "Containers started."
+    
+    # Wait for web service to be actually responding (avoids 502 errors)
+    log_info "Waiting for web application to respond (this can take up to 60s)..."
+    local max_wait=60
+    local waited=0
+    local success=false
+    while [[ ${waited} -lt ${max_wait} ]]; do
+        # Check if the container is running and responding with 200 OK
+        if docker exec dsm-web curl -s -f http://localhost:8080/health > /dev/null 2>&1; then
+            success=true
+            break
+        fi
+        echo -ne "\r  Waiting for web service... (${waited}s/${max_wait}s)"
+        sleep 5
+        waited=$((waited + 5))
+    done
+    echo ""
+    
+    if [[ "${success}" == "true" ]]; then
+        log_info "Containers started and web service is healthy."
+    else
+        log_warn "Containers started, but web service health check timed out."
+        log_warn "Check logs with: docker compose logs web"
+    fi
 }
 
 # ---------------------------------------------------------------------------
