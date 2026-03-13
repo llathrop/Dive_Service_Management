@@ -2,7 +2,7 @@
 # Pin to minor version ranges for reproducibility with patch-level flexibility.
 
 # Web Framework
-Flask==3.1.0
+Flask==3.1.3
 Werkzeug==3.1.6
 
 # Database
