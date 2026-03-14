@@ -490,3 +490,21 @@ class SystemConfigFactory(BaseFactory):
     config_type = "string"
     category = "company"
     description = "Test config entry"
+
+
+# ---------------------------------------------------------------------------
+# AuditLog factory
+# ---------------------------------------------------------------------------
+
+from app.models.audit_log import AuditLog
+
+
+class AuditLogFactory(BaseFactory):
+    """Factory for the AuditLog model."""
+
+    class Meta:
+        model = AuditLog
+
+    action = "create"
+    entity_type = "customer"
+    entity_id = factory.Sequence(lambda n: n + 1)

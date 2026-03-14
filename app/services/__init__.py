@@ -5,6 +5,7 @@ call service functions rather than interacting with models directly.
 """
 
 from app.services import (  # noqa: F401
+    audit_service,
     customer_service,
     export_service,
     inventory_service,
