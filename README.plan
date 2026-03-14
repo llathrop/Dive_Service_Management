@@ -128,8 +128,15 @@ The Admin System Settings and Data Management pages are being upgraded from read
 
 ---
 
+## Current Sprint (2026-03-13)
+
+- **New Customer from order page**: Add inline quick-create customer modal from the service order form, so techs don't need to leave the order workflow
+- **Audit log viewer**: AuditLog model, migration, service layer, and Admin > Data Management viewer with filters
+- **UAT script updates**: Refresh UAT test scripts to match current UI after admin overhaul
+
+---
+
 ## Future Items
 
 - **Import with column mapping wizard**: Drag-and-drop column mapping for arbitrary CSV/XLSX layouts, auto-detect columns, support all entity types
-- **Audit log**: Queryable `audit_log` table (per blueprint section 2.15) with filters by entity, user, action, date range; displayed in Admin > Data Management
 - **Generalized logging access**: Unified log viewer in Admin showing login/logout events, notification history, application logs, and Docker container logs; filterable by severity, source, and date range
