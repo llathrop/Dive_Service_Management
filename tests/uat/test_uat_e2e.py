@@ -199,6 +199,45 @@ class TestEndToEndWorkflow:
         expect(admin_page.locator("h1")).to_contain_text("Converter")
 
     # ------------------------------------------------------------------
+    # Admin Overhaul
+    # ------------------------------------------------------------------
+
+    def test_14_admin_hub(self, admin_page: Page, base_url: str):
+        """Step 14: Verify admin hub loads with all section cards."""
+        admin_page.goto(f"{base_url}/admin/")
+        admin_page.wait_for_load_state("networkidle")
+        page_text = admin_page.text_content("body")
+        assert "User Management" in page_text
+        assert "System Settings" in page_text
+        assert "Data Management" in page_text
+
+    def test_15_admin_settings(self, admin_page: Page, base_url: str):
+        """Step 15: Verify settings page renders with tabs."""
+        admin_page.goto(f"{base_url}/admin/settings")
+        admin_page.wait_for_load_state("networkidle")
+        expect(admin_page.locator("h1")).to_contain_text("System Settings")
+        # Verify all 6 tabs are present
+        page_text = admin_page.text_content(".nav-tabs")
+        assert "Company" in page_text
+        assert "Service" in page_text
+        assert "Security" in page_text
+
+    def test_16_data_management(self, admin_page: Page, base_url: str):
+        """Step 16: Verify data management page shows DB info."""
+        admin_page.goto(f"{base_url}/admin/data")
+        admin_page.wait_for_load_state("networkidle")
+        expect(admin_page.locator("h1")).to_contain_text("Data Management")
+        page_text = admin_page.text_content("body")
+        assert "Backup" in page_text
+        assert "Table Statistics" in page_text
+
+    def test_17_import_page(self, admin_page: Page, base_url: str):
+        """Step 17: Verify CSV import page loads."""
+        admin_page.goto(f"{base_url}/admin/data/import?type=customers")
+        admin_page.wait_for_load_state("networkidle")
+        expect(admin_page.locator("h1")).to_contain_text("Import Customers")
+
+    # ------------------------------------------------------------------
     # Final: Logout
     # ------------------------------------------------------------------
 
