@@ -2884,6 +2884,112 @@ jobs:
 
 ---
 
+## 15. Cloud Deployment and Integration Readiness
+
+### 15.1 Deployment Scenarios
+
+The application supports four deployment scenarios:
+
+| Scenario | Target | Database | Redis | Notes |
+|----------|--------|----------|-------|-------|
+| **Local Docker (Pi)** | Raspberry Pi 4/5 (ARM64) | Local MariaDB container | Local Redis container | Lightweight profile (Huey optional), Pi-optimized MariaDB tuning |
+| **Local Docker (x86-64)** | Desktop/server | Local MariaDB container | Local Redis container | Full 5-container stack |
+| **Remote DB** | Any Docker host | External managed DB (AWS RDS, GCP Cloud SQL, etc.) | Local or managed Redis | Set `DSM_DATABASE_URL` to external host, omit `db` service |
+| **Cloud (managed)** | AWS ECS/Fargate, GCP Cloud Run, Azure Container Apps | Managed MariaDB-compatible (RDS, Cloud SQL, Azure DB) | Managed Redis (ElastiCache, Memorystore, Azure Cache) | Container image pushed to registry, orchestrated by cloud platform |
+
+### 15.2 Cloud Provider Guides
+
+Each cloud guide should cover:
+
+- **Container registry**: Push `dsm-web` image to ECR/GCR/ACR
+- **Managed database**: Provision MariaDB-compatible instance, configure `DSM_DATABASE_URL`
+- **Managed Redis**: Provision Redis instance, configure `DSM_REDIS_URL` and `DSM_CELERY_BROKER_URL`
+- **Secrets management**: Store `DSM_SECRET_KEY`, DB passwords, etc. in AWS Secrets Manager / GCP Secret Manager / Azure Key Vault
+- **Networking**: VPC/VNet configuration, security groups for DB and Redis access
+- **Health/readiness probes**: `/health` endpoint already exists; cloud platforms use it for load balancer health checks and rolling deployments
+- **Persistent storage**: S3/GCS/Azure Blob for uploads (requires future `DSM_STORAGE_BACKEND` abstraction)
+- **Backups**: Managed DB automated backups, S3 backup of uploads directory
+- **Scaling**: Horizontal scaling of web containers (stateless except uploads); single worker + beat instance
+
+### 15.3 Environment Variable Additions for Cloud
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DSM_STORAGE_BACKEND` | `local` | Storage backend for uploads: `local`, `s3`, `gcs` (future) |
+| `DSM_S3_BUCKET` | (none) | S3 bucket name for uploads (when `DSM_STORAGE_BACKEND=s3`) |
+| `DSM_S3_REGION` | (none) | AWS region for S3 |
+| `DSM_S3_PREFIX` | `uploads/` | Key prefix within S3 bucket |
+| `DSM_ALLOWED_HOSTS` | `*` | Comma-separated allowed hostnames (for proxy header validation) |
+| `DSM_FORCE_HTTPS` | `false` | Redirect all HTTP to HTTPS |
+| `DSM_TRUSTED_PROXIES` | (none) | Comma-separated trusted proxy IPs (for `X-Forwarded-For` handling) |
+
+### 15.4 Health and Readiness Endpoints
+
+- `GET /health` — Returns 200 if app is running (already implemented)
+- `GET /health/ready` — Returns 200 only if DB and Redis connections are healthy (future enhancement)
+- `GET /health/live` — Returns 200 always (Kubernetes liveness probe, future)
+
+---
+
+## 16. Documentation Suite
+
+### 16.1 Architecture Document (`docs/architecture.md`)
+
+Comprehensive technical reference for developers and operators:
+
+- **System overview**: High-level diagram of containers, data flow, and external integrations
+- **Application architecture**: Flask app factory, blueprint registration, extension initialization, request lifecycle
+- **Data model**: ER diagram, model relationships, migration chain, key design decisions (polymorphic tags, soft deletes, price snapshots, many-to-many invoices)
+- **Service layer**: Business logic patterns, when to use services vs. direct model access
+- **Authentication and authorization**: Flask-Security-Too configuration, role hierarchy, permission matrix, decorator usage
+- **Search architecture**: FULLTEXT index strategy, global search implementation, per-entity search, tag filtering
+- **Background tasks**: Celery/Huey task registration, beat schedule, notification checks
+- **Configuration hierarchy**: ENV → instance config → DB system_config → app defaults
+- **Docker architecture**: Container roles, networking, volume strategy, health checks
+
+### 16.2 User Guide (`docs/user_guide.md`)
+
+Task-oriented guide organized by user role, derived from UAT scripts but restructured for discoverability:
+
+- **Getting Started**: Login, dashboard overview, navigation, theme selection
+- **Managing Customers**: Create individual/business customer, search, edit, view history, quick-create from order form
+- **Service Orders**: Create order, add items, apply services from price list, add custom charges, add parts/labor, write service notes, change status, view timeline
+- **Serial Number Lookup**: Look up equipment by serial, view service history, create new item
+- **Inventory Management**: Add parts, adjust stock, view low-stock alerts, track usage
+- **Price List**: Browse services by category, understand pricing, apply to orders
+- **Invoicing**: Generate invoice from order, edit line items, record payments, track deposits, void/refund
+- **Billing Search**: Find invoices by number, customer, date range, amount, status
+- **Reports**: Run each report type, filter by date range, export results
+- **Tools**: Use seal size calculator, material estimator, pricing calculator, unit converter
+- **Admin Tasks**: Manage users, configure settings, view audit log, import/export data, backup database
+
+### 16.3 Installation Guide (`docs/installation.md`)
+
+Step-by-step installation for each deployment scenario:
+
+- **Prerequisites**: Docker, Docker Compose, hardware requirements (Pi: 4GB+ RAM recommended)
+- **Quick Start (Local Docker)**: Clone, copy `.env.example`, run `scripts/setup.sh`, access at localhost:8080
+- **Raspberry Pi Setup**: OS preparation, Docker installation on ARM64, lightweight profile, Pi-specific MariaDB tuning, performance expectations
+- **Remote Database**: Configure external MariaDB, modify `docker-compose.yml` to omit `db` service, set `DSM_DATABASE_URL`
+- **Cloud Deployment (AWS)**: ECR push, RDS provisioning, ElastiCache, ECS task definition, ALB configuration
+- **Cloud Deployment (GCP)**: GCR push, Cloud SQL, Memorystore, Cloud Run service
+- **Cloud Deployment (Azure)**: ACR push, Azure Database for MariaDB, Azure Cache, Container Apps
+- **Upgrade procedure**: `scripts/setup.sh upgrade` — pulls latest, runs migrations, restarts
+- **Backup and restore**: `scripts/setup.sh backup` / `scripts/setup.sh restore`
+- **Troubleshooting**: Common issues (port conflicts, DB connection refused, migration failures, permission errors)
+
+### 16.4 Configuration Reference (`docs/configuration.md`)
+
+Complete reference for all configuration options:
+
+- **Environment variables**: Full table with variable name, default, description, and which deployment scenarios require it
+- **Database-stored settings**: All `system_config` keys by category, with defaults and descriptions
+- **Docker Compose profiles**: Full vs. lightweight, port binding, volume configuration
+- **MariaDB tuning**: `custom.cnf` parameters explained, Pi-optimized values
+- **Security settings**: Password policy, lockout, session lifetime, HTTPS enforcement
+
+---
+
 ### Critical Files for Implementation
 
 - `/home/llathrop/Projects/Dive_Service_Management/app/__init__.py` - Application factory: the entry point where Flask app is created, extensions initialized, blueprints registered. Must be built first as everything depends on it.
