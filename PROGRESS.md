@@ -324,25 +324,43 @@
 
 **Tests**: 905 total, all passing
 
-### Current Sprint (2026-03-13)
+### Sprint 2026-03-13 (Complete)
 
-**PR 1: Add 'New Customer' from order page** (High Priority — UX gap)
+- [x] Quick-create customer modal on order form (8 tests)
+- [x] AuditLog model, migration `e5f6a7b8c9d0`, audit_service, admin viewer with filters (26 tests)
+- [x] UAT admin tests — 53 Playwright tests + 4 E2E steps for admin overhaul
 
-- Add inline quick-create customer modal/form accessible from the service order creation page
-- Eliminates workflow friction: techs no longer need to leave order flow to create a new customer
+**Tests**: 939 total, all passing
 
-**PR 2: Audit log viewer** (Medium Priority — admin tooling)
+---
 
-- AuditLog model (per PROJECT_BLUEPRINT.md section 2.15)
-- Alembic migration
-- audit_service.py for recording and querying
-- Admin > Data Management viewer with filters by entity, user, action, date range
+### Backlog — Prioritized by Wave
 
-**PR 3: UAT script updates** (Lower Priority — test maintenance)
+**Wave 1: High Impact (parallelizable — 3 independent agents)**
 
-- Update UAT scripts to match current UI after admin overhaul and prior phases
+- [ ] **1a: Wire audit logging into CRUD operations** — audit infrastructure exists but nothing calls `log_action()`. Wire into all 7 write-path blueprints (customers, orders, items, inventory, invoices, price_list, admin) + order_service, invoice_service
+- [ ] **1b: PDF invoice generation** (fpdf2) — core business need for printable customer invoices. New `app/utils/pdf.py`, invoice blueprint route, print template, tests
+- [ ] **1c: Documentation suite** — `docs/architecture.md` (system architecture), `docs/user_guide.md` (task-oriented user use cases from UAT scripts), `docs/installation.md` (Pi/local Docker/cloud/remote DB scenarios)
 
-**Future Items (not in current sprint)**:
+**Wave 2: Medium Impact (parallelizable — 3 agents; 2a depends on 1a)**
 
-- [ ] **Import with column mapping wizard** — drag-and-drop column mapping UI for arbitrary CSV/XLSX layouts, auto-detect columns, support all entity types (PR D only does fixed-format CSV for customers + inventory)
-- [ ] **Generalized logging access** — unified log viewer in Admin showing login/logout events, notification history, application logs (from Flask logger), and Docker container logs (via Docker API or log file mounts); filterable by severity, source, and date range
+- [ ] **2a: Dashboard recent activity feed** — replace placeholder with live `get_recent_activity()` data (depends on audit logging being wired)
+- [ ] **2b: Cloud service integration readiness** — deployment docs for AWS/GCP/Azure, health/readiness probes, env config for managed DB/Redis, optional S3 for backups
+- [ ] **2c: Kanban view for orders** — template placeholder exists; implement drag-and-drop order status board
+
+**Wave 3: Polish & Tech Debt (parallelizable — 3 agents)**
+
+- [ ] **3a: Service layer refactoring** — Phase 2 blueprints (customers, items, inventory, price_list) bypass service layer; refactor to use services
+- [ ] **3b: FULLTEXT search + streaming exports** — scalability for large datasets
+- [ ] **3c: Import column mapping wizard** — drag-and-drop column mapping UI for arbitrary CSV/XLSX layouts
+
+**Wave 4: Lower Priority (sequential or as-needed)**
+
+- [ ] dsm-beat healthcheck fix (consistently shows unhealthy)
+- [ ] Email notifications (SMTP configuration + delivery)
+- [ ] Saved searches per user
+- [ ] File attachments on items/orders/notes
+- [ ] Generalized logging access (unified app/auth/Docker log viewer)
+- [ ] Module splitting (large blueprints like orders.py, admin.py)
+- [ ] MariaDB parity tests (test suite runs on SQLite only)
+- [ ] Broadcast notification UI alignment

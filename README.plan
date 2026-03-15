@@ -128,15 +128,39 @@ The Admin System Settings and Data Management pages are being upgraded from read
 
 ---
 
-## Current Sprint (2026-03-13)
+## Sprint 2026-03-13 (Complete)
 
-- **New Customer from order page**: Add inline quick-create customer modal from the service order form, so techs don't need to leave the order workflow
-- **Audit log viewer**: AuditLog model, migration, service layer, and Admin > Data Management viewer with filters
-- **UAT script updates**: Refresh UAT test scripts to match current UI after admin overhaul
+- Quick-create customer modal on service order form
+- AuditLog model, migration, service, admin viewer with filters
+- UAT admin Playwright tests (53 tests + E2E steps)
 
 ---
 
-## Future Items
+## Next Waves
 
-- **Import with column mapping wizard**: Drag-and-drop column mapping for arbitrary CSV/XLSX layouts, auto-detect columns, support all entity types
-- **Generalized logging access**: Unified log viewer in Admin showing login/logout events, notification history, application logs, and Docker container logs; filterable by severity, source, and date range
+### Wave 1: High Impact (parallel)
+
+- **Wire audit logging into CRUD operations**: All write-path blueprints call `audit_service.log_action()` for create/update/delete/status_change
+- **PDF invoice generation**: fpdf2-based printable invoices with company letterhead, line items, totals
+- **Documentation suite**: Architecture doc, task-oriented user guide (from UAT scripts), installation guide (Pi, local Docker, cloud, remote DB)
+
+### Wave 2: Medium Impact (parallel)
+
+- **Dashboard recent activity feed**: Live `get_recent_activity()` replacing placeholder (depends on audit wiring)
+- **Cloud service integration readiness**: Deployment docs for AWS/GCP/Azure, managed DB/Redis config, S3 backups, health/readiness probes
+- **Kanban view for orders**: Drag-and-drop order status board (template placeholder exists)
+
+### Wave 3: Polish & Tech Debt (parallel)
+
+- **Service layer refactoring**: Phase 2 blueprints use services instead of direct model access
+- **FULLTEXT search + streaming exports**: Scalability for large datasets
+- **Import column mapping wizard**: Drag-and-drop column mapping for arbitrary CSV/XLSX layouts
+
+### Wave 4: Lower Priority
+
+- dsm-beat healthcheck fix
+- Email notifications (SMTP)
+- Saved searches per user
+- File attachments on items/orders/notes
+- Generalized logging access
+- Module splitting, MariaDB parity tests, broadcast notification UI
