@@ -32,7 +32,16 @@
     <div class="card-body">
       <div class="row">
         <div class="col-md-6">
-          {{ render_select(form.customer_id) }}
+          <div class="d-flex align-items-end gap-2">
+            <div class="flex-grow-1">
+              {{ render_select(form.customer_id) }}
+            </div>
+            <div class="mb-3">
+              <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#quickCreateCustomerModal">
+                <i class="bi bi-plus-lg"></i> New Customer
+              </button>
+            </div>
+          </div>
         </div>
         <div class="col-md-6">
           {{ render_select(form.assigned_tech_id) }}
@@ -125,4 +134,119 @@
        class="btn btn-outline-secondary">Cancel</a>
   </div>
 </form>
+
+{# Quick Create Customer Modal #}
+<div class="modal fade" id="quickCreateCustomerModal" tabindex="-1" aria-labelledby="quickCreateCustomerLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="quickCreateCustomerLabel">Quick Create Customer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="quickCreateAlert" class="alert d-none" role="alert"></div>
+        <form id="quickCreateCustomerForm">
+          <div class="mb-3">
+            <label for="qc_customer_type" class="form-label">Customer Type</label>
+            <select class="form-select" id="qc_customer_type" name="customer_type">
+              <option value="individual" selected>Individual</option>
+              <option value="business">Business</option>
+            </select>
+          </div>
+          <div id="qc_individual_fields">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="qc_first_name" class="form-label">First Name</label>
+                <input type="text" class="form-control" id="qc_first_name" name="first_name">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="qc_last_name" class="form-label">Last Name</label>
+                <input type="text" class="form-control" id="qc_last_name" name="last_name">
+              </div>
+            </div>
+          </div>
+          <div id="qc_business_fields" class="d-none">
+            <div class="mb-3">
+              <label for="qc_business_name" class="form-label">Business Name</label>
+              <input type="text" class="form-control" id="qc_business_name" name="business_name">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="qc_email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="qc_email" name="email">
+          </div>
+          <div class="mb-3">
+            <label for="qc_phone_primary" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="qc_phone_primary" name="phone_primary">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="quickCreateSubmit">Create Customer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Toggle individual/business fields
+  var typeSelect = document.getElementById('qc_customer_type');
+  var individualFields = document.getElementById('qc_individual_fields');
+  var businessFields = document.getElementById('qc_business_fields');
+
+  typeSelect.addEventListener('change', function() {
+    if (this.value === 'business') {
+      individualFields.classList.add('d-none');
+      businessFields.classList.remove('d-none');
+    } else {
+      individualFields.classList.remove('d-none');
+      businessFields.classList.add('d-none');
+    }
+  });
+
+  // Submit quick create form
+  document.getElementById('quickCreateSubmit').addEventListener('click', function() {
+    var form = document.getElementById('quickCreateCustomerForm');
+    var formData = new FormData(form);
+    var alertEl = document.getElementById('quickCreateAlert');
+
+    // Add CSRF token from the main form
+    var csrfToken = document.querySelector('input[name="csrf_token"]');
+    if (csrfToken) {
+      formData.append('csrf_token', csrfToken.value);
+    }
+
+    fetch('{{ url_for("orders.quick_create_customer") }}', {
+      method: 'POST',
+      body: formData
+    })
+    .then(function(response) { return response.json().then(function(data) { return {status: response.status, body: data}; }); })
+    .then(function(result) {
+      if (result.status === 201) {
+        // Add new option to the customer select and select it
+        var select = document.getElementById('customer_id');
+        var option = new Option(result.body.display_name, result.body.id, true, true);
+        select.add(option);
+
+        // Close modal and reset form
+        var modal = bootstrap.Modal.getInstance(document.getElementById('quickCreateCustomerModal'));
+        modal.hide();
+        form.reset();
+        alertEl.classList.add('d-none');
+      } else {
+        alertEl.textContent = result.body.error || 'An error occurred.';
+        alertEl.classList.remove('d-none', 'alert-success');
+        alertEl.classList.add('alert-danger');
+      }
+    })
+    .catch(function() {
+      alertEl.textContent = 'An unexpected error occurred.';
+      alertEl.classList.remove('d-none', 'alert-success');
+      alertEl.classList.add('alert-danger');
+    });
+  });
+});
+</script>
 {% endblock %}
