@@ -221,7 +221,25 @@
     </div>
   </div>
 
-  {# Future: Audit Log, Logs #}
+  {# Audit Log #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-journal-text me-1"></i> Audit Log</h5>
+      </div>
+      <div class="card-body">
+        <p>Track all data changes with user attribution, timestamps, and before/after values.</p>
+        <a href="{{ url_for('admin.audit_log') }}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-journal-text me-1"></i>View Audit Log
+        </a>
+        <p class="text-muted small mt-2 mb-0">
+          Filter by entity type, user, action, and date range.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {# Future: System Logs, Advanced Import #}
   <div class="col-md-6">
     <div class="card h-100">
       <div class="card-header">
@@ -229,10 +247,6 @@
       </div>
       <div class="card-body">
         <ul class="list-unstyled mb-0">
-          <li class="mb-2">
-            <i class="bi bi-journal-text text-muted me-1"></i>
-            <strong>Audit Log</strong> — Track all data changes with user attribution
-          </li>
           <li class="mb-2">
             <i class="bi bi-terminal text-muted me-1"></i>
             <strong>System Logs</strong> — View application and Docker container logs
