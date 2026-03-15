@@ -10,6 +10,7 @@ from sqlalchemy import func
 
 from app.extensions import db
 from app.models.user import Role, User
+from app.services import audit_service
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -93,6 +94,17 @@ def create_user():
             if role:
                 user_datastore.add_role_to_user(user, role)
         db.session.commit()
+        try:
+            audit_service.log_action(
+                action="create",
+                entity_type="user",
+                entity_id=user.id,
+                user_id=current_user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+            )
+        except Exception:
+            pass
         flash(f"User '{username}' created successfully.", "success")
         return redirect(url_for("admin.list_users"))
 
@@ -174,6 +186,17 @@ def edit_user(id):
             user_datastore.add_role_to_user(user, role)
 
         db.session.commit()
+        try:
+            audit_service.log_action(
+                action="update",
+                entity_type="user",
+                entity_id=user.id,
+                user_id=current_user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+            )
+        except Exception:
+            pass
         flash(f"User '{username}' updated successfully.", "success")
         return redirect(url_for("admin.list_users"))
 
@@ -200,6 +223,7 @@ def toggle_user_active(id):
         return redirect(url_for("admin.list_users"))
 
     user_datastore = _get_datastore()
+    old_active = user.active
     if user.active:
         user_datastore.deactivate_user(user)
         flash(f"User '{user.username}' deactivated.", "success")
@@ -207,6 +231,20 @@ def toggle_user_active(id):
         user_datastore.activate_user(user)
         flash(f"User '{user.username}' activated.", "success")
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="update",
+            entity_type="user",
+            entity_id=user.id,
+            user_id=current_user.id,
+            field_name="active",
+            old_value=str(old_active),
+            new_value=str(user.active),
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
     return redirect(url_for("admin.list_users"))
 
 
@@ -226,6 +264,18 @@ def reset_password(id):
 
     user.password = hash_password(new_password)
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="update",
+            entity_type="user",
+            entity_id=user.id,
+            user_id=current_user.id,
+            field_name="password",
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
     flash(f"Password reset for '{user.username}'.", "success")
     return redirect(url_for("admin.list_users"))
 
@@ -366,6 +416,19 @@ def settings():
             count = _save_form(
                 forms[submitted_tab], submitted_tab, current_user.id
             )
+            try:
+                audit_service.log_action(
+                    action="update",
+                    entity_type="system_config",
+                    entity_id=0,
+                    user_id=current_user.id,
+                    field_name=submitted_tab,
+                    new_value=f"{count} values saved",
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash(f"Settings updated ({count} values saved).", "success")
             return redirect(url_for("admin.settings", tab=submitted_tab))
         else:
