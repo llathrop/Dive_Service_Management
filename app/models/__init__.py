@@ -23,6 +23,7 @@ from app.models.payment import Payment
 from app.models.notification import Notification
 from app.models.notification_read import NotificationRead
 from app.models.system_config import SystemConfig
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "Role",
@@ -50,4 +51,5 @@ __all__ = [
     "Notification",
     "NotificationRead",
     "SystemConfig",
+    "AuditLog",
 ]
