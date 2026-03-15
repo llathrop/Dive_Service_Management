@@ -6,7 +6,16 @@ with individual priced items inside each.  Category management and price
 changes require the 'admin' role.  All routes require authentication.
 """
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 
@@ -66,6 +75,46 @@ def list_items():
         "price_list/list.html",
         category_items=category_items,
         q=q,
+    )
+
+
+@price_list_bp.route("/pdf")
+@login_required
+def download_pdf():
+    """Generate and download a customer-facing price list PDF."""
+    categories = (
+        PriceListCategory.query
+        .filter_by(is_active=True)
+        .order_by(PriceListCategory.sort_order, PriceListCategory.name)
+        .all()
+    )
+
+    category_items = {}
+    for category in categories:
+        items = (
+            PriceListItem.query
+            .filter_by(category_id=category.id, is_active=True)
+            .order_by(PriceListItem.sort_order, PriceListItem.name)
+            .all()
+        )
+        if items:
+            category_items[category] = items
+
+    from app.utils.pdf import generate_price_list_pdf
+
+    pdf_bytes = generate_price_list_pdf(category_items)
+
+    inline = request.args.get("inline", "")
+    filename = "price-list.pdf"
+    if inline:
+        disposition = f'inline; filename="{filename}"'
+    else:
+        disposition = f'attachment; filename="{filename}"'
+
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": disposition},
     )
 
 
