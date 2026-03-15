@@ -11,7 +11,15 @@ Phase 4 blueprints delegate all business logic to the service layer
 operations.
 """
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    Response,
+    flash,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 
@@ -337,6 +345,43 @@ def add_payment(id):
                 flash(f"{getattr(form, field).label.text}: {error}", "error")
 
     return redirect(url_for("invoices.detail", id=id))
+
+
+# ======================================================================
+# Routes -- PDF Download
+# ======================================================================
+
+
+@invoices_bp.route("/<int:id>/pdf")
+@login_required
+@roles_accepted("admin", "technician")
+def download_pdf(id):
+    """Generate and download the invoice as a PDF.
+
+    Supports an optional ``?inline=1`` query parameter to display the
+    PDF in the browser rather than downloading it.
+    """
+    invoice = invoice_service.get_invoice(id)
+    if invoice is None:
+        flash("Invoice not found.", "error")
+        return redirect(url_for("invoices.list_invoices")), 404
+
+    from app.utils.pdf import generate_invoice_pdf
+
+    pdf_bytes = generate_invoice_pdf(invoice)
+    filename = f"{invoice.invoice_number}.pdf"
+
+    inline = request.args.get("inline", "")
+    if inline:
+        disposition = f'inline; filename="{filename}"'
+    else:
+        disposition = f'attachment; filename="{filename}"'
+
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": disposition},
+    )
 
 
 # ======================================================================
