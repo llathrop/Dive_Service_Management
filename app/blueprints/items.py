@@ -14,6 +14,7 @@ from app.extensions import db
 from app.forms.item import DrysuitDetailsForm, ServiceItemForm
 from app.models.drysuit_details import DrysuitDetails
 from app.models.service_item import ServiceItem
+from app.services import audit_service
 
 items_bp = Blueprint("items", __name__, url_prefix="/items")
 
@@ -128,6 +129,17 @@ def create():
                 db.session.add(drysuit)
 
             db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="create",
+                    entity_type="service_item",
+                    entity_id=item.id,
+                    user_id=current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash("Service item created successfully.", "success")
             return redirect(url_for("items.detail", id=item.id))
         except IntegrityError:
@@ -176,6 +188,17 @@ def edit(id):
 
         try:
             db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="update",
+                    entity_type="service_item",
+                    entity_id=item.id,
+                    user_id=current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash("Service item updated successfully.", "success")
             return redirect(url_for("items.detail", id=item.id))
         except IntegrityError:
@@ -202,6 +225,17 @@ def delete(id):
 
     item.soft_delete()
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="delete",
+            entity_type="service_item",
+            entity_id=item.id,
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
     flash("Service item deleted.", "success")
     return redirect(url_for("items.list_items"))
 
