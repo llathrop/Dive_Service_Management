@@ -284,7 +284,7 @@
 
 **Tests**: 809+ total, all passing
 
-### Admin Overhaul: Settings & Data Management (Planned)
+### Admin Overhaul: Settings & Data Management (Complete)
 
 **Trigger**: Admin System Settings and Data Management pages are entirely read-only. All configurable settings should be editable from the web UI.
 
@@ -320,8 +320,29 @@
 - Validation with error reporting (row-by-row)
 - ~20 tests covering upload, validation, import, error cases
 
+**Database migration**: `d4e5f6a7b8c9` — `system_config` table
+
+**Tests**: 905 total, all passing
+
+### Current Sprint (2026-03-13)
+
+**PR 1: Add 'New Customer' from order page** (High Priority — UX gap)
+
+- Add inline quick-create customer modal/form accessible from the service order creation page
+- Eliminates workflow friction: techs no longer need to leave order flow to create a new customer
+
+**PR 2: Audit log viewer** (Medium Priority — admin tooling)
+
+- AuditLog model (per PROJECT_BLUEPRINT.md section 2.15)
+- Alembic migration
+- audit_service.py for recording and querying
+- Admin > Data Management viewer with filters by entity, user, action, date range
+
+**PR 3: UAT script updates** (Lower Priority — test maintenance)
+
+- Update UAT scripts to match current UI after admin overhaul and prior phases
+
 **Future Items (not in current sprint)**:
 
 - [ ] **Import with column mapping wizard** — drag-and-drop column mapping UI for arbitrary CSV/XLSX layouts, auto-detect columns, support all entity types (PR D only does fixed-format CSV for customers + inventory)
-- [ ] **Audit log viewer** — queryable audit_log table with filters by entity, user, action, date range; displayed in Admin > Data Management (requires AuditLog model from blueprint section 2.15)
 - [ ] **Generalized logging access** — unified log viewer in Admin showing login/logout events, notification history, application logs (from Flask logger), and Docker container logs (via Docker API or log file mounts); filterable by severity, source, and date range
