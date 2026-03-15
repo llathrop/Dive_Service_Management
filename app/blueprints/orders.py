@@ -285,7 +285,11 @@ def create():
             "discount_amount": form.discount_amount.data,
         }
         try:
-            new_order = order_service.create_order(data, created_by=current_user.id)
+            new_order = order_service.create_order(
+                data, created_by=current_user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+            )
             flash("Service order created successfully.", "success")
             return redirect(url_for("orders.detail", id=new_order.id))
         except IntegrityError:
@@ -320,7 +324,12 @@ def edit(id):
             "discount_amount": form.discount_amount.data,
         }
         try:
-            order_service.update_order(id, data)
+            order_service.update_order(
+                id, data,
+                user_id=current_user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+            )
             flash("Service order updated successfully.", "success")
             return redirect(url_for("orders.detail", id=id))
         except IntegrityError:
@@ -337,7 +346,12 @@ def edit(id):
 @roles_accepted("admin")
 def delete(id):
     """Soft-delete a service order (admin only)."""
-    order_service.delete_order(id)
+    order_service.delete_order(
+        id,
+        user_id=current_user.id,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string,
+    )
     flash("Service order deleted.", "success")
     return redirect(url_for("orders.list_orders"))
 
@@ -357,7 +371,11 @@ def change_status(id):
         flash("No status provided.", "error")
         return redirect(url_for("orders.detail", id=id))
 
-    order, success = order_service.change_status(id, new_status, current_user.id)
+    order, success = order_service.change_status(
+        id, new_status, current_user.id,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string,
+    )
     if success:
         flash(f"Order status changed to {order.display_status}.", "success")
     else:
