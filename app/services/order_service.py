@@ -26,6 +26,7 @@ from app.models.price_list import PriceListItem
 from app.models.service_note import ServiceNote
 from app.models.service_order import ServiceOrder
 from app.models.service_order_item import ServiceOrderItem
+from app.services import audit_service
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +151,7 @@ def get_order(order_id):
     return order
 
 
-def create_order(data, created_by=None):
+def create_order(data, created_by=None, ip_address=None, user_agent=None):
     """Create a new service order from a data dict.
 
     Auto-generates the order_number using the SO-YYYY-NNNNN pattern.
@@ -158,6 +159,8 @@ def create_order(data, created_by=None):
     Args:
         data: Dictionary of service order fields.
         created_by: Optional user ID of the creator.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         The newly created ServiceOrder instance.
@@ -191,15 +194,29 @@ def create_order(data, created_by=None):
                 raise
 
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="service_order",
+            entity_id=order.id,
+            user_id=created_by,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
     return order
 
 
-def update_order(order_id, data):
+def update_order(order_id, data, user_id=None, ip_address=None, user_agent=None):
     """Update an existing service order from a data dict.
 
     Args:
         order_id: The primary key of the order to update.
         data: Dictionary of fields to update.
+        user_id: Optional user ID for audit logging.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         The updated ServiceOrder instance.
@@ -239,14 +256,28 @@ def update_order(order_id, data):
             order.priority = data["priority"]
 
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="update",
+            entity_type="service_order",
+            entity_id=order.id,
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
     return order
 
 
-def delete_order(order_id):
+def delete_order(order_id, user_id=None, ip_address=None, user_agent=None):
     """Soft-delete a service order.
 
     Args:
         order_id: The primary key of the order to delete.
+        user_id: Optional user ID for audit logging.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         The soft-deleted ServiceOrder instance.
@@ -257,6 +288,17 @@ def delete_order(order_id):
     order = get_order(order_id)
     order.soft_delete()
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="delete",
+            entity_type="service_order",
+            entity_id=order.id,
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
     return order
 
 
@@ -310,7 +352,7 @@ def generate_order_number():
 # Status Workflow
 # =========================================================================
 
-def change_status(order_id, new_status, user_id=None):
+def change_status(order_id, new_status, user_id=None, ip_address=None, user_agent=None):
     """Transition a service order to a new status.
 
     Validates that the transition is allowed according to the
@@ -321,6 +363,8 @@ def change_status(order_id, new_status, user_id=None):
         order_id: The primary key of the order.
         new_status: The target status string.
         user_id: Optional user ID performing the transition.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         A tuple of (order, success).  ``success`` is True if the
@@ -346,6 +390,20 @@ def change_status(order_id, new_status, user_id=None):
         order.date_picked_up = date.today()
 
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="status_change",
+            entity_type="service_order",
+            entity_id=order.id,
+            user_id=user_id,
+            field_name="status",
+            old_value=current_status,
+            new_value=new_status,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
     return (order, True)
 
 
@@ -388,6 +446,15 @@ def add_order_item(order_id, service_item_id, work_description=None, condition_a
     )
     db.session.add(order_item)
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="service_order_item",
+            entity_id=order_item.id,
+            additional_data=f'{{"order_id": {order_id}}}',
+        )
+    except Exception:
+        pass
     return order_item
 
 
@@ -407,6 +474,8 @@ def remove_order_item(order_item_id):
     if order_item is None:
         return False
 
+    order_id = order_item.order_id
+
     # Restore inventory for any parts_used before cascade deletes them
     for part in order_item.parts_used.all():
         inv_item = db.session.get(InventoryItem, part.inventory_item_id)
@@ -415,6 +484,15 @@ def remove_order_item(order_item_id):
 
     db.session.delete(order_item)
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="delete",
+            entity_type="service_order_item",
+            entity_id=order_item_id,
+            additional_data=f'{{"order_id": {order_id}}}',
+        )
+    except Exception:
+        pass
     return True
 
 
@@ -519,6 +597,15 @@ def add_applied_service(order_item_id, data, added_by=None):
                 )
 
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="applied_service",
+            entity_id=applied.id,
+            user_id=added_by,
+        )
+    except Exception:
+        pass
     return applied
 
 
@@ -553,6 +640,14 @@ def remove_applied_service(applied_service_id):
 
     db.session.delete(applied)
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="delete",
+            entity_type="applied_service",
+            entity_id=applied_service_id,
+        )
+    except Exception:
+        pass
     return True
 
 
@@ -634,6 +729,18 @@ def add_part_used(
     # add_applied_service which manages its own commit).
     if not is_auto_deducted:
         db.session.commit()
+        try:
+            audit_service.log_action(
+                action="create",
+                entity_type="part_used",
+                entity_id=part.id,
+                user_id=added_by,
+                field_name="quantity_in_stock",
+                old_value=str(inv_item.quantity_in_stock + quantity),
+                new_value=str(inv_item.quantity_in_stock),
+            )
+        except Exception:
+            pass
 
     return part
 
@@ -661,6 +768,14 @@ def remove_part_used(part_used_id):
 
     db.session.delete(part)
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="delete",
+            entity_type="part_used",
+            entity_id=part_used_id,
+        )
+    except Exception:
+        pass
     return True
 
 
@@ -695,6 +810,15 @@ def add_labor_entry(order_item_id, tech_id, hours, hourly_rate, description=None
     )
     db.session.add(entry)
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="labor_entry",
+            entity_id=entry.id,
+            user_id=tech_id,
+        )
+    except Exception:
+        pass
     return entry
 
 
@@ -715,6 +839,14 @@ def remove_labor_entry(labor_entry_id):
 
     db.session.delete(entry)
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="delete",
+            entity_type="labor_entry",
+            entity_id=labor_entry_id,
+        )
+    except Exception:
+        pass
     return True
 
 
@@ -743,6 +875,15 @@ def add_service_note(order_item_id, note_text, note_type="general", created_by=N
     )
     db.session.add(note)
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="service_note",
+            entity_id=note.id,
+            user_id=created_by,
+        )
+    except Exception:
+        pass
     return note
 
 
