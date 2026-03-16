@@ -5,14 +5,13 @@ customer records.  All routes require authentication.  Write operations
 (create, edit, delete) require the 'admin' or 'technician' role.
 """
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.forms.customer import CustomerForm, CustomerSearchForm
-from app.models.customer import Customer
-from app.services import audit_service
+from app.services import audit_service, customer_service
 
 customers_bp = Blueprint("customers", __name__, url_prefix="/customers")
 
@@ -33,35 +32,18 @@ def list_customers():
     sort = request.args.get("sort", "last_name")
     order = request.args.get("order", "asc")
 
-    query = Customer.not_deleted()
-
-    # Apply search filter
-    if form.q.data:
-        search_term = f"%{form.q.data}%"
-        query = query.filter(
-            db.or_(
-                Customer.first_name.ilike(search_term),
-                Customer.last_name.ilike(search_term),
-                Customer.business_name.ilike(search_term),
-                Customer.email.ilike(search_term),
-                Customer.phone_primary.ilike(search_term),
-            )
-        )
-
-    # Apply customer type filter
-    if form.customer_type.data:
-        query = query.filter_by(customer_type=form.customer_type.data)
-
-    # Apply sorting -- validate against allowlist to prevent attribute injection
+    # Validate sort against allowlist to prevent attribute injection
     if sort not in SORTABLE_FIELDS:
         sort = "last_name"
-    sort_column = getattr(Customer, sort)
-    if order == "desc":
-        query = query.order_by(sort_column.desc())
-    else:
-        query = query.order_by(sort_column.asc())
 
-    pagination = query.paginate(page=page, per_page=25, error_out=False)
+    pagination = customer_service.get_customers(
+        page=page,
+        per_page=25,
+        search=form.q.data,
+        customer_type=form.customer_type.data,
+        sort=sort,
+        order=order,
+    )
 
     return render_template(
         "customers/list.html",
@@ -77,9 +59,7 @@ def list_customers():
 @login_required
 def detail(id):
     """Display a single customer's detail page."""
-    customer = db.session.get(Customer, id)
-    if customer is None or customer.is_deleted:
-        abort(404)
+    customer = customer_service.get_customer(id)
     return render_template("customers/detail.html", customer=customer)
 
 
@@ -91,33 +71,33 @@ def create():
     form = CustomerForm()
 
     if form.validate_on_submit():
-        customer = Customer(
-            customer_type=form.customer_type.data,
-            first_name=form.first_name.data,
-            last_name=form.last_name.data,
-            business_name=form.business_name.data,
-            contact_person=form.contact_person.data,
-            email=form.email.data,
-            phone_primary=form.phone_primary.data,
-            phone_secondary=form.phone_secondary.data,
-            address_line1=form.address_line1.data,
-            address_line2=form.address_line2.data,
-            city=form.city.data,
-            state_province=form.state_province.data,
-            postal_code=form.postal_code.data,
-            country=form.country.data,
-            preferred_contact=form.preferred_contact.data,
-            tax_exempt=form.tax_exempt.data,
-            tax_id=form.tax_id.data,
-            payment_terms=form.payment_terms.data,
-            credit_limit=form.credit_limit.data,
-            notes=form.notes.data,
-            referral_source=form.referral_source.data,
-            created_by=current_user.id,
-        )
-        db.session.add(customer)
+        data = {
+            "customer_type": form.customer_type.data,
+            "first_name": form.first_name.data,
+            "last_name": form.last_name.data,
+            "business_name": form.business_name.data,
+            "contact_person": form.contact_person.data,
+            "email": form.email.data,
+            "phone_primary": form.phone_primary.data,
+            "phone_secondary": form.phone_secondary.data,
+            "address_line1": form.address_line1.data,
+            "address_line2": form.address_line2.data,
+            "city": form.city.data,
+            "state_province": form.state_province.data,
+            "postal_code": form.postal_code.data,
+            "country": form.country.data,
+            "preferred_contact": form.preferred_contact.data,
+            "tax_exempt": form.tax_exempt.data,
+            "tax_id": form.tax_id.data,
+            "payment_terms": form.payment_terms.data,
+            "credit_limit": form.credit_limit.data,
+            "notes": form.notes.data,
+            "referral_source": form.referral_source.data,
+        }
         try:
-            db.session.commit()
+            customer = customer_service.create_customer(
+                data, created_by=current_user.id
+            )
             try:
                 audit_service.log_action(
                     action="create",
@@ -143,9 +123,7 @@ def create():
 @roles_accepted("admin", "technician")
 def edit(id):
     """Show edit customer form (GET) or update the customer (POST)."""
-    customer = db.session.get(Customer, id)
-    if customer is None or customer.is_deleted:
-        abort(404)
+    customer = customer_service.get_customer(id)
 
     form = CustomerForm(obj=customer)
 
@@ -180,12 +158,7 @@ def edit(id):
 @roles_accepted("admin")
 def delete(id):
     """Soft-delete a customer (admin only)."""
-    customer = db.session.get(Customer, id)
-    if customer is None or customer.is_deleted:
-        abort(404)
-
-    customer.soft_delete()
-    db.session.commit()
+    customer = customer_service.delete_customer(id)
     try:
         audit_service.log_action(
             action="delete",
