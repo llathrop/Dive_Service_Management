@@ -16,16 +16,16 @@ from wtforms.validators import DataRequired
 
 
 class ExtendedLoginForm(LoginForm):
-    """Login form that accepts an email address.
+    """Extended login form registered with Flask-Security.
 
-    Flask-Security's default ``LoginForm`` already handles email + password
-    login.  This subclass exists as a convenient extension point if we
-    later want to add "remember me" styling, CAPTCHA, or a username field.
+    Inherits email, password, remember, and submit fields from
+    Flask-Security's ``LoginForm``.  This subclass serves as the
+    application's login form extension point for any future custom
+    fields or validation (e.g. CAPTCHA, username field).
 
-    To activate, pass ``login_form=ExtendedLoginForm`` to the Security
-    extension init in the app factory.
+    Registered via ``login_form=ExtendedLoginForm`` in the app factory's
+    ``_init_extensions()`` call to ``security.init_app()``.
     """
 
-    # Example: override the email field's label or add a placeholder
-    # email = StringField("Email", validators=[DataRequired()])
-    pass
+    # The parent LoginForm already provides a ``remember`` BooleanField.
+    # Add custom fields below as needed.
