@@ -5,14 +5,20 @@ pages. All routes require the 'admin' role.
 """
 
 import base64
+import os
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_security import current_user, hash_password, roles_required
 from sqlalchemy import func
+from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.user import Role, User
 from app.services import audit_service
+
+# Maximum logo file size: 2 MB
+_MAX_LOGO_SIZE = 2 * 1024 * 1024
+_ALLOWED_LOGO_EXTENSIONS = {"jpg", "jpeg", "png"}
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -295,6 +301,8 @@ _SETTINGS_TABS = {
             "company.phone": "company_phone",
             "company.email": "company_email",
             "company.website": "company_website",
+            "company.logo_path": "logo_upload",
+            "company.invoice_logo_path": "invoice_logo_upload",
         },
     },
     "service": {
@@ -380,16 +388,76 @@ def _populate_form(form, tab_key):
 
 
 def _save_form(form, tab_key, user_id):
-    """Save form data back to config_service."""
+    """Save form data back to config_service.
+
+    FileField entries are skipped here — they are handled separately
+    in ``_handle_logo_uploads()``.
+    """
+    from flask_wtf.file import FileField as WTFileField
     from app.services import config_service
 
     fields = _SETTINGS_TABS[tab_key]["fields"]
     updates = {}
     for config_key, field_name in fields.items():
         field = getattr(form, field_name, None)
-        if field is not None:
+        if field is not None and not isinstance(field, WTFileField):
             updates[config_key] = field.data
     return config_service.bulk_set(updates, user_id=user_id)
+
+
+def _handle_logo_uploads(form, user_id):
+    """Process logo file uploads from the company settings form.
+
+    Saves valid files to ``uploads/logos/`` and updates the corresponding
+    config keys.  Returns the number of logos saved.
+    """
+    from app.services import config_service
+
+    upload_map = {
+        "logo_upload": "company.logo_path",
+        "invoice_logo_upload": "company.invoice_logo_path",
+    }
+
+    logos_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], "logos")
+    os.makedirs(logos_dir, exist_ok=True)
+
+    count = 0
+    for field_name, config_key in upload_map.items():
+        field = getattr(form, field_name, None)
+        if field is None or not field.data or not hasattr(field.data, "filename"):
+            continue
+
+        file = field.data
+        if not file.filename:
+            continue
+
+        # Validate extension
+        ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+        if ext not in _ALLOWED_LOGO_EXTENSIONS:
+            flash(f"Invalid file type for {field.label.text}. Use JPG or PNG.", "error")
+            continue
+
+        # Validate size (read content, check length, seek back)
+        content = file.read()
+        if len(content) > _MAX_LOGO_SIZE:
+            flash(f"{field.label.text} exceeds 2 MB limit.", "error")
+            continue
+        file.seek(0)
+
+        # Save with safe filename
+        safe_name = secure_filename(file.filename)
+        # Prefix to avoid collisions: header_ or invoice_
+        prefix = "header_" if field_name == "logo_upload" else "invoice_"
+        dest_name = prefix + safe_name
+        dest_path = os.path.join(logos_dir, dest_name)
+        file.save(dest_path)
+
+        # Store relative path (from UPLOAD_FOLDER) in config
+        rel_path = os.path.join("logos", dest_name)
+        config_service.set_config(config_key, rel_path, user_id=user_id)
+        count += 1
+
+    return count
 
 
 @admin_bp.route("/settings", methods=["GET", "POST"])
@@ -418,6 +486,12 @@ def settings():
             count = _save_form(
                 forms[submitted_tab], submitted_tab, current_user.id
             )
+            # Handle logo file uploads for company tab
+            if submitted_tab == "company":
+                logo_count = _handle_logo_uploads(
+                    forms[submitted_tab], current_user.id
+                )
+                count += logo_count
             try:
                 audit_service.log_action(
                     action="update",
