@@ -1,10 +1,15 @@
 """Health check blueprint.
 
-Provides a simple ``/health`` endpoint used by Docker health checks
-and monitoring tools.
+Provides health, readiness, and liveness endpoints used by Docker health
+checks, Kubernetes probes, and monitoring tools.
+
+Endpoints:
+    GET /health       — DB connectivity check (legacy, kept for compatibility)
+    GET /health/ready — Readiness probe: checks DB and Redis
+    GET /health/live  — Liveness probe: always returns 200
 """
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, current_app, jsonify
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from app.extensions import db
@@ -34,3 +39,49 @@ def health():
 
     http_status = 200 if status["status"] == "ok" else 503
     return jsonify(status), http_status
+
+
+@health_bp.route("/health/ready")
+def readiness():
+    """Readiness probe for Kubernetes and cloud load balancers.
+
+    Checks both database and Redis connectivity. Returns 200 when all
+    dependencies are reachable, 503 otherwise.
+    """
+    result = {"status": "ready", "db": "ok", "redis": "ok"}
+    is_ready = True
+
+    # Database check
+    try:
+        db.session.execute(db.text("SELECT 1"))
+    except (OperationalError, SQLAlchemyError):
+        result["db"] = "error"
+        is_ready = False
+
+    # Redis check
+    try:
+        import redis
+
+        redis_url = current_app.config.get("REDIS_URL", "redis://localhost:6379/0")
+        r = redis.from_url(redis_url, socket_connect_timeout=2, socket_timeout=2)
+        r.ping()
+    except Exception:
+        result["redis"] = "error"
+        is_ready = False
+
+    if not is_ready:
+        result["status"] = "not_ready"
+
+    http_status = 200 if is_ready else 503
+    return jsonify(result), http_status
+
+
+@health_bp.route("/health/live")
+def liveness():
+    """Liveness probe for Kubernetes and cloud orchestrators.
+
+    Always returns 200 to indicate the process is alive. No dependency
+    checks — if this endpoint stops responding, the process is hung and
+    should be restarted.
+    """
+    return jsonify({"status": "alive"}), 200
