@@ -26,6 +26,7 @@ from app.models.customer import Customer
 from app.models.inventory import InventoryItem
 from app.models.price_list import PriceListItem
 from app.models.service_item import ServiceItem
+from app.models.service_order import ServiceOrder
 from app.models.user import Role, User
 from app.services import order_service
 
@@ -230,6 +231,66 @@ def list_orders():
         form=form,
         sort=sort,
         order=order,
+    )
+
+
+# ======================================================================
+# Routes -- Kanban Board
+# ======================================================================
+
+# Active statuses shown as columns on the kanban board (excludes terminal states).
+KANBAN_ACTIVE_STATUSES = [
+    "intake",
+    "assessment",
+    "awaiting_approval",
+    "in_progress",
+    "awaiting_parts",
+    "completed",
+    "ready_for_pickup",
+]
+
+KANBAN_STATUS_LABELS = {
+    "intake": "Intake",
+    "assessment": "Assessment",
+    "awaiting_approval": "Awaiting Approval",
+    "in_progress": "In Progress",
+    "awaiting_parts": "Awaiting Parts",
+    "completed": "Completed",
+    "ready_for_pickup": "Ready for Pickup",
+    "picked_up": "Picked Up",
+    "cancelled": "Cancelled",
+}
+
+
+@orders_bp.route("/kanban")
+@login_required
+@roles_accepted("admin", "technician")
+def kanban():
+    """Display the Kanban board view for service orders."""
+    # Fetch all non-deleted orders
+    all_orders = ServiceOrder.not_deleted().all()
+
+    # Group orders by status
+    columns = {s: [] for s in KANBAN_ACTIVE_STATUSES}
+    archived_orders = {"picked_up": [], "cancelled": []}
+
+    for o in all_orders:
+        if o.status in columns:
+            columns[o.status].append(o)
+        elif o.status in archived_orders:
+            archived_orders[o.status].append(o)
+
+    total_count = sum(len(v) for v in columns.values())
+    archived_count = sum(len(v) for v in archived_orders.values())
+
+    return render_template(
+        "orders/kanban.html",
+        columns=columns,
+        archived_orders=archived_orders,
+        active_statuses=KANBAN_ACTIVE_STATUSES,
+        status_labels=KANBAN_STATUS_LABELS,
+        total_count=total_count,
+        archived_count=archived_count,
     )
 
 
