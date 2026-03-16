@@ -24,6 +24,7 @@ from app.models.notification import Notification
 from app.models.notification_read import NotificationRead
 from app.models.system_config import SystemConfig
 from app.models.audit_log import AuditLog
+from app.models.attachment import Attachment
 
 __all__ = [
     "Role",
@@ -52,4 +53,5 @@ __all__ = [
     "NotificationRead",
     "SystemConfig",
     "AuditLog",
+    "Attachment",
 ]
