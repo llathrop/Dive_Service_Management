@@ -361,10 +361,11 @@ def download_pdf(id):
     Supports an optional ``?inline=1`` query parameter to display the
     PDF in the browser rather than downloading it.
     """
+    from flask import abort
+
     invoice = invoice_service.get_invoice(id)
     if invoice is None:
-        flash("Invoice not found.", "error")
-        return redirect(url_for("invoices.list_invoices")), 404
+        abort(404)
 
     from app.utils.pdf import generate_invoice_pdf
 
