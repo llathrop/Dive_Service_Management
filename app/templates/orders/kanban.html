@@ -1,17 +1,175 @@
 {% extends "base.html" %}
+{% from 'macros/status_badges.html' import order_status_badge, priority_badge %}
 
-{% block title %}Kanban Board - Dive Service Management{% endblock %}
+{% block title %}Kanban Board - Service Orders - Dive Service Management{% endblock %}
+
+{% block head %}
+<style>
+  .kanban-board {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+    min-height: 60vh;
+  }
+
+  .kanban-column {
+    min-width: 280px;
+    max-width: 320px;
+    flex: 0 0 280px;
+    display: flex;
+    flex-direction: column;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+  }
+
+  .kanban-column-header {
+    padding: 0.75rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--bs-border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 0.5rem 0.5rem 0 0;
+    background: var(--bs-tertiary-bg);
+  }
+
+  .kanban-column-body {
+    padding: 0.5rem;
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 280px);
+    min-height: 100px;
+    transition: background-color 0.2s;
+  }
+
+  .kanban-column-body.drag-over {
+    background-color: var(--bs-primary-bg-subtle);
+    border-radius: 0 0 0.5rem 0.5rem;
+  }
+
+  .kanban-card {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    cursor: grab;
+    transition: box-shadow 0.2s, opacity 0.2s;
+    border-left: 4px solid var(--bs-secondary);
+  }
+
+  .kanban-card:active {
+    cursor: grabbing;
+  }
+
+  .kanban-card.dragging {
+    opacity: 0.5;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  }
+
+  .kanban-card.priority-high {
+    border-left-color: var(--bs-warning);
+  }
+
+  .kanban-card.priority-rush {
+    border-left-color: var(--bs-danger);
+  }
+
+  .kanban-card.priority-normal {
+    border-left-color: var(--bs-primary);
+  }
+
+  .kanban-card.priority-low {
+    border-left-color: var(--bs-secondary);
+  }
+
+  .kanban-card .card-order-number {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .kanban-card .card-customer {
+    font-size: 0.85rem;
+    color: var(--bs-secondary-color);
+  }
+
+  .kanban-card .card-description {
+    font-size: 0.8rem;
+    color: var(--bs-body-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .kanban-card .card-meta {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+  }
+
+  .kanban-card .card-loading {
+    display: none;
+  }
+
+  .kanban-card.loading .card-loading {
+    display: inline-block;
+  }
+
+  .kanban-count {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    border-radius: 1rem;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: normal;
+  }
+
+  /* Mobile: stack columns vertically */
+  @media (max-width: 767.98px) {
+    .kanban-board {
+      flex-direction: column;
+    }
+
+    .kanban-column {
+      min-width: 100%;
+      max-width: 100%;
+      flex: 0 0 auto;
+    }
+
+    .kanban-column-body {
+      max-height: 300px;
+    }
+  }
+
+  /* Toast notification for kanban errors */
+  .kanban-toast {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 1080;
+    min-width: 300px;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h1 class="h3 mb-0">Kanban Board</h1>
-    <span class="text-muted small">Visual workflow view</span>
+    <h1 class="h3 mb-0">Service Orders - Kanban</h1>
+    <small class="text-muted">{{ total_count }} active order{{ 's' if total_count != 1 else '' }}</small>
   </div>
   <div class="d-flex gap-2">
-    <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary">
-      <i class="bi bi-list-ul me-1"></i> List View
-    </a>
+    {# View toggle #}
+    <div class="btn-group" role="group" aria-label="View toggle">
+      <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary" title="Table View">
+        <i class="bi bi-table"></i>
+      </a>
+      <a href="{{ url_for('orders.kanban') }}" class="btn btn-secondary" title="Kanban View">
+        <i class="bi bi-kanban"></i>
+      </a>
+    </div>
     {% if current_user.has_role('admin') or current_user.has_role('technician') %}
     <a href="{{ url_for('orders.create') }}" class="btn btn-primary">
       <i class="bi bi-plus-lg me-1"></i> New Order
@@ -20,93 +178,257 @@
   </div>
 </div>
 
-<div class="alert alert-info d-flex align-items-center" role="alert">
-  <i class="bi bi-info-circle me-2 fs-5"></i>
-  <div>
-    The interactive Kanban board is coming soon. For now, use the
-    <a href="{{ url_for('orders.list_orders') }}" class="alert-link">list view</a>
-    to manage service orders.
+{# Toggle for archived statuses #}
+<div class="mb-3" x-data="{ showArchived: false }">
+  <button class="btn btn-sm btn-outline-secondary" @click="showArchived = !showArchived">
+    <i class="bi" :class="showArchived ? 'bi-eye-slash' : 'bi-eye'"></i>
+    <span x-text="showArchived ? 'Hide' : 'Show'"></span> Picked Up &amp; Cancelled
+    {% if archived_count > 0 %}
+    <span class="badge bg-secondary ms-1">{{ archived_count }}</span>
+    {% endif %}
+  </button>
+
+  {# Archived orders summary #}
+  <div x-show="showArchived" x-transition class="mt-3">
+    <div class="kanban-board">
+      {% for status_key in ['picked_up', 'cancelled'] %}
+      {% if archived_orders[status_key] %}
+      <div class="kanban-column">
+        <div class="kanban-column-header">
+          <span>{{ status_labels[status_key] }}</span>
+          <span class="kanban-count">{{ archived_orders[status_key]|length }}</span>
+        </div>
+        <div class="kanban-column-body">
+          {% for order in archived_orders[status_key] %}
+          <div class="kanban-card priority-{{ order.priority }}">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <a href="{{ url_for('orders.detail', id=order.id) }}" class="card-order-number text-decoration-none">
+                {{ order.order_number }}
+              </a>
+              {{ priority_badge(order.priority) }}
+            </div>
+            <div class="card-customer">{{ order.customer.display_name }}</div>
+            {% if order.description %}
+            <div class="card-description mt-1">{{ order.description[:80] }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
   </div>
 </div>
 
-{# Kanban column layout placeholder #}
-<div class="row g-3">
-  <div class="col">
-    <div class="card bg-body-tertiary">
-      <div class="card-header text-center">
-        <span class="badge bg-info">Intake</span>
+{# Main Kanban Board #}
+<div class="kanban-board" id="kanbanBoard">
+  {% for status_key in active_statuses %}
+  <div class="kanban-column" data-status="{{ status_key }}">
+    <div class="kanban-column-header">
+      <span>{{ order_status_badge(status_key) }} {{ status_labels[status_key] }}</span>
+      <span class="kanban-count" id="count-{{ status_key }}">{{ columns[status_key]|length }}</span>
+    </div>
+    <div class="kanban-column-body"
+         data-status="{{ status_key }}"
+         ondragover="kanbanDragOver(event)"
+         ondragleave="kanbanDragLeave(event)"
+         ondrop="kanbanDrop(event)">
+      {% for order in columns[status_key] %}
+      <div class="kanban-card priority-{{ order.priority }}"
+           draggable="true"
+           data-order-id="{{ order.id }}"
+           data-current-status="{{ order.status }}"
+           id="card-{{ order.id }}"
+           ondragstart="kanbanDragStart(event)"
+           ondragend="kanbanDragEnd(event)">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <a href="{{ url_for('orders.detail', id=order.id) }}" class="card-order-number text-decoration-none">
+            {{ order.order_number }}
+          </a>
+          <div class="d-flex align-items-center gap-1">
+            <span class="card-loading">
+              <span class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Updating...</span>
+              </span>
+            </span>
+            {{ priority_badge(order.priority) }}
+          </div>
+        </div>
+        <div class="card-customer">
+          <i class="bi bi-person me-1"></i>{{ order.customer.display_name }}
+        </div>
+        {% if order.description %}
+        <div class="card-description mt-1">{{ order.description[:80] }}{% if order.description|length > 80 %}...{% endif %}</div>
+        {% endif %}
+        <div class="card-meta mt-2 d-flex justify-content-between">
+          <span>
+            {% if order.assigned_tech %}
+            <i class="bi bi-wrench me-1"></i>{{ order.assigned_tech.username }}
+            {% else %}
+            <span class="text-muted"><i class="bi bi-wrench me-1"></i>Unassigned</span>
+            {% endif %}
+          </span>
+          <span>
+            <i class="bi bi-calendar me-1"></i>{{ order.date_received.strftime('%m/%d') if order.date_received else 'N/A' }}
+            {% if order.is_overdue %}
+            <span class="badge bg-danger ms-1" title="Overdue">!</span>
+            {% endif %}
+          </span>
+        </div>
       </div>
-      <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-inbox d-block fs-3 mb-2"></i>
-        <small>Drop zone</small>
-      </div>
+      {% endfor %}
     </div>
   </div>
-  <div class="col">
-    <div class="card bg-body-tertiary">
-      <div class="card-header text-center">
-        <span class="badge bg-primary">Assessment</span>
-      </div>
-      <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-search d-block fs-3 mb-2"></i>
-        <small>Drop zone</small>
-      </div>
-    </div>
-  </div>
-  <div class="col">
-    <div class="card bg-body-tertiary">
-      <div class="card-header text-center">
-        <span class="badge bg-warning text-dark">Awaiting Approval</span>
-      </div>
-      <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-hourglass-split d-block fs-3 mb-2"></i>
-        <small>Drop zone</small>
-      </div>
-    </div>
-  </div>
-  <div class="col">
-    <div class="card bg-body-tertiary">
-      <div class="card-header text-center">
-        <span class="badge bg-primary">In Progress</span>
-      </div>
-      <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-gear d-block fs-3 mb-2"></i>
-        <small>Drop zone</small>
-      </div>
-    </div>
-  </div>
-  <div class="col">
-    <div class="card bg-body-tertiary">
-      <div class="card-header text-center">
-        <span class="badge bg-warning text-dark">Awaiting Parts</span>
-      </div>
-      <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-box-seam d-block fs-3 mb-2"></i>
-        <small>Drop zone</small>
-      </div>
-    </div>
-  </div>
-  <div class="col">
-    <div class="card bg-body-tertiary">
-      <div class="card-header text-center">
-        <span class="badge bg-success">Completed</span>
-      </div>
-      <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-check-circle d-block fs-3 mb-2"></i>
-        <small>Drop zone</small>
-      </div>
-    </div>
-  </div>
-  <div class="col">
-    <div class="card bg-body-tertiary">
-      <div class="card-header text-center">
-        <span class="badge bg-info">Ready for Pickup</span>
-      </div>
-      <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-bag-check d-block fs-3 mb-2"></i>
-        <small>Drop zone</small>
-      </div>
-    </div>
-  </div>
+  {% endfor %}
 </div>
+
+{# Toast container for notifications #}
+<div id="kanban-toast-container" class="kanban-toast" aria-live="polite"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  'use strict';
+
+  var draggedCard = null;
+  var sourceColumn = null;
+
+  var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content') || '';
+
+  // Make functions available globally for inline event handlers
+  window.kanbanDragStart = function(e) {
+    draggedCard = e.target.closest('.kanban-card');
+    sourceColumn = draggedCard.parentElement;
+    draggedCard.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedCard.dataset.orderId);
+  };
+
+  window.kanbanDragEnd = function(e) {
+    if (draggedCard) {
+      draggedCard.classList.remove('dragging');
+    }
+    // Remove drag-over styling from all columns
+    document.querySelectorAll('.kanban-column-body').forEach(function(col) {
+      col.classList.remove('drag-over');
+    });
+    draggedCard = null;
+    sourceColumn = null;
+  };
+
+  window.kanbanDragOver = function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    var col = e.target.closest('.kanban-column-body');
+    if (col) {
+      col.classList.add('drag-over');
+    }
+  };
+
+  window.kanbanDragLeave = function(e) {
+    var col = e.target.closest('.kanban-column-body');
+    if (col && !col.contains(e.relatedTarget)) {
+      col.classList.remove('drag-over');
+    }
+  };
+
+  window.kanbanDrop = function(e) {
+    e.preventDefault();
+    var targetColumn = e.target.closest('.kanban-column-body');
+    if (!targetColumn || !draggedCard) return;
+
+    targetColumn.classList.remove('drag-over');
+
+    var newStatus = targetColumn.dataset.status;
+    var currentStatus = draggedCard.dataset.currentStatus;
+    var orderId = draggedCard.dataset.orderId;
+
+    // No-op if dropped on same column
+    if (newStatus === currentStatus) return;
+
+    // Show loading state
+    draggedCard.classList.add('loading');
+
+    // Optimistically move the card
+    targetColumn.appendChild(draggedCard);
+    updateColumnCounts();
+
+    // POST status change
+    var formData = new FormData();
+    formData.append('new_status', newStatus);
+    formData.append('csrf_token', csrfToken);
+
+    fetch('/orders/' + orderId + '/kanban-status', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(function(response) {
+      return response.json().then(function(data) {
+        return { ok: response.ok, data: data };
+      });
+    })
+    .then(function(result) {
+      draggedCard.classList.remove('loading');
+
+      if (result.ok) {
+        // Update card's current status attribute
+        draggedCard.dataset.currentStatus = newStatus;
+        showToast('Status updated successfully.', 'success');
+      } else {
+        // Revert: move card back to source column
+        if (sourceColumn) {
+          sourceColumn.appendChild(draggedCard);
+        }
+        updateColumnCounts();
+        showToast(result.data.error || 'Invalid status transition.', 'danger');
+      }
+    })
+    .catch(function(err) {
+      draggedCard.classList.remove('loading');
+      // Revert on network error
+      if (sourceColumn) {
+        sourceColumn.appendChild(draggedCard);
+      }
+      updateColumnCounts();
+      showToast('Network error. Please try again.', 'danger');
+    });
+  };
+
+  function updateColumnCounts() {
+    document.querySelectorAll('.kanban-column-body').forEach(function(col) {
+      var status = col.dataset.status;
+      var count = col.querySelectorAll('.kanban-card').length;
+      var countEl = document.getElementById('count-' + status);
+      if (countEl) {
+        countEl.textContent = count;
+      }
+    });
+  }
+
+  function showToast(message, type) {
+    var container = document.getElementById('kanban-toast-container');
+    var toast = document.createElement('div');
+    toast.className = 'alert alert-' + type + ' alert-dismissible fade show mb-2';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = message +
+      '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+    container.appendChild(toast);
+
+    // Auto-dismiss after 4 seconds
+    setTimeout(function() {
+      if (toast.parentNode) {
+        toast.classList.remove('show');
+        setTimeout(function() {
+          if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 150);
+      }
+    }, 4000);
+  }
+})();
+</script>
 {% endblock %}
