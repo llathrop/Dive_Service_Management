@@ -26,6 +26,7 @@ from app.models.customer import Customer
 from app.models.inventory import InventoryItem
 from app.models.price_list import PriceListItem
 from app.models.service_item import ServiceItem
+from app.models.service_order import ServiceOrder
 from app.models.user import Role, User
 from app.services import order_service
 
@@ -233,6 +234,66 @@ def list_orders():
     )
 
 
+# ======================================================================
+# Routes -- Kanban Board
+# ======================================================================
+
+# Active statuses shown as columns on the kanban board (excludes terminal states).
+KANBAN_ACTIVE_STATUSES = [
+    "intake",
+    "assessment",
+    "awaiting_approval",
+    "in_progress",
+    "awaiting_parts",
+    "completed",
+    "ready_for_pickup",
+]
+
+KANBAN_STATUS_LABELS = {
+    "intake": "Intake",
+    "assessment": "Assessment",
+    "awaiting_approval": "Awaiting Approval",
+    "in_progress": "In Progress",
+    "awaiting_parts": "Awaiting Parts",
+    "completed": "Completed",
+    "ready_for_pickup": "Ready for Pickup",
+    "picked_up": "Picked Up",
+    "cancelled": "Cancelled",
+}
+
+
+@orders_bp.route("/kanban")
+@login_required
+@roles_accepted("admin", "technician")
+def kanban():
+    """Display the Kanban board view for service orders."""
+    # Fetch all non-deleted orders
+    all_orders = ServiceOrder.not_deleted().all()
+
+    # Group orders by status
+    columns = {s: [] for s in KANBAN_ACTIVE_STATUSES}
+    archived_orders = {"picked_up": [], "cancelled": []}
+
+    for o in all_orders:
+        if o.status in columns:
+            columns[o.status].append(o)
+        elif o.status in archived_orders:
+            archived_orders[o.status].append(o)
+
+    total_count = sum(len(v) for v in columns.values())
+    archived_count = sum(len(v) for v in archived_orders.values())
+
+    return render_template(
+        "orders/kanban.html",
+        columns=columns,
+        archived_orders=archived_orders,
+        active_statuses=KANBAN_ACTIVE_STATUSES,
+        status_labels=KANBAN_STATUS_LABELS,
+        total_count=total_count,
+        archived_count=archived_count,
+    )
+
+
 @orders_bp.route("/<int:id>")
 @login_required
 def detail(id):
@@ -359,6 +420,40 @@ def delete(id):
 # ======================================================================
 # Routes -- Status Workflow
 # ======================================================================
+
+
+@orders_bp.route("/<int:id>/kanban-status", methods=["POST"])
+@login_required
+@roles_accepted("admin", "technician")
+def kanban_change_status(id):
+    """Change order status via AJAX from the Kanban board.
+
+    Accepts ``new_status`` from form data and returns a JSON response.
+    Returns 200 on success, 400 on invalid transition.
+    """
+    new_status = request.form.get("new_status", "").strip()
+    if not new_status:
+        return jsonify({"error": "No status provided."}), 400
+
+    order, success = order_service.change_status(
+        id, new_status, current_user.id,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string,
+    )
+    if success:
+        return jsonify({
+            "success": True,
+            "order_id": order.id,
+            "new_status": order.status,
+            "display_status": order.display_status,
+        }), 200
+    else:
+        return jsonify({
+            "error": (
+                f"Cannot transition from '{order.display_status}' "
+                f"to '{new_status.replace('_', ' ').title()}'."
+            ),
+        }), 400
 
 
 @orders_bp.route("/<int:id>/status", methods=["POST"])
