@@ -1,0 +1,272 @@
+{# image_capture.html — Reusable mobile-first camera capture + file upload component.
+
+   Usage (include in a template):
+     {% include 'partials/image_capture.html' with context %}
+
+   Required context variables:
+     - capture_attachable_type: str ('service_item' or 'service_order_item')
+     - capture_attachable_id: int (entity ID)
+     - capture_can_edit: bool (whether user can upload/delete)
+
+   Optional:
+     - capture_title: str (section heading, default: "Images")
+#}
+
+{% set _type = capture_attachable_type %}
+{% set _id = capture_attachable_id %}
+{% set _can_edit = capture_can_edit|default(false) %}
+{% set _title = capture_title|default("Images") %}
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0">
+      <i class="bi bi-camera me-2"></i>{{ _title }}
+    </h5>
+    {% if _can_edit %}
+    <div class="d-flex gap-2">
+      {# Camera button (prominent for mobile) #}
+      <label class="btn btn-sm btn-primary mb-0" id="camera-btn-{{ _type }}-{{ _id }}" title="Take Photo">
+        <i class="bi bi-camera-fill me-1"></i>
+        <span class="d-none d-sm-inline">Camera</span>
+        <input type="file" accept="image/*" capture="environment"
+               class="d-none"
+               onchange="handleFileSelect(this, '{{ _type }}', {{ _id }})">
+      </label>
+      {# File picker button (for desktop or choosing existing files) #}
+      <label class="btn btn-sm btn-outline-secondary mb-0" title="Upload File">
+        <i class="bi bi-upload me-1"></i>
+        <span class="d-none d-sm-inline">Upload</span>
+        <input type="file" accept="image/*,.pdf"
+               class="d-none" multiple
+               onchange="handleFileSelect(this, '{{ _type }}', {{ _id }})">
+      </label>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card-body">
+    {# Upload preview area (hidden until file selected) #}
+    {% if _can_edit %}
+    <div id="upload-preview-{{ _type }}-{{ _id }}" class="d-none mb-3">
+      <div class="border rounded p-3 bg-body-tertiary">
+        <div class="d-flex align-items-start gap-3">
+          <img id="preview-img-{{ _type }}-{{ _id }}"
+               src="" alt="Preview"
+               class="rounded" style="max-width: 150px; max-height: 150px; object-fit: cover;">
+          <div class="flex-grow-1">
+            <p class="mb-2 small fw-semibold" id="preview-filename-{{ _type }}-{{ _id }}"></p>
+            <input type="text" class="form-control form-control-sm mb-2"
+                   id="preview-desc-{{ _type }}-{{ _id }}"
+                   placeholder="Add a description (optional)..." maxlength="500">
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-primary"
+                      onclick="uploadFile('{{ _type }}', {{ _id }})">
+                <i class="bi bi-cloud-upload me-1"></i> Upload
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                      onclick="cancelPreview('{{ _type }}', {{ _id }})">
+                Cancel
+              </button>
+            </div>
+            {# Progress bar #}
+            <div class="progress mt-2 d-none" id="upload-progress-{{ _type }}-{{ _id }}"
+                 style="height: 4px;">
+              <div class="progress-bar progress-bar-striped progress-bar-animated"
+                   role="progressbar" style="width: 0%"></div>
+            </div>
+            {# Error message #}
+            <div class="alert alert-danger mt-2 small py-1 px-2 d-none"
+                 id="upload-error-{{ _type }}-{{ _id }}"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# Gallery container — loaded via HTMX #}
+    <div id="gallery-{{ _type }}-{{ _id }}"
+         hx-get="{{ url_for('attachments.gallery', attachable_type=_type, attachable_id=_id) }}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="text-center py-2">
+        <div class="spinner-border spinner-border-sm text-muted" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# JavaScript — only included once per page via a flag #}
+{% if not _image_capture_js_included %}
+{% set _image_capture_js_included = true %}
+<script>
+// File selection state per component instance
+const pendingFiles = {};
+
+function handleFileSelect(input, type, id) {
+    const files = input.files;
+    if (!files || files.length === 0) return;
+
+    // For multiple files, upload all immediately (no preview)
+    if (files.length > 1) {
+        for (let i = 0; i < files.length; i++) {
+            uploadSingleFile(files[i], type, id, null);
+        }
+        input.value = '';
+        return;
+    }
+
+    const file = files[0];
+    pendingFiles[type + '-' + id] = file;
+
+    const previewArea = document.getElementById('upload-preview-' + type + '-' + id);
+    const previewImg = document.getElementById('preview-img-' + type + '-' + id);
+    const previewName = document.getElementById('preview-filename-' + type + '-' + id);
+
+    previewName.textContent = file.name + ' (' + formatBytes(file.size) + ')';
+
+    // Show image preview if it's an image
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            previewImg.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+    } else {
+        previewImg.classList.add('d-none');
+    }
+
+    previewArea.classList.remove('d-none');
+    hideError(type, id);
+
+    // Reset the input so the same file can be selected again
+    input.value = '';
+}
+
+function cancelPreview(type, id) {
+    delete pendingFiles[type + '-' + id];
+    const previewArea = document.getElementById('upload-preview-' + type + '-' + id);
+    previewArea.classList.add('d-none');
+    document.getElementById('preview-desc-' + type + '-' + id).value = '';
+    hideError(type, id);
+}
+
+function uploadFile(type, id) {
+    const key = type + '-' + id;
+    const file = pendingFiles[key];
+    if (!file) return;
+
+    const description = document.getElementById('preview-desc-' + type + '-' + id).value.trim();
+    uploadSingleFile(file, type, id, description);
+    delete pendingFiles[key];
+}
+
+function uploadSingleFile(file, type, id, description) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('attachable_type', type);
+    formData.append('attachable_id', id);
+    if (description) {
+        formData.append('description', description);
+    }
+
+    const progressBar = document.getElementById('upload-progress-' + type + '-' + id);
+    if (progressBar) {
+        progressBar.classList.remove('d-none');
+        progressBar.querySelector('.progress-bar').style.width = '0%';
+    }
+    hideError(type, id);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/attachments/upload', true);
+    xhr.setRequestHeader('X-CSRFToken', csrfToken);
+
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable && progressBar) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressBar.querySelector('.progress-bar').style.width = pct + '%';
+        }
+    };
+
+    xhr.onload = function() {
+        if (progressBar) progressBar.classList.add('d-none');
+
+        if (xhr.status === 201) {
+            // Success — hide preview and refresh gallery
+            const previewArea = document.getElementById('upload-preview-' + type + '-' + id);
+            if (previewArea) {
+                previewArea.classList.add('d-none');
+                document.getElementById('preview-desc-' + type + '-' + id).value = '';
+            }
+            refreshGallery(type, id);
+        } else {
+            try {
+                const resp = JSON.parse(xhr.responseText);
+                showError(type, id, resp.error || 'Upload failed.');
+            } catch (e) {
+                showError(type, id, 'Upload failed (status ' + xhr.status + ').');
+            }
+        }
+    };
+
+    xhr.onerror = function() {
+        if (progressBar) progressBar.classList.add('d-none');
+        showError(type, id, 'Network error. Please try again.');
+    };
+
+    xhr.send(formData);
+}
+
+function deleteAttachment(attachmentId, type, id) {
+    if (!confirm('Delete this attachment? This cannot be undone.')) return;
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    fetch('/attachments/' + attachmentId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': csrfToken,
+        },
+    }).then(function(resp) {
+        if (resp.status === 204) {
+            refreshGallery(type, id);
+        } else {
+            alert('Failed to delete attachment.');
+        }
+    }).catch(function() {
+        alert('Network error while deleting.');
+    });
+}
+
+function refreshGallery(type, id) {
+    const gallery = document.getElementById('gallery-' + type + '-' + id);
+    if (gallery) {
+        htmx.ajax('GET', '/attachments/gallery/' + type + '/' + id, {target: gallery, swap: 'innerHTML'});
+    }
+}
+
+function showError(type, id, msg) {
+    const el = document.getElementById('upload-error-' + type + '-' + id);
+    if (el) {
+        el.textContent = msg;
+        el.classList.remove('d-none');
+    }
+}
+
+function hideError(type, id) {
+    const el = document.getElementById('upload-error-' + type + '-' + id);
+    if (el) el.classList.add('d-none');
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+</script>
+{% endif %}
