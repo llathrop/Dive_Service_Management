@@ -6,15 +6,13 @@ detail fields via the DrysuitDetails model.  All routes require
 authentication.  Write operations require the 'admin' or 'technician' role.
 """
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.forms.item import DrysuitDetailsForm, ServiceItemForm
-from app.models.drysuit_details import DrysuitDetails
-from app.models.service_item import ServiceItem
-from app.services import audit_service
+from app.services import audit_service, item_service
 
 items_bp = Blueprint("items", __name__, url_prefix="/items")
 
@@ -34,29 +32,17 @@ def list_items():
     sort = request.args.get("sort", "name")
     order = request.args.get("order", "asc")
 
-    query = ServiceItem.not_deleted()
-
-    if q:
-        search_term = f"%{q}%"
-        query = query.filter(
-            db.or_(
-                ServiceItem.name.ilike(search_term),
-                ServiceItem.serial_number.ilike(search_term),
-                ServiceItem.brand.ilike(search_term),
-                ServiceItem.model.ilike(search_term),
-            )
-        )
-
     # Validate sort against allowlist to prevent attribute injection
     if sort not in SORTABLE_FIELDS:
         sort = "name"
-    sort_column = getattr(ServiceItem, sort)
-    if order == "desc":
-        query = query.order_by(sort_column.desc())
-    else:
-        query = query.order_by(sort_column.asc())
 
-    pagination = query.paginate(page=page, per_page=25, error_out=False)
+    pagination = item_service.get_items(
+        page=page,
+        per_page=25,
+        search=q,
+        sort=sort,
+        order=order,
+    )
 
     return render_template(
         "items/list.html",
@@ -73,10 +59,7 @@ def list_items():
 def lookup():
     """Serial number lookup page."""
     serial = request.args.get("serial", "")
-    item = None
-
-    if serial:
-        item = ServiceItem.not_deleted().filter_by(serial_number=serial).first()
+    item = item_service.lookup_by_serial(serial) if serial else None
 
     return render_template("items/lookup.html", serial=serial, item=item)
 
@@ -85,9 +68,7 @@ def lookup():
 @login_required
 def detail(id):
     """Display a service item detail page."""
-    item = db.session.get(ServiceItem, id)
-    if item is None or item.is_deleted:
-        abort(404)
+    item = item_service.get_item(id)
     return render_template("items/detail.html", item=item)
 
 
@@ -105,30 +86,24 @@ def create():
         form.customer_id.data = str(customer_id)
 
     if form.validate_on_submit():
-        item = ServiceItem(
-            serial_number=form.serial_number.data or None,
-            name=form.name.data,
-            item_category=form.item_category.data,
-            serviceability=form.serviceability.data,
-            serviceability_notes=form.serviceability_notes.data,
-            brand=form.brand.data,
-            model=form.model.data,
-            year_manufactured=form.year_manufactured.data,
-            notes=form.notes.data,
-            customer_id=form.customer_id.data or None,
-            created_by=current_user.id,
-        )
-        db.session.add(item)
+        data = {
+            "serial_number": form.serial_number.data,
+            "name": form.name.data,
+            "item_category": form.item_category.data,
+            "serviceability": form.serviceability.data,
+            "serviceability_notes": form.serviceability_notes.data,
+            "brand": form.brand.data,
+            "model": form.model.data,
+            "year_manufactured": form.year_manufactured.data,
+            "notes": form.notes.data,
+            "customer_id": form.customer_id.data,
+        }
+        drysuit_data = _extract_drysuit_data(drysuit_form)
+
         try:
-            db.session.flush()
-
-            # Create drysuit details if category is Drysuit
-            if form.item_category.data == "Drysuit":
-                drysuit = DrysuitDetails(service_item_id=item.id)
-                _populate_drysuit_details(drysuit, drysuit_form)
-                db.session.add(drysuit)
-
-            db.session.commit()
+            item = item_service.create_item(
+                data, drysuit_data=drysuit_data, created_by=current_user.id
+            )
             try:
                 audit_service.log_action(
                     action="create",
@@ -159,9 +134,7 @@ def create():
 @roles_accepted("admin", "technician")
 def edit(id):
     """Show edit item form (GET) or update the item (POST)."""
-    item = db.session.get(ServiceItem, id)
-    if item is None or item.is_deleted:
-        abort(404)
+    item = item_service.get_item(id)
 
     form = ServiceItemForm(obj=item)
     drysuit_form = DrysuitDetailsForm(
@@ -169,25 +142,24 @@ def edit(id):
     )
 
     if form.validate_on_submit():
-        form.populate_obj(item)
-        # Ensure empty serial number is stored as None (unique constraint)
-        if not item.serial_number:
-            item.serial_number = None
-
-        # Handle drysuit details
-        if form.item_category.data == "Drysuit":
-            if item.drysuit_details is None:
-                drysuit = DrysuitDetails(service_item_id=item.id)
-                db.session.add(drysuit)
-                item.drysuit_details = drysuit
-            _populate_drysuit_details(item.drysuit_details, drysuit_form)
-        else:
-            # Remove drysuit details if category changed away from Drysuit
-            if item.drysuit_details is not None:
-                db.session.delete(item.drysuit_details)
+        data = {
+            "serial_number": form.serial_number.data,
+            "name": form.name.data,
+            "item_category": form.item_category.data,
+            "serviceability": form.serviceability.data,
+            "serviceability_notes": form.serviceability_notes.data,
+            "brand": form.brand.data,
+            "model": form.model.data,
+            "year_manufactured": form.year_manufactured.data,
+            "notes": form.notes.data,
+            "customer_id": form.customer_id.data,
+        }
+        drysuit_data = _extract_drysuit_data(drysuit_form)
 
         try:
-            db.session.commit()
+            item_service.update_item(
+                id, data, drysuit_data=drysuit_data
+            )
             try:
                 audit_service.log_action(
                     action="update",
@@ -219,12 +191,7 @@ def edit(id):
 @roles_accepted("admin")
 def delete(id):
     """Soft-delete a service item (admin only)."""
-    item = db.session.get(ServiceItem, id)
-    if item is None or item.is_deleted:
-        abort(404)
-
-    item.soft_delete()
-    db.session.commit()
+    item = item_service.delete_item(id)
     try:
         audit_service.log_action(
             action="delete",
@@ -240,17 +207,13 @@ def delete(id):
     return redirect(url_for("items.list_items"))
 
 
-def _populate_drysuit_details(drysuit, form):
-    """Copy drysuit form data onto a DrysuitDetails instance."""
-    drysuit_fields = [
-        "size", "material_type", "material_thickness", "color",
-        "suit_entry_type", "neck_seal_type", "neck_seal_system",
-        "wrist_seal_type", "wrist_seal_system", "zipper_type",
-        "zipper_length", "zipper_orientation", "inflate_valve_brand",
-        "inflate_valve_model", "inflate_valve_position", "dump_valve_brand",
-        "dump_valve_model", "dump_valve_type", "boot_type", "boot_size",
-    ]
-    for field_name in drysuit_fields:
-        field = getattr(form, field_name, None)
+def _extract_drysuit_data(drysuit_form):
+    """Extract drysuit field values from the form into a dict."""
+    from app.services.item_service import DRYSUIT_FIELDS
+
+    data = {}
+    for field_name in DRYSUIT_FIELDS:
+        field = getattr(drysuit_form, field_name, None)
         if field is not None:
-            setattr(drysuit, field_name, field.data or None)
+            data[field_name] = field.data
+    return data
