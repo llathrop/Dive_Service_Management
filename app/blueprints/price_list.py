@@ -9,7 +9,6 @@ changes require the 'admin' role.  All routes require authentication.
 from flask import (
     Blueprint,
     Response,
-    abort,
     flash,
     redirect,
     render_template,
@@ -21,20 +20,14 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.forms.price_list import PriceListCategoryForm, PriceListItemForm
-from app.models.price_list import PriceListCategory, PriceListItem
-from app.services import audit_service
+from app.services import audit_service, price_list_service
 
 price_list_bp = Blueprint("price_list", __name__, url_prefix="/price-list")
 
 
 def _populate_category_choices(form):
     """Set the category_id choices on a PriceListItemForm."""
-    categories = (
-        PriceListCategory.query
-        .filter_by(is_active=True)
-        .order_by(PriceListCategory.sort_order, PriceListCategory.name)
-        .all()
-    )
+    categories = price_list_service.get_categories(active_only=True)
     form.category_id.choices = [(c.id, c.name) for c in categories]
 
 
@@ -44,31 +37,14 @@ def list_items():
     """Display the full price list in accordion layout by category."""
     q = request.args.get("q", "")
 
-    categories = (
-        PriceListCategory.query
-        .filter_by(is_active=True)
-        .order_by(PriceListCategory.sort_order, PriceListCategory.name)
-        .all()
-    )
+    categories = price_list_service.get_categories(active_only=True)
 
     # Build a dict of category -> items
     category_items = {}
     for category in categories:
-        items_query = (
-            PriceListItem.query
-            .filter_by(category_id=category.id, is_active=True)
-            .order_by(PriceListItem.sort_order, PriceListItem.name)
+        items = price_list_service.get_price_list_items(
+            category_id=category.id, active_only=True, search=q or None
         )
-        if q:
-            search_term = f"%{q}%"
-            items_query = items_query.filter(
-                db.or_(
-                    PriceListItem.name.ilike(search_term),
-                    PriceListItem.code.ilike(search_term),
-                    PriceListItem.description.ilike(search_term),
-                )
-            )
-        items = items_query.all()
         if items or not q:
             category_items[category] = items
 
@@ -83,20 +59,12 @@ def list_items():
 @login_required
 def download_pdf():
     """Generate and download a customer-facing price list PDF."""
-    categories = (
-        PriceListCategory.query
-        .filter_by(is_active=True)
-        .order_by(PriceListCategory.sort_order, PriceListCategory.name)
-        .all()
-    )
+    categories = price_list_service.get_categories(active_only=True)
 
     category_items = {}
     for category in categories:
-        items = (
-            PriceListItem.query
-            .filter_by(category_id=category.id, is_active=True)
-            .order_by(PriceListItem.sort_order, PriceListItem.name)
-            .all()
+        items = price_list_service.get_price_list_items(
+            category_id=category.id, active_only=True
         )
         if items:
             category_items[category] = items
@@ -123,9 +91,7 @@ def download_pdf():
 @login_required
 def detail(id):
     """Display price list item detail."""
-    item = db.session.get(PriceListItem, id)
-    if item is None:
-        abort(404)
+    item = price_list_service.get_price_list_item(id)
     return render_template("price_list/detail.html", item=item)
 
 
@@ -138,27 +104,27 @@ def create():
     _populate_category_choices(form)
 
     if form.validate_on_submit():
-        item = PriceListItem(
-            category_id=form.category_id.data,
-            code=form.code.data or None,
-            name=form.name.data,
-            description=form.description.data,
-            price=form.price.data,
-            cost=form.cost.data,
-            price_tier=form.price_tier.data,
-            is_per_unit=form.is_per_unit.data,
-            default_quantity=form.default_quantity.data,
-            unit_label=form.unit_label.data,
-            auto_deduct_parts=form.auto_deduct_parts.data,
-            is_taxable=form.is_taxable.data,
-            sort_order=form.sort_order.data or 0,
-            is_active=form.is_active.data,
-            internal_notes=form.internal_notes.data,
-            updated_by=current_user.id,
-        )
-        db.session.add(item)
+        data = {
+            "category_id": form.category_id.data,
+            "code": form.code.data or None,
+            "name": form.name.data,
+            "description": form.description.data,
+            "price": form.price.data,
+            "cost": form.cost.data,
+            "price_tier": form.price_tier.data,
+            "is_per_unit": form.is_per_unit.data,
+            "default_quantity": form.default_quantity.data,
+            "unit_label": form.unit_label.data,
+            "auto_deduct_parts": form.auto_deduct_parts.data,
+            "is_taxable": form.is_taxable.data,
+            "sort_order": form.sort_order.data or 0,
+            "is_active": form.is_active.data,
+            "internal_notes": form.internal_notes.data,
+        }
         try:
-            db.session.commit()
+            item = price_list_service.create_price_list_item(
+                data, updated_by=current_user.id
+            )
             try:
                 audit_service.log_action(
                     action="create",
@@ -184,9 +150,7 @@ def create():
 @roles_accepted("admin")
 def edit(id):
     """Show edit price list item form (GET) or update it (POST)."""
-    item = db.session.get(PriceListItem, id)
-    if item is None:
-        abort(404)
+    item = price_list_service.get_price_list_item(id)
 
     form = PriceListItemForm(obj=item)
     _populate_category_choices(form)
@@ -225,30 +189,12 @@ def edit(id):
 @roles_accepted("admin")
 def duplicate(id):
     """Duplicate a price list item."""
-    original = db.session.get(PriceListItem, id)
-    if original is None:
-        abort(404)
+    original = price_list_service.get_price_list_item(id)
 
-    new_item = PriceListItem(
-        category_id=original.category_id,
-        code=None,  # Code must be unique; leave blank
-        name=f"{original.name} (Copy)",
-        description=original.description,
-        price=original.price,
-        cost=original.cost,
-        price_tier=original.price_tier,
-        is_per_unit=original.is_per_unit,
-        default_quantity=original.default_quantity,
-        unit_label=original.unit_label,
-        auto_deduct_parts=original.auto_deduct_parts,
-        is_taxable=original.is_taxable,
-        sort_order=original.sort_order,
-        is_active=True,
-        internal_notes=original.internal_notes,
-        updated_by=current_user.id,
-    )
-    db.session.add(new_item)
     try:
+        new_item = price_list_service.duplicate_price_list_item(id)
+        # Set updated_by on the duplicate
+        new_item.updated_by = current_user.id
         db.session.commit()
         try:
             audit_service.log_action(
@@ -275,11 +221,7 @@ def duplicate(id):
 @roles_accepted("admin")
 def categories():
     """Category management page (admin only)."""
-    cats = (
-        PriceListCategory.query
-        .order_by(PriceListCategory.sort_order, PriceListCategory.name)
-        .all()
-    )
+    cats = price_list_service.get_categories(active_only=False)
     form = PriceListCategoryForm()
     return render_template(
         "price_list/categories.html", categories=cats, form=form
@@ -294,14 +236,13 @@ def create_category():
     form = PriceListCategoryForm()
 
     if form.validate_on_submit():
-        category = PriceListCategory(
-            name=form.name.data,
-            description=form.description.data,
-            sort_order=form.sort_order.data or 0,
-            is_active=form.is_active.data,
-        )
-        db.session.add(category)
-        db.session.commit()
+        data = {
+            "name": form.name.data,
+            "description": form.description.data,
+            "sort_order": form.sort_order.data or 0,
+            "is_active": form.is_active.data,
+        }
+        category = price_list_service.create_category(data)
         try:
             audit_service.log_action(
                 action="create",
@@ -325,9 +266,7 @@ def create_category():
 @roles_accepted("admin")
 def edit_category(id):
     """Update an existing price list category."""
-    category = db.session.get(PriceListCategory, id)
-    if category is None:
-        abort(404)
+    category = price_list_service.get_category(id)
 
     form = PriceListCategoryForm(obj=category)
 
