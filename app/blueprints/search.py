@@ -3,6 +3,10 @@
 Provides global search across customers, service items, and inventory
 items.  Includes a full results page and an HTMX autocomplete endpoint
 that returns HTML fragments for the search bar dropdown.
+
+Note: The search_service module provides dict-based search results for
+API/JSON use.  This blueprint needs ORM model objects for Jinja templates,
+so it queries models directly using the same search patterns.
 """
 
 from flask import Blueprint, render_template, request
