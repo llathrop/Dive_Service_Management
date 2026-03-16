@@ -4,6 +4,8 @@ Provides user management, system settings, and data management
 pages. All routes require the 'admin' role.
 """
 
+import base64
+
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_security import current_user, hash_password, roles_required
 from sqlalchemy import func
@@ -643,6 +645,250 @@ def import_data():
         "admin/import_form.html",
         entity_type=entity_type,
     )
+
+
+# ── Import Wizard (Column Mapping) ───────────────────────────────────
+
+VALID_WIZARD_TYPES = {"customers", "inventory"}
+ALLOWED_IMPORT_EXTENSIONS = {".csv", ".xlsx"}
+
+
+@admin_bp.route("/import/wizard")
+@roles_required("admin")
+def import_wizard():
+    """Import wizard — Step 1: Upload file."""
+    entity_type = request.args.get("type", "customers")
+    if entity_type not in VALID_WIZARD_TYPES:
+        entity_type = "customers"
+
+    return render_template(
+        "admin/import_mapping.html",
+        step="upload",
+        entity_type=entity_type,
+    )
+
+
+@admin_bp.route("/import/upload", methods=["POST"])
+@roles_required("admin")
+def import_wizard_upload():
+    """Handle file upload, detect columns, and show mapping step."""
+    from app.services import import_service
+
+    entity_type = request.form.get("entity_type", "customers")
+    if entity_type not in VALID_WIZARD_TYPES:
+        entity_type = "customers"
+
+    file = request.files.get("import_file")
+    if not file or not file.filename:
+        flash("Please select a file to upload.", "error")
+        return redirect(url_for("admin.import_wizard", type=entity_type))
+
+    filename = file.filename.lower()
+    if not any(filename.endswith(ext) for ext in ALLOWED_IMPORT_EXTENSIONS):
+        flash("Invalid file type. Please upload a CSV or XLSX file.", "error")
+        return redirect(url_for("admin.import_wizard", type=entity_type))
+
+    # Determine file type
+    file_type = "xlsx" if filename.endswith(".xlsx") else "csv"
+
+    # Read file content
+    raw_bytes = file.read()
+
+    if file_type == "csv":
+        try:
+            file_content = raw_bytes.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            flash("Unable to read CSV file. Ensure it is UTF-8 encoded.", "error")
+            return redirect(url_for("admin.import_wizard", type=entity_type))
+        detect_content = file_content
+    else:
+        detect_content = raw_bytes
+
+    # Detect columns
+    source_columns = import_service.detect_columns(detect_content, file_type)
+    if not source_columns:
+        flash("Could not detect any columns in the uploaded file.", "error")
+        return redirect(url_for("admin.import_wizard", type=entity_type))
+
+    # Get target fields and auto-detect mapping
+    target_fields = import_service.get_target_fields(entity_type)
+    auto_mapping = import_service.auto_detect_mapping(source_columns, entity_type)
+
+    # Build sample values (first non-empty value per column)
+    sample_values = _extract_sample_values(detect_content, file_type, source_columns)
+
+    # Encode file content as base64 for hidden form field
+    file_content_b64 = base64.b64encode(raw_bytes).decode("ascii")
+
+    return render_template(
+        "admin/import_mapping.html",
+        step="mapping",
+        entity_type=entity_type,
+        source_columns=source_columns,
+        target_fields=target_fields,
+        auto_mapping=auto_mapping,
+        sample_values=sample_values,
+        file_content_b64=file_content_b64,
+        file_type=file_type,
+    )
+
+
+@admin_bp.route("/import/preview", methods=["POST"])
+@roles_required("admin")
+def import_wizard_preview():
+    """Apply column mapping and show preview."""
+    from app.services import import_service
+
+    entity_type = request.form.get("entity_type", "customers")
+    if entity_type not in VALID_WIZARD_TYPES:
+        entity_type = "customers"
+
+    file_content_b64 = request.form.get("file_content", "")
+    file_type = request.form.get("file_type", "csv")
+
+    if not file_content_b64:
+        flash("File content missing. Please start over.", "error")
+        return redirect(url_for("admin.import_wizard", type=entity_type))
+
+    # Decode file content
+    try:
+        raw_bytes = base64.b64decode(file_content_b64)
+    except Exception:
+        flash("Invalid file data. Please start over.", "error")
+        return redirect(url_for("admin.import_wizard", type=entity_type))
+
+    if file_type == "csv":
+        file_content = raw_bytes.decode("utf-8-sig")
+    else:
+        file_content = raw_bytes
+
+    # Reconstruct column mapping from form
+    column_mapping = _extract_mapping_from_form(request.form)
+
+    # Validate and preview
+    result = import_service.map_and_validate(
+        file_content, column_mapping, entity_type, file_type
+    )
+
+    return render_template(
+        "admin/import_mapping.html",
+        step="preview",
+        entity_type=entity_type,
+        result=result,
+        column_mapping=column_mapping,
+        file_content_b64=file_content_b64,
+        file_type=file_type,
+    )
+
+
+@admin_bp.route("/import/execute", methods=["POST"])
+@roles_required("admin")
+def import_wizard_execute():
+    """Execute the import with the confirmed mapping."""
+    from app.services import import_service
+
+    entity_type = request.form.get("entity_type", "customers")
+    if entity_type not in VALID_WIZARD_TYPES:
+        entity_type = "customers"
+
+    file_content_b64 = request.form.get("file_content", "")
+    file_type = request.form.get("file_type", "csv")
+
+    if not file_content_b64:
+        flash("File content missing. Please start over.", "error")
+        return redirect(url_for("admin.import_wizard", type=entity_type))
+
+    try:
+        raw_bytes = base64.b64decode(file_content_b64)
+    except Exception:
+        flash("Invalid file data. Please start over.", "error")
+        return redirect(url_for("admin.import_wizard", type=entity_type))
+
+    if file_type == "csv":
+        file_content = raw_bytes.decode("utf-8-sig")
+    else:
+        file_content = raw_bytes
+
+    # Reconstruct column mapping from form
+    sources = request.form.getlist("map_source[]")
+    targets = request.form.getlist("map_target[]")
+    column_mapping = {}
+    for source, target in zip(sources, targets):
+        column_mapping[source] = target if target else None
+
+    # Execute import
+    outcome = import_service.execute_mapped_import(
+        file_content, column_mapping, entity_type, file_type
+    )
+
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type=entity_type,
+            entity_id=0,
+            user_id=current_user.id,
+            field_name="import",
+            new_value=f"{outcome['imported']} imported, {outcome['skipped']} skipped",
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
+
+    return render_template(
+        "admin/import_mapping.html",
+        step="result",
+        entity_type=entity_type,
+        outcome=outcome,
+    )
+
+
+def _extract_mapping_from_form(form):
+    """Extract column mapping from form submission.
+
+    Form fields: source_col_0, source_col_1, ... and mapping_0, mapping_1, ...
+    """
+    column_mapping = {}
+    i = 0
+    while True:
+        source_key = f"source_col_{i}"
+        mapping_key = f"mapping_{i}"
+        source = form.get(source_key)
+        if source is None:
+            break
+        target = form.get(mapping_key, "")
+        column_mapping[source] = target if target else None
+        i += 1
+    return column_mapping
+
+
+def _extract_sample_values(file_content, file_type, source_columns):
+    """Get first non-empty sample value for each source column."""
+    from app.services.import_service import _read_rows
+
+    headers, raw_rows = _read_rows(file_content, file_type)
+    sample_values = {}
+
+    # Build header->index mapping
+    header_idx = {}
+    for idx, h in enumerate(headers):
+        header_idx[h] = idx
+
+    for col in source_columns:
+        idx = header_idx.get(col)
+        if idx is None:
+            sample_values[col] = ""
+            continue
+        # Get first 3 non-empty values
+        samples = []
+        for row in raw_rows[:5]:
+            if idx < len(row) and row[idx].strip():
+                samples.append(row[idx].strip())
+            if len(samples) >= 3:
+                break
+        sample_values[col] = ", ".join(samples)
+
+    return sample_values
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
