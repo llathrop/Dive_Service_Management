@@ -9,6 +9,7 @@ Endpoints:
     GET /health/live  — Liveness probe: always returns 200
 """
 
+import redis
 from flask import Blueprint, current_app, jsonify
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
@@ -60,8 +61,6 @@ def readiness():
 
     # Redis check
     try:
-        import redis
-
         redis_url = current_app.config.get("REDIS_URL", "redis://localhost:6379/0")
         r = redis.from_url(redis_url, socket_connect_timeout=2, socket_timeout=2)
         r.ping()
