@@ -1,0 +1,99 @@
+{# HTMX partial fragment for search autocomplete dropdown.
+   Rendered without base.html -- returns just the HTML fragment.
+   Groups results by entity type with icons and clickable links. #}
+
+{% set has_results = customers or items or inventory or orders or invoices %}
+
+{% if q and has_results %}
+<div class="list-group shadow-sm autocomplete-results">
+
+  {% if customers %}
+  <div class="list-group-item list-group-item-light py-1 px-3">
+    <small class="fw-bold text-muted"><i class="bi bi-people me-1"></i>Customers</small>
+  </div>
+  {% for c in customers %}
+  <a href="{{ c.url }}"
+     class="list-group-item list-group-item-action py-2 px-3">
+    <i class="bi bi-person me-2 text-primary"></i>
+    {{ c.display_text }}
+    {% if c.email %}
+    <small class="text-muted ms-2">{{ c.email }}</small>
+    {% endif %}
+  </a>
+  {% endfor %}
+  {% endif %}
+
+  {% if orders %}
+  <div class="list-group-item list-group-item-light py-1 px-3">
+    <small class="fw-bold text-muted"><i class="bi bi-clipboard-check me-1"></i>Orders</small>
+  </div>
+  {% for o in orders %}
+  <a href="{{ o.url }}"
+     class="list-group-item list-group-item-action py-2 px-3">
+    <i class="bi bi-clipboard-check me-2 text-success"></i>
+    {{ o.display_text }}
+    {% if o.status %}
+    <span class="badge bg-secondary ms-2">{{ o.status }}</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+  {% endif %}
+
+  {% if items %}
+  <div class="list-group-item list-group-item-light py-1 px-3">
+    <small class="fw-bold text-muted"><i class="bi bi-tools me-1"></i>Service Items</small>
+  </div>
+  {% for item in items %}
+  <a href="{{ item.url }}"
+     class="list-group-item list-group-item-action py-2 px-3">
+    <i class="bi bi-tools me-2 text-warning"></i>
+    {{ item.display_text }}
+  </a>
+  {% endfor %}
+  {% endif %}
+
+  {% if inventory %}
+  <div class="list-group-item list-group-item-light py-1 px-3">
+    <small class="fw-bold text-muted"><i class="bi bi-box-seam me-1"></i>Inventory</small>
+  </div>
+  {% for inv in inventory %}
+  <a href="{{ inv.url }}"
+     class="list-group-item list-group-item-action py-2 px-3">
+    <i class="bi bi-box-seam me-2 text-info"></i>
+    {{ inv.display_text }}
+  </a>
+  {% endfor %}
+  {% endif %}
+
+  {% if invoices %}
+  <div class="list-group-item list-group-item-light py-1 px-3">
+    <small class="fw-bold text-muted"><i class="bi bi-receipt me-1"></i>Invoices</small>
+  </div>
+  {% for inv in invoices %}
+  <a href="{{ inv.url }}"
+     class="list-group-item list-group-item-action py-2 px-3">
+    <i class="bi bi-receipt me-2 text-danger"></i>
+    {{ inv.display_text }}
+    {% if inv.status %}
+    <span class="badge bg-secondary ms-2">{{ inv.status }}</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+  {% endif %}
+
+  <a href="{{ url_for('search.results', q=q) }}"
+     class="list-group-item list-group-item-action text-center py-2 text-primary">
+    <i class="bi bi-search me-1"></i> View all results for "{{ q }}"
+  </a>
+</div>
+{% elif q %}
+<div class="list-group shadow-sm autocomplete-results">
+  <div class="list-group-item text-center py-3 text-muted">
+    <i class="bi bi-search me-1"></i> No results found for "{{ q }}"
+  </div>
+  <a href="{{ url_for('search.results', q=q) }}"
+     class="list-group-item list-group-item-action text-center py-2 text-primary">
+    <i class="bi bi-search me-1"></i> View all results
+  </a>
+</div>
+{% endif %}
