@@ -7,14 +7,12 @@
 
   <title>{% block title %}Dive Service Management{% endblock %}</title>
 
-  {# Bootstrap 5.3 CSS #}
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
-        crossorigin="anonymous">
+  {# Bootstrap 5.3 CSS (vendored) #}
+  <link href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}"
+        rel="stylesheet">
 
-  {# Bootstrap Icons #}
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  {# Bootstrap Icons (vendored) #}
+  <link href="{{ url_for('static', filename='vendor/bootstrap-icons.min.css') }}"
         rel="stylesheet">
 
   {# Application CSS #}
@@ -326,17 +324,15 @@
 
   {# ===== JAVASCRIPT ===== #}
 
-  {# Bootstrap 5.3 JS Bundle (includes Popper) #}
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-          integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
-          crossorigin="anonymous"></script>
+  {# Bootstrap 5.3 JS Bundle (vendored, includes Popper) #}
+  <script src="{{ url_for('static', filename='vendor/bootstrap.bundle.min.js') }}"></script>
 
-  {# HTMX 2.0 #}
-  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  {# HTMX 2.0 (vendored) #}
+  <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
 
-  {# Alpine.js 3.14 #}
+  {# Alpine.js 3.14 (vendored) #}
   <script defer
-          src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+          src="{{ url_for('static', filename='vendor/cdn.min.js') }}"></script>
 
   {# Application JS #}
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
