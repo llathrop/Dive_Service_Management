@@ -10,6 +10,7 @@ from app.services import (  # noqa: F401
     export_service,
     inventory_service,
     invoice_service,
+    item_service,
     notification_service,
     order_service,
     price_list_service,
