@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}Import Wizard - Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">
+    <i class="bi bi-file-earmark-arrow-up me-2"></i>Import Wizard
+  </h1>
+  <a href="{{ url_for('admin.data_management') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Data Management
+  </a>
+</div>
+
+{# Step indicator #}
+<div class="mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <span class="badge {% if step == 'upload' %}bg-primary{% else %}bg-secondary{% endif %} rounded-pill px-3 py-2">
+      1. Upload
+    </span>
+    <i class="bi bi-chevron-right text-muted"></i>
+    <span class="badge {% if step == 'mapping' %}bg-primary{% elif step in ('preview', 'result') %}bg-secondary{% else %}bg-light text-muted{% endif %} rounded-pill px-3 py-2">
+      2. Map Columns
+    </span>
+    <i class="bi bi-chevron-right text-muted"></i>
+    <span class="badge {% if step == 'preview' %}bg-primary{% elif step == 'result' %}bg-secondary{% else %}bg-light text-muted{% endif %} rounded-pill px-3 py-2">
+      3. Preview
+    </span>
+    <i class="bi bi-chevron-right text-muted"></i>
+    <span class="badge {% if step == 'result' %}bg-primary{% else %}bg-light text-muted{% endif %} rounded-pill px-3 py-2">
+      4. Import
+    </span>
+  </div>
+</div>
+
+{# ── Step 1: Upload ── #}
+{% if step == 'upload' %}
+<div class="row g-3">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Upload File</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data"
+              action="{{ url_for('admin.import_wizard_upload') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="mb-3">
+            <label for="entity_type" class="form-label">Import Type</label>
+            <select class="form-select" id="entity_type" name="entity_type" required>
+              <option value="customers" {% if entity_type == 'customers' %}selected{% endif %}>Customers</option>
+              <option value="inventory" {% if entity_type == 'inventory' %}selected{% endif %}>Inventory</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="import_file" class="form-label">CSV or XLSX File</label>
+            <input type="file" class="form-control" id="import_file" name="import_file"
+                   accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                   required>
+            <div class="form-text">
+              Upload a CSV or XLSX file. The first row must contain column headers.
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-upload me-1"></i>Upload &amp; Detect Columns
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="card-title mb-0">How It Works</h6>
+      </div>
+      <div class="card-body">
+        <ol class="small mb-0">
+          <li class="mb-2">Upload your CSV or XLSX file</li>
+          <li class="mb-2">Map source columns to target fields</li>
+          <li class="mb-2">Preview the mapped data and fix any errors</li>
+          <li>Confirm and import the data</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Step 2: Column Mapping ── #}
+{% if step == 'mapping' %}
+<div class="card mb-4" x-data="columnMapper()">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0">Map Columns</h5>
+    <button type="button" class="btn btn-outline-info btn-sm" @click="autoDetect()">
+      <i class="bi bi-magic me-1"></i>Auto-Detect
+    </button>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('admin.import_wizard_preview') }}" id="mapping-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="entity_type" value="{{ entity_type }}">
+      <input type="hidden" name="file_content" value="{{ file_content_b64 }}">
+      <input type="hidden" name="file_type" value="{{ file_type }}">
+
+      <p class="text-muted mb-3">
+        Map each source column from your file to a target field. Select "Skip / Ignore" to exclude a column.
+      </p>
+
+      {# Legend #}
+      <div class="mb-3 d-flex gap-3 small">
+        <span><i class="bi bi-check-circle-fill text-success me-1"></i>Mapped</span>
+        <span><i class="bi bi-dash-circle text-muted me-1"></i>Skipped</span>
+        <span><i class="bi bi-exclamation-circle-fill text-danger me-1"></i>Required (unmapped)</span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width:5%">#</th>
+              <th style="width:30%">Source Column</th>
+              <th style="width:5%" class="text-center"><i class="bi bi-arrow-right"></i></th>
+              <th style="width:35%">Target Field</th>
+              <th style="width:25%">Sample Values</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for col in source_columns %}
+            <tr>
+              <td class="text-muted">{{ loop.index }}</td>
+              <td>
+                <strong>{{ col }}</strong>
+                <input type="hidden" name="source_col_{{ loop.index0 }}" value="{{ col }}">
+              </td>
+              <td class="text-center">
+                <i class="bi"
+                   :class="mappings['{{ col }}'] ? 'bi-check-circle-fill text-success' : 'bi-dash-circle text-muted'"></i>
+              </td>
+              <td>
+                <select class="form-select form-select-sm"
+                        name="mapping_{{ loop.index0 }}"
+                        x-model="mappings['{{ col }}']"
+                        @change="updateMapping('{{ col }}', $event.target.value)">
+                  <option value="">Skip / Ignore</option>
+                  {% for field in target_fields %}
+                  <option value="{{ field.key }}"
+                          {% if auto_mapping.get(col) == field.key %}selected{% endif %}>
+                    {{ field.label }}{% if field.required %} *{% endif %}
+                  </option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td class="text-muted small">
+                {% if sample_values.get(col) %}
+                  {{ sample_values[col][:80] }}{% if sample_values[col]|length > 80 %}...{% endif %}
+                {% else %}
+                  <em>empty</em>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {# Required fields warning #}
+      <div x-show="unmappedRequired.length > 0" class="alert alert-warning" x-cloak>
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <strong>Required fields not mapped:</strong>
+        <span x-text="unmappedRequired.join(', ')"></span>
+      </div>
+
+      <div class="d-flex gap-2 mt-3">
+        <a href="{{ url_for('admin.import_wizard') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-eye me-1"></i>Preview Import
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function columnMapper() {
+  // Initial mappings from auto-detect
+  const initialMappings = {{ auto_mapping | tojson }};
+  const targetFields = {{ target_fields | tojson }};
+
+  return {
+    mappings: { ...initialMappings },
+
+    get unmappedRequired() {
+      const mapped = new Set(Object.values(this.mappings).filter(v => v));
+      return targetFields
+        .filter(f => f.required && !mapped.has(f.key))
+        .map(f => f.label);
+    },
+
+    updateMapping(sourceCol, targetKey) {
+      this.mappings[sourceCol] = targetKey || '';
+    },
+
+    autoDetect() {
+      // Reset to auto-detected values
+      const auto = {{ auto_mapping | tojson }};
+      for (const [source, target] of Object.entries(auto)) {
+        this.mappings[source] = target || '';
+      }
+      // Update the select elements
+      document.querySelectorAll('#mapping-form select[name^="mapping_"]').forEach((sel, idx) => {
+        const sourceInput = document.querySelector(`input[name="source_col_${idx}"]`);
+        if (sourceInput) {
+          const sourceCol = sourceInput.value;
+          sel.value = auto[sourceCol] || '';
+        }
+      });
+    }
+  };
+}
+</script>
+{% endif %}
+
+{# ── Step 3: Preview ── #}
+{% if step == 'preview' %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <h3 class="mb-1">{{ result.total }}</h3>
+        <small class="text-muted">Total Rows</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center border-success">
+      <div class="card-body py-3">
+        <h3 class="mb-1 text-success">{{ result.valid }}</h3>
+        <small class="text-muted">Valid Rows</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center {% if result.errors %}border-danger{% else %}border-success{% endif %}">
+      <div class="card-body py-3">
+        <h3 class="mb-1 {% if result.errors %}text-danger{% else %}text-success{% endif %}">
+          {{ result.errors|length }}
+        </h3>
+        <small class="text-muted">Errors</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Validation errors #}
+{% if result.errors %}
+<div class="alert alert-danger">
+  <h6><i class="bi bi-exclamation-triangle me-1"></i>Validation Errors</h6>
+  <ul class="mb-0">
+    {% for err in result.errors[:20] %}
+    <li>Row {{ err.row }}: {{ err.message }}</li>
+    {% endfor %}
+    {% if result.errors|length > 20 %}
+    <li class="text-muted">... and {{ result.errors|length - 20 }} more errors</li>
+    {% endif %}
+  </ul>
+</div>
+{% endif %}
+
+{# Column mapping summary #}
+<div class="card mb-4">
+  <div class="card-header">
+    <h6 class="card-title mb-0">Column Mapping Applied</h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Source Column</th>
+            <th><i class="bi bi-arrow-right"></i></th>
+            <th>Target Field</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for source, target in column_mapping.items() %}
+          <tr>
+            <td>{{ source }}</td>
+            <td>
+              {% if target %}
+              <i class="bi bi-check-circle-fill text-success"></i>
+              {% else %}
+              <i class="bi bi-dash-circle text-muted"></i>
+              {% endif %}
+            </td>
+            <td>{% if target %}{{ target }}{% else %}<em class="text-muted">Skipped</em>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# Preview table #}
+{% if result.preview %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h6 class="card-title mb-0">Preview (first {{ result.preview|length }} rows)</h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            {% for header in result.headers %}
+            <th>{{ header }}</th>
+            {% endfor %}
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set error_rows = result.errors | map(attribute='row') | list %}
+          {% for row in result.preview %}
+          {% set row_num = loop.index + 1 %}
+          <tr class="{% if row_num in error_rows %}table-danger{% else %}table-success{% endif %}">
+            <td>{{ loop.index }}</td>
+            {% for header in result.headers %}
+            <td>{{ row.get(header, '') }}</td>
+            {% endfor %}
+            <td>
+              {% if row_num in error_rows %}
+              <i class="bi bi-x-circle-fill text-danger" title="Has errors"></i>
+              {% else %}
+              <i class="bi bi-check-circle-fill text-success" title="Valid"></i>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Action buttons #}
+<div class="d-flex gap-2">
+  {% if result.valid > 0 %}
+  <form method="POST" action="{{ url_for('admin.import_wizard_execute') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="entity_type" value="{{ entity_type }}">
+    <input type="hidden" name="file_content" value="{{ file_content_b64 }}">
+    <input type="hidden" name="file_type" value="{{ file_type }}">
+    {% for source, target in column_mapping.items() %}
+    <input type="hidden" name="map_source[]" value="{{ source }}">
+    <input type="hidden" name="map_target[]" value="{{ target }}">
+    {% endfor %}
+    <button type="submit" class="btn btn-success">
+      <i class="bi bi-check-lg me-1"></i>Import {{ result.valid }} Valid Row{{ 's' if result.valid != 1 }}
+    </button>
+  </form>
+  {% endif %}
+  <a href="{{ url_for('admin.import_wizard') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Start Over
+  </a>
+</div>
+{% endif %}
+
+{# ── Step 4: Result ── #}
+{% if step == 'result' %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="card text-center border-success">
+      <div class="card-body py-3">
+        <h3 class="mb-1 text-success">{{ outcome.imported }}</h3>
+        <small class="text-muted">Imported</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <h3 class="mb-1 text-warning">{{ outcome.skipped }}</h3>
+        <small class="text-muted">Skipped (Duplicates)</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center {% if outcome.errors %}border-danger{% endif %}">
+      <div class="card-body py-3">
+        <h3 class="mb-1 {% if outcome.errors %}text-danger{% endif %}">{{ outcome.errors|length }}</h3>
+        <small class="text-muted">Errors</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if outcome.imported > 0 %}
+<div class="alert alert-success">
+  <i class="bi bi-check-circle me-1"></i>
+  Successfully imported {{ outcome.imported }} {{ entity_type }} record{{ 's' if outcome.imported != 1 }}.
+</div>
+{% endif %}
+
+{% if outcome.errors %}
+<div class="alert alert-danger">
+  <h6><i class="bi bi-exclamation-triangle me-1"></i>Import Errors</h6>
+  <ul class="mb-0">
+    {% for err in outcome.errors[:20] %}
+    <li>Row {{ err.row }}: {{ err.message }}</li>
+    {% endfor %}
+    {% if outcome.errors|length > 20 %}
+    <li class="text-muted">... and {{ outcome.errors|length - 20 }} more errors</li>
+    {% endif %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="d-flex gap-2">
+  <a href="{{ url_for('admin.import_wizard') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Import More
+  </a>
+  <a href="{{ url_for('admin.data_management') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Data Management
+  </a>
+</div>
+{% endif %}
+
+{% endblock %}
