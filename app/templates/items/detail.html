@@ -95,6 +95,13 @@
   </div>
 </div>
 
+{# Images / Attachments #}
+{% set capture_attachable_type = 'service_item' %}
+{% set capture_attachable_id = item.id %}
+{% set capture_can_edit = current_user.has_role('admin') or current_user.has_role('technician') %}
+{% set capture_title = 'Images' %}
+{% include 'partials/image_capture.html' with context %}
+
 {# Notes #}
 {% if item.notes %}
 <div class="card mb-4">
