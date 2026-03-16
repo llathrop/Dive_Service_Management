@@ -116,10 +116,17 @@
         <h5 class="card-title mb-0">
           <i class="bi bi-activity me-1"></i> Recent Activity
         </h5>
+        {% if current_user.has_role('admin') %}
+        <a href="{{ url_for('admin.audit_log') }}" class="btn btn-sm btn-outline-secondary">
+          View All <i class="bi bi-arrow-right"></i>
+        </a>
+        {% endif %}
       </div>
-      <div class="card-body text-center py-5">
-        <i class="bi bi-clock-history text-muted" style="font-size: 3rem;"></i>
-        <p class="text-muted mt-2 mb-0">Activity feed will appear here once orders are created.</p>
+      <div class="card-body" id="activity-feed"
+           hx-get="{{ url_for('dashboard.activity_feed') }}"
+           hx-trigger="every 60s"
+           hx-swap="innerHTML">
+        {% include "dashboard/_activity_feed.html" %}
       </div>
     </div>
   </div>

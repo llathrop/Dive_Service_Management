@@ -2,7 +2,7 @@
 
 Provides the main landing page for authenticated users with live
 summary cards showing open orders, pickup queue, low stock alerts,
-and overdue invoices.
+and overdue invoices, plus a live activity feed from the audit log.
 """
 
 from datetime import date
@@ -15,6 +15,7 @@ from app.extensions import db
 from app.models.inventory import InventoryItem
 from app.models.invoice import Invoice
 from app.models.service_order import ServiceOrder
+from app.services import audit_service
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -77,10 +78,24 @@ def index():
         .scalar()
     )
 
+    recent_activity = audit_service.get_recent_activity(limit=15)
+
     return render_template(
         "dashboard/index.html",
         open_orders=open_orders,
         awaiting_pickup=awaiting_pickup,
         low_stock_count=low_stock_count,
         overdue_invoices=overdue_invoices,
+        recent_activity=recent_activity,
+    )
+
+
+@dashboard_bp.route("/activity-feed")
+@login_required
+def activity_feed():
+    """Return the activity feed HTML fragment for HTMX polling."""
+    recent_activity = audit_service.get_recent_activity(limit=15)
+    return render_template(
+        "dashboard/_activity_feed.html",
+        recent_activity=recent_activity,
     )
