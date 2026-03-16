@@ -114,6 +114,7 @@ def _init_extensions(app):
 def _register_blueprints(app):
     """Register all application blueprints."""
     from app.blueprints.admin import admin_bp
+    from app.blueprints.attachments import attachments_bp
     from app.blueprints.auth import auth_bp
     from app.blueprints.customers import customers_bp
     from app.blueprints.dashboard import dashboard_bp
@@ -130,6 +131,7 @@ def _register_blueprints(app):
     from app.blueprints.tools import tools_bp
 
     app.register_blueprint(admin_bp)
+    app.register_blueprint(attachments_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(customers_bp)
     app.register_blueprint(dashboard_bp)

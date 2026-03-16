@@ -333,6 +333,79 @@
         <p class="small mb-2"><strong>Diagnosis:</strong> {{ oi.diagnosis }}</p>
         {% endif %}
 
+        {# ---- Images Sub-section ---- #}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0 small text-uppercase text-muted">
+              <i class="bi bi-camera me-1"></i> Images
+            </h6>
+            {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+            <div class="d-flex gap-1">
+              <label class="btn btn-sm btn-outline-primary mb-0" title="Take Photo">
+                <i class="bi bi-camera-fill"></i>
+                <input type="file" accept="image/*" capture="environment"
+                       class="d-none"
+                       onchange="handleFileSelect(this, 'service_order_item', {{ oi.id }})">
+              </label>
+              <label class="btn btn-sm btn-outline-secondary mb-0" title="Upload File">
+                <i class="bi bi-upload"></i>
+                <input type="file" accept="image/*,.pdf"
+                       class="d-none" multiple
+                       onchange="handleFileSelect(this, 'service_order_item', {{ oi.id }})">
+              </label>
+            </div>
+            {% endif %}
+          </div>
+
+          {# Upload preview area #}
+          {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+          <div id="upload-preview-service_order_item-{{ oi.id }}" class="d-none mb-2">
+            <div class="border rounded p-2 bg-body-tertiary">
+              <div class="d-flex align-items-start gap-2">
+                <img id="preview-img-service_order_item-{{ oi.id }}"
+                     src="" alt="Preview"
+                     class="rounded" style="max-width: 100px; max-height: 100px; object-fit: cover;">
+                <div class="flex-grow-1">
+                  <p class="mb-1 small fw-semibold" id="preview-filename-service_order_item-{{ oi.id }}"></p>
+                  <input type="text" class="form-control form-control-sm mb-1"
+                         id="preview-desc-service_order_item-{{ oi.id }}"
+                         placeholder="Description (optional)..." maxlength="500">
+                  <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-primary"
+                            onclick="uploadFile('service_order_item', {{ oi.id }})">
+                      <i class="bi bi-cloud-upload me-1"></i> Upload
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            onclick="cancelPreview('service_order_item', {{ oi.id }})">
+                      Cancel
+                    </button>
+                  </div>
+                  <div class="progress mt-1 d-none" id="upload-progress-service_order_item-{{ oi.id }}"
+                       style="height: 4px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                         role="progressbar" style="width: 0%"></div>
+                  </div>
+                  <div class="alert alert-danger mt-1 small py-1 px-2 d-none"
+                       id="upload-error-service_order_item-{{ oi.id }}"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {# Gallery container — loaded via HTMX #}
+          <div id="gallery-service_order_item-{{ oi.id }}"
+               hx-get="{{ url_for('attachments.gallery', attachable_type='service_order_item', attachable_id=oi.id) }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="text-center py-1">
+              <div class="spinner-border spinner-border-sm text-muted" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {# ---- Applied Services Sub-section ---- #}
         <div class="mb-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
@@ -741,6 +814,115 @@
     {% endif %}
   </div>
 </div>
+
+{# ===== ATTACHMENT JS (shared functions for image capture) ===== #}
+<script>
+const pendingFiles = pendingFiles || {};
+
+function handleFileSelect(input, type, id) {
+    const files = input.files;
+    if (!files || files.length === 0) return;
+    if (files.length > 1) {
+        for (let i = 0; i < files.length; i++) {
+            uploadSingleFile(files[i], type, id, null);
+        }
+        input.value = '';
+        return;
+    }
+    const file = files[0];
+    pendingFiles[type + '-' + id] = file;
+    const previewArea = document.getElementById('upload-preview-' + type + '-' + id);
+    const previewImg = document.getElementById('preview-img-' + type + '-' + id);
+    const previewName = document.getElementById('preview-filename-' + type + '-' + id);
+    previewName.textContent = file.name + ' (' + formatBytes(file.size) + ')';
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) { previewImg.src = e.target.result; previewImg.classList.remove('d-none'); };
+        reader.readAsDataURL(file);
+    } else {
+        previewImg.classList.add('d-none');
+    }
+    previewArea.classList.remove('d-none');
+    hideError(type, id);
+    input.value = '';
+}
+
+function cancelPreview(type, id) {
+    delete pendingFiles[type + '-' + id];
+    document.getElementById('upload-preview-' + type + '-' + id).classList.add('d-none');
+    document.getElementById('preview-desc-' + type + '-' + id).value = '';
+    hideError(type, id);
+}
+
+function uploadFile(type, id) {
+    const file = pendingFiles[type + '-' + id];
+    if (!file) return;
+    const desc = document.getElementById('preview-desc-' + type + '-' + id).value.trim();
+    uploadSingleFile(file, type, id, desc);
+    delete pendingFiles[type + '-' + id];
+}
+
+function uploadSingleFile(file, type, id, description) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('attachable_type', type);
+    formData.append('attachable_id', id);
+    if (description) formData.append('description', description);
+    const progressBar = document.getElementById('upload-progress-' + type + '-' + id);
+    if (progressBar) { progressBar.classList.remove('d-none'); progressBar.querySelector('.progress-bar').style.width = '0%'; }
+    hideError(type, id);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/attachments/upload', true);
+    xhr.setRequestHeader('X-CSRFToken', csrfToken);
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable && progressBar) progressBar.querySelector('.progress-bar').style.width = Math.round((e.loaded / e.total) * 100) + '%';
+    };
+    xhr.onload = function() {
+        if (progressBar) progressBar.classList.add('d-none');
+        if (xhr.status === 201) {
+            const pa = document.getElementById('upload-preview-' + type + '-' + id);
+            if (pa) { pa.classList.add('d-none'); document.getElementById('preview-desc-' + type + '-' + id).value = ''; }
+            refreshGallery(type, id);
+        } else {
+            try { showError(type, id, JSON.parse(xhr.responseText).error || 'Upload failed.'); }
+            catch(e) { showError(type, id, 'Upload failed.'); }
+        }
+    };
+    xhr.onerror = function() { if (progressBar) progressBar.classList.add('d-none'); showError(type, id, 'Network error.'); };
+    xhr.send(formData);
+}
+
+function deleteAttachment(attachmentId, type, id) {
+    if (!confirm('Delete this attachment? This cannot be undone.')) return;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    fetch('/attachments/' + attachmentId, { method: 'DELETE', headers: { 'X-CSRFToken': csrfToken } })
+    .then(function(r) { if (r.status === 204) refreshGallery(type, id); else alert('Failed to delete.'); })
+    .catch(function() { alert('Network error.'); });
+}
+
+function refreshGallery(type, id) {
+    const g = document.getElementById('gallery-' + type + '-' + id);
+    if (g) htmx.ajax('GET', '/attachments/gallery/' + type + '/' + id, {target: g, swap: 'innerHTML'});
+}
+
+function showError(type, id, msg) {
+    const el = document.getElementById('upload-error-' + type + '-' + id);
+    if (el) { el.textContent = msg; el.classList.remove('d-none'); }
+}
+
+function hideError(type, id) {
+    const el = document.getElementById('upload-error-' + type + '-' + id);
+    if (el) el.classList.add('d-none');
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+</script>
 
 {# ===== DELETE MODAL ===== #}
 {% if current_user.has_role('admin') %}
