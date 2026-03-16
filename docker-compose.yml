@@ -120,7 +120,7 @@ services:
     networks:
       - dsm-net
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' > /dev/null"]
+      test: ["CMD-SHELL", "test -f /tmp/celerybeat-schedule && find /tmp/celerybeat-schedule -mmin -3 | grep -q ."]
       interval: 60s
       timeout: 5s
       start_period: 15s
