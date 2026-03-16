@@ -5,6 +5,7 @@ rows.  ENV-locked fields are rendered as read-only in the template.
 """
 
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileAllowed, FileField
 from wtforms import DecimalField, IntegerField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, NumberRange, Optional
 
@@ -31,6 +32,18 @@ class CompanySettingsForm(FlaskForm):
     company_website = StringField(
         "Website",
         validators=[Optional(), Length(max=500)],
+    )
+    logo_upload = FileField(
+        "Header Logo",
+        validators=[
+            FileAllowed(["jpg", "jpeg", "png"], "Images only (JPG, PNG)"),
+        ],
+    )
+    invoice_logo_upload = FileField(
+        "Invoice Logo (optional)",
+        validators=[
+            FileAllowed(["jpg", "jpeg", "png"], "Images only (JPG, PNG)"),
+        ],
     )
 
 
