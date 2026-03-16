@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.forms.price_list import PriceListCategoryForm, PriceListItemForm
 from app.models.price_list import PriceListCategory, PriceListItem
+from app.services import audit_service
 
 price_list_bp = Blueprint("price_list", __name__, url_prefix="/price-list")
 
@@ -109,6 +110,17 @@ def create():
         db.session.add(item)
         try:
             db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="create",
+                    entity_type="price_list_item",
+                    entity_id=item.id,
+                    user_id=current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash("Price list item created successfully.", "success")
             return redirect(url_for("price_list.detail", id=item.id))
         except IntegrityError:
@@ -137,6 +149,17 @@ def edit(id):
         item.updated_by = current_user.id
         try:
             db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="update",
+                    entity_type="price_list_item",
+                    entity_id=item.id,
+                    user_id=current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash("Price list item updated successfully.", "success")
             return redirect(url_for("price_list.detail", id=item.id))
         except IntegrityError:
@@ -178,6 +201,18 @@ def duplicate(id):
     db.session.add(new_item)
     try:
         db.session.commit()
+        try:
+            audit_service.log_action(
+                action="create",
+                entity_type="price_list_item",
+                entity_id=new_item.id,
+                user_id=current_user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+                additional_data=f'{{"duplicated_from": {original.id}}}',
+            )
+        except Exception:
+            pass
         flash("Price list item duplicated.", "success")
         return redirect(url_for("price_list.detail", id=new_item.id))
     except IntegrityError:
@@ -218,6 +253,17 @@ def create_category():
         )
         db.session.add(category)
         db.session.commit()
+        try:
+            audit_service.log_action(
+                action="create",
+                entity_type="price_list_category",
+                entity_id=category.id,
+                user_id=current_user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+            )
+        except Exception:
+            pass
         flash("Category created successfully.", "success")
     else:
         flash("Invalid category data.", "error")
@@ -239,6 +285,17 @@ def edit_category(id):
     if form.validate_on_submit():
         form.populate_obj(category)
         db.session.commit()
+        try:
+            audit_service.log_action(
+                action="update",
+                entity_type="price_list_category",
+                entity_id=category.id,
+                user_id=current_user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+            )
+        except Exception:
+            pass
         flash("Category updated successfully.", "success")
     else:
         flash("Invalid category data.", "error")

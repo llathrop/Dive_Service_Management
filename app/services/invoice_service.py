@@ -20,6 +20,7 @@ from app.extensions import db
 from app.models.invoice import Invoice, InvoiceLineItem, invoice_orders
 from app.models.payment import Payment
 from app.models.service_order import ServiceOrder
+from app.services import audit_service
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +135,7 @@ def get_invoice(invoice_id):
     return db.session.get(Invoice, invoice_id)
 
 
-def create_invoice(data, created_by=None):
+def create_invoice(data, created_by=None, ip_address=None, user_agent=None):
     """Create a new invoice from a data dict.
 
     Auto-generates the invoice_number using the INV-YYYY-NNNNN pattern.
@@ -142,6 +143,8 @@ def create_invoice(data, created_by=None):
     Args:
         data: Dictionary of invoice fields.
         created_by: Optional user ID of the creator.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         The newly created Invoice instance.
@@ -172,15 +175,29 @@ def create_invoice(data, created_by=None):
                 raise
 
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="invoice",
+            entity_id=invoice.id,
+            user_id=created_by,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
     return invoice
 
 
-def update_invoice(invoice_id, data):
+def update_invoice(invoice_id, data, user_id=None, ip_address=None, user_agent=None):
     """Update an existing invoice from a data dict.
 
     Args:
         invoice_id: The primary key of the invoice to update.
         data: Dictionary of fields to update.
+        user_id: Optional user ID for audit logging.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         The updated Invoice instance, or None if not found.
@@ -207,14 +224,28 @@ def update_invoice(invoice_id, data):
         invoice.recalculate_totals()
 
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="update",
+            entity_type="invoice",
+            entity_id=invoice.id,
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
     return invoice
 
 
-def void_invoice(invoice_id):
+def void_invoice(invoice_id, user_id=None, ip_address=None, user_agent=None):
     """Void an invoice by setting its status to 'void'.
 
     Args:
         invoice_id: The primary key of the invoice to void.
+        user_id: Optional user ID for audit logging.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         The voided Invoice instance, or None if not found.
@@ -223,12 +254,27 @@ def void_invoice(invoice_id):
     if invoice is None:
         return None
 
+    old_status = invoice.status
     invoice.status = "void"
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="status_change",
+            entity_type="invoice",
+            entity_id=invoice.id,
+            user_id=user_id,
+            field_name="status",
+            old_value=old_status,
+            new_value="void",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
     return invoice
 
 
-def change_status(invoice_id, new_status):
+def change_status(invoice_id, new_status, user_id=None, ip_address=None, user_agent=None):
     """Transition invoice to new status with validation.
 
     Only transitions allowed by INVOICE_STATUS_TRANSITIONS are permitted.
@@ -237,6 +283,9 @@ def change_status(invoice_id, new_status):
     Args:
         invoice_id: The primary key of the invoice.
         new_status: The desired new status string.
+        user_id: Optional user ID for audit logging.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         A tuple of (invoice, success).  ``invoice`` is the Invoice instance
@@ -251,10 +300,25 @@ def change_status(invoice_id, new_status):
     allowed = INVOICE_STATUS_TRANSITIONS.get(invoice.status, set())
     if new_status not in allowed:
         return invoice, False
+    old_status = invoice.status
     invoice.status = new_status
     if new_status == "paid":
         invoice.paid_date = date.today()
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="status_change",
+            entity_type="invoice",
+            entity_id=invoice.id,
+            user_id=user_id,
+            field_name="status",
+            old_value=old_status,
+            new_value=new_status,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
     return invoice, True
 
 
@@ -308,7 +372,7 @@ def generate_invoice_number():
 # Generate Invoice from Service Order
 # =========================================================================
 
-def generate_from_order(order_id, created_by=None):
+def generate_from_order(order_id, created_by=None, ip_address=None, user_agent=None):
     """Create an invoice from a service order's data.
 
     Builds an invoice with line items derived from the order's applied
@@ -318,6 +382,8 @@ def generate_from_order(order_id, created_by=None):
     Args:
         order_id: The primary key of the service order.
         created_by: Optional user ID of the creator.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         The newly created Invoice instance.
@@ -449,6 +515,18 @@ def generate_from_order(order_id, created_by=None):
     )
 
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="invoice",
+            entity_id=invoice.id,
+            user_id=created_by,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            additional_data=f'{{"from_order_id": {order_id}}}',
+        )
+    except Exception:
+        pass
     return invoice
 
 
@@ -508,6 +586,15 @@ def add_line_item(invoice_id, data):
 
     invoice.recalculate_totals()
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="invoice_line_item",
+            entity_id=line_item.id,
+            additional_data=f'{{"invoice_id": {invoice_id}}}',
+        )
+    except Exception:
+        pass
     return line_item
 
 
@@ -525,11 +612,21 @@ def remove_line_item(line_item_id):
         return False
 
     invoice = line_item.invoice
+    invoice_id = invoice.id
     db.session.delete(line_item)
     db.session.flush()
 
     invoice.recalculate_totals()
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="delete",
+            entity_type="invoice_line_item",
+            entity_id=line_item_id,
+            additional_data=f'{{"invoice_id": {invoice_id}}}',
+        )
+    except Exception:
+        pass
     return True
 
 
@@ -537,7 +634,7 @@ def remove_line_item(line_item_id):
 # Payments
 # =========================================================================
 
-def record_payment(invoice_id, data, recorded_by=None):
+def record_payment(invoice_id, data, recorded_by=None, ip_address=None, user_agent=None):
     """Record a payment against an invoice.
 
     Creates a Payment record, updates the invoice's amount_paid and
@@ -555,6 +652,8 @@ def record_payment(invoice_id, data, recorded_by=None):
             - reference_number
             - notes
         recorded_by: Optional user ID of the person recording the payment.
+        ip_address: Optional IP address for audit logging.
+        user_agent: Optional user agent for audit logging.
 
     Returns:
         The newly created Payment instance, or None if invoice not found.
@@ -604,6 +703,20 @@ def record_payment(invoice_id, data, recorded_by=None):
         invoice.status = "partially_paid"
 
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="payment",
+            entity_id=payment.id,
+            user_id=recorded_by,
+            field_name="amount",
+            new_value=str(data["amount"]),
+            ip_address=ip_address,
+            user_agent=user_agent,
+            additional_data=f'{{"invoice_id": {invoice_id}}}',
+        )
+    except Exception:
+        pass
     return payment
 
 
