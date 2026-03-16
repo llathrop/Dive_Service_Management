@@ -334,33 +334,33 @@
 
 ---
 
-### Backlog — Prioritized by Wave
+### Sprint 2026-03-15: Waves 1-3 (Complete)
 
-**Wave 1: High Impact (parallelizable — 3 independent agents)**
+**Wave 1: High Impact** (3 parallel agents)
+- [x] **1a: Wire audit logging** — `audit_service.log_action()` wired into all 7 write-path blueprints + order_service + invoice_service. 21 new tests.
+- [x] **1b: PDF invoice generation** — `app/utils/pdf.py` with fpdf2, invoice PDF route (`/invoices/<id>/pdf`), price list PDF route (`/price-list/pdf`). 35 new tests.
+- [x] **1c: Documentation suite** — `docs/architecture.md` (469 lines), `docs/user_guide.md` (539 lines), `docs/installation.md` (481 lines), `docs/configuration.md` (344 lines).
 
-- [ ] **1a: Wire audit logging into CRUD operations** — audit infrastructure exists but nothing calls `log_action()`. Wire into all 7 write-path blueprints (customers, orders, items, inventory, invoices, price_list, admin) + order_service, invoice_service
-- [ ] **1b: PDF invoice generation** (fpdf2) — core business need for printable customer invoices. New `app/utils/pdf.py`, invoice blueprint route, print template, tests
-- [ ] **1c: Documentation suite** — `docs/architecture.md` (system architecture), `docs/user_guide.md` (task-oriented user use cases from UAT scripts), `docs/installation.md` (Pi/local Docker/cloud/remote DB scenarios)
+**Wave 2: Medium Impact** (4 parallel agents)
+- [x] **2a: Dashboard activity feed** — live audit log feed on dashboard with HTMX polling (60s), action badges, entity links. 14 new tests.
+- [x] **2b: Cloud integration readiness** — `/health/ready` (DB+Redis), `/health/live` endpoints; `docs/cloud_deployment.md` for AWS/GCP/Azure. 11 new tests.
+- [x] **2c: Kanban view for orders** — drag-and-drop board with HTML5 DnD API, priority-colored cards, responsive layout. 19 new tests.
+- [x] **2d: Camera image capture** — Attachment model + migration `f6a7b8c9d0e1`, camera capture via HTML5 `capture="environment"`, gallery on item/order detail pages. 41 new tests.
 
-**Wave 2: Medium Impact (parallelizable — 4 agents; 2a depends on 1a)**
+**Wave 3: Polish & Tech Debt** (3 parallel agents)
+- [x] **3a: Service layer refactoring** — customers, items, inventory, price_list blueprints refactored to use service modules. 84 new tests.
+- [x] **3b: FULLTEXT search + streaming exports** — multi-entity global search, HTMX autocomplete dropdown, generator-based streaming CSV. 47 new tests.
+- [x] **3c: Import column mapping wizard** — multi-step wizard with column detection, fuzzy auto-mapping, XLSX support, row-level validation. 35 new tests.
 
-- [ ] **2a: Dashboard recent activity feed** — replace placeholder with live `get_recent_activity()` data (depends on audit logging being wired)
-- [ ] **2b: Cloud service integration readiness** — deployment docs for AWS/GCP/Azure, health/readiness probes, env config for managed DB/Redis, optional S3 for backups
-- [ ] **2c: Kanban view for orders** — template placeholder exists; implement drag-and-drop order status board
-- [ ] **2d: Camera image capture for service orders/items** — mobile-first photo capture using HTML5 `<input type="file" accept="image/*" capture="environment">`, attach photos to service items and order items directly from phone camera. Polymorphic Attachment model (per PROJECT_BLUEPRINT.md §2.22), upload storage in `uploads/attachments/`, thumbnail generation, gallery view on item/order detail pages. Replaces Wave 4 "File attachments" TODO with full implementation.
+**Tests**: 1246 total, all passing
 
-**Wave 3: Polish & Tech Debt (parallelizable — 3 agents)**
+---
 
-- [ ] **3a: Service layer refactoring** — Phase 2 blueprints (customers, items, inventory, price_list) bypass service layer; refactor to use services
-- [ ] **3b: FULLTEXT search + streaming exports** — scalability for large datasets
-- [ ] **3c: Import column mapping wizard** — drag-and-drop column mapping UI for arbitrary CSV/XLSX layouts
-
-**Wave 4: Lower Priority (sequential or as-needed)**
+### Backlog — Remaining (Wave 4: Lower Priority)
 
 - [ ] dsm-beat healthcheck fix (consistently shows unhealthy)
 - [ ] Email notifications (SMTP configuration + delivery)
 - [ ] Saved searches per user
-- [x] ~~File attachments on items/orders/notes~~ (promoted to Wave 2d: Camera image capture)
 - [ ] Generalized logging access (unified app/auth/Docker log viewer)
 - [ ] Module splitting (large blueprints like orders.py, admin.py)
 - [ ] MariaDB parity tests (test suite runs on SQLite only)
