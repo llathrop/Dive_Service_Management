@@ -20,7 +20,7 @@
         <label for="q" class="form-label">Search</label>
         <input type="text" class="form-control form-control-lg" id="q" name="q"
                value="{{ q }}"
-               placeholder="Search customers, equipment, inventory..."
+               placeholder="Search customers, orders, inventory, invoices..."
                autofocus>
       </div>
       <div class="col-md-3">
@@ -33,7 +33,7 @@
 </div>
 
 {% if q %}
-  {% set total = customers|length + items|length + inventory|length %}
+  {% set total = (customers|length) + (items|length) + (inventory|length) + (orders|length) + (invoices|length) %}
 
   {% if total == 0 %}
   <div class="text-center py-5">
@@ -60,16 +60,44 @@
             <th>Name</th>
             <th>Email</th>
             <th>Phone</th>
-            <th>Type</th>
           </tr>
         </thead>
         <tbody>
-          {% for customer in customers %}
+          {% for c in customers %}
           <tr>
-            <td><a href="{{ url_for('customers.detail', id=customer.id) }}">{{ customer.display_name }}</a></td>
-            <td>{{ customer.email or '' }}</td>
-            <td>{{ customer.phone_primary or '' }}</td>
-            <td><span class="badge bg-{{ 'primary' if customer.customer_type == 'business' else 'secondary' }}">{{ customer.customer_type|capitalize }}</span></td>
+            <td><a href="{{ c.url }}">{{ c.display_text }}</a></td>
+            <td>{{ c.email or '' }}</td>
+            <td></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Orders #}
+  {% if orders %}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-clipboard-check me-2"></i>Orders
+        <span class="badge bg-secondary ms-1">{{ orders|length }}</span>
+      </h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td><a href="{{ o.url }}">{{ o.display_text }}</a></td>
+            <td><span class="badge bg-secondary">{{ o.status }}</span></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -92,26 +120,12 @@
         <thead>
           <tr>
             <th>Name</th>
-            <th>Serial Number</th>
-            <th>Category</th>
-            <th>Serviceability</th>
-            <th>Owner</th>
           </tr>
         </thead>
         <tbody>
           {% for item in items %}
           <tr>
-            <td><a href="{{ url_for('items.detail', id=item.id) }}">{{ item.name }}</a></td>
-            <td><code>{{ item.serial_number or '' }}</code></td>
-            <td>{{ item.item_category or '' }}</td>
-            <td>{{ serviceability_badge(item.serviceability) }}</td>
-            <td>
-              {% if item.customer %}
-              <a href="{{ url_for('customers.detail', id=item.customer.id) }}">{{ item.customer.display_name }}</a>
-              {% else %}
-              <span class="text-muted">Unassigned</span>
-              {% endif %}
-            </td>
+            <td><a href="{{ item.url }}">{{ item.display_text }}</a></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -134,21 +148,42 @@
         <thead>
           <tr>
             <th>Name</th>
-            <th>SKU</th>
-            <th>Category</th>
-            <th>Stock</th>
           </tr>
         </thead>
         <tbody>
           {% for inv in inventory %}
           <tr>
-            <td><a href="{{ url_for('inventory.detail', id=inv.id) }}">{{ inv.name }}</a></td>
-            <td><code>{{ inv.sku or '' }}</code></td>
-            <td>{{ inv.category }}</td>
-            <td>
-              {{ inv.quantity_in_stock }}
-              {{ stock_level_badge(inv.quantity_in_stock, inv.reorder_level) }}
-            </td>
+            <td><a href="{{ inv.url }}">{{ inv.display_text }}</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Invoices #}
+  {% if invoices %}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-receipt me-2"></i>Invoices
+        <span class="badge bg-secondary ms-1">{{ invoices|length }}</span>
+      </h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Invoice</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+          <tr>
+            <td><a href="{{ inv.url }}">{{ inv.display_text }}</a></td>
+            <td><span class="badge bg-secondary">{{ inv.status }}</span></td>
           </tr>
           {% endfor %}
         </tbody>
