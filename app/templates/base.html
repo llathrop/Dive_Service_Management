@@ -46,8 +46,8 @@
         <span class="d-sm-none">DSM</span>
       </a>
 
-      {# Global search bar (center) #}
-      <div class="flex-grow-1 mx-3 d-none d-md-block" style="max-width: 500px;">
+      {# Global search bar (center) with HTMX autocomplete #}
+      <div class="flex-grow-1 mx-3 d-none d-md-block position-relative" style="max-width: 500px;">
         <form class="position-relative" action="{{ url_for('search.results') }}" method="GET" role="search">
           <div class="input-group">
             <span class="input-group-text bg-transparent border-end-0">
@@ -58,9 +58,18 @@
                    placeholder="Search customers, orders, inventory..."
                    aria-label="Global search"
                    name="q"
-                   autocomplete="off">
+                   autocomplete="off"
+                   hx-get="{{ url_for('search.autocomplete') }}"
+                   hx-trigger="keyup changed delay:300ms"
+                   hx-target="#search-autocomplete-results"
+                   hx-swap="innerHTML"
+                   hx-params="q"
+                   hx-indicator="#search-spinner">
           </div>
         </form>
+        <div id="search-autocomplete-results"
+             class="position-absolute w-100"
+             style="z-index: 1050; top: 100%;"></div>
       </div>
 
       {# Right side: Notifications + User dropdown #}
