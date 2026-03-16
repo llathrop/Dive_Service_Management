@@ -5,6 +5,11 @@ and invoices in both CSV and XLSX formats.  CSV functions return a UTF-8
 string (with BOM for Excel compatibility).  XLSX functions return an
 ``io.BytesIO`` buffer containing a complete workbook.
 
+Additionally provides generator-based streaming CSV exports via
+``stream_csv_export(entity_type, filters)`` which yield rows one at a
+time for use with Flask's ``stream_with_context`` -- this avoids loading
+entire datasets into memory for large exports.
+
 XLSX support requires the ``openpyxl`` package.  If openpyxl is not
 installed, the XLSX functions will raise ``RuntimeError`` while the CSV
 functions continue to work normally.
@@ -453,3 +458,155 @@ def export_invoices_xlsx(query=None):
         ])
 
     return _create_xlsx(headers, rows)
+
+
+# ===================================================================
+# Streaming CSV exports
+# ===================================================================
+
+# Column definitions for each entity type used by the streaming exporter.
+# Each entry maps an entity type to (headers, row_extractor, query_factory).
+
+_STREAMING_ENTITY_DEFS = {}
+
+
+def _csv_row_to_string(row):
+    """Convert a list of values to a CSV-formatted string line."""
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(row)
+    return output.getvalue()
+
+
+def _register_entity(entity_type, headers, row_extractor, query_factory):
+    """Register a streaming export definition for an entity type."""
+    _STREAMING_ENTITY_DEFS[entity_type] = {
+        "headers": headers,
+        "row_extractor": row_extractor,
+        "query_factory": query_factory,
+    }
+
+
+# --- Register customers ---
+_register_entity(
+    "customers",
+    headers=[
+        "ID", "Type", "First Name", "Last Name", "Business Name",
+        "Contact Person", "Email", "Phone", "Address", "City",
+        "State", "Postal Code", "Country", "Preferred Contact",
+        "Tax Exempt", "Notes", "Created",
+    ],
+    row_extractor=lambda c: [
+        c.id, c.customer_type, c.first_name, c.last_name,
+        c.business_name, c.contact_person, c.email,
+        c.phone_primary, c.address_line1, c.city,
+        c.state_province, c.postal_code, c.country,
+        c.preferred_contact, _format_value(c.tax_exempt),
+        c.notes, _format_value(c.created_at),
+    ],
+    query_factory=lambda: Customer.not_deleted().order_by(Customer.last_name),
+)
+
+# --- Register inventory ---
+_register_entity(
+    "inventory",
+    headers=[
+        "ID", "SKU", "Name", "Category", "Subcategory",
+        "Manufacturer", "Purchase Cost", "Resale Price",
+        "Quantity", "Reorder Level", "Unit", "Location",
+        "Active", "Notes", "Created",
+    ],
+    row_extractor=lambda item: [
+        item.id, item.sku, item.name, item.category,
+        item.subcategory, item.manufacturer,
+        _format_value(item.purchase_cost), _format_value(item.resale_price),
+        item.quantity_in_stock, item.reorder_level,
+        item.unit_of_measure, item.storage_location,
+        _format_value(item.is_active), item.notes,
+        _format_value(item.created_at),
+    ],
+    query_factory=lambda: InventoryItem.query.filter_by(is_deleted=False).order_by(
+        InventoryItem.name
+    ),
+)
+
+# --- Register orders ---
+_register_entity(
+    "orders",
+    headers=[
+        "ID", "Order Number", "Customer", "Status", "Priority",
+        "Assigned Tech", "Date Received", "Date Promised",
+        "Date Completed", "Estimated Total", "Description", "Created",
+    ],
+    row_extractor=lambda o: [
+        o.id, o.order_number,
+        o.customer.display_name if o.customer else "",
+        o.status, o.priority,
+        o.assigned_tech.username if o.assigned_tech else "",
+        _format_value(o.date_received), _format_value(o.date_promised),
+        _format_value(o.date_completed), _format_value(o.estimated_total),
+        o.description, _format_value(o.created_at),
+    ],
+    query_factory=lambda: ServiceOrder.not_deleted().order_by(
+        ServiceOrder.date_received.desc()
+    ),
+)
+
+# --- Register invoices ---
+_register_entity(
+    "invoices",
+    headers=[
+        "ID", "Invoice Number", "Customer", "Status",
+        "Issue Date", "Due Date", "Subtotal", "Tax",
+        "Discount", "Total", "Amount Paid", "Balance Due",
+        "Notes", "Created",
+    ],
+    row_extractor=lambda inv: [
+        inv.id, inv.invoice_number,
+        inv.customer.display_name if inv.customer else "",
+        inv.status, _format_value(inv.issue_date),
+        _format_value(inv.due_date), _format_value(inv.subtotal),
+        _format_value(inv.tax_amount), _format_value(inv.discount_amount),
+        _format_value(inv.total), _format_value(inv.amount_paid),
+        _format_value(inv.balance_due), inv.notes,
+        _format_value(inv.created_at),
+    ],
+    query_factory=lambda: Invoice.query.order_by(Invoice.issue_date.desc()),
+)
+
+
+def stream_csv_export(entity_type, query=None):
+    """Generator-based streaming CSV export.
+
+    Yields CSV rows one at a time (as strings), starting with the UTF-8
+    BOM and header row.  This allows Flask to stream the response via
+    ``stream_with_context`` without loading the entire dataset into memory.
+
+    Args:
+        entity_type: One of 'customers', 'inventory', 'orders', 'invoices'.
+        query: Optional pre-filtered SQLAlchemy query.  If ``None``, uses
+               the default query for the entity type.
+
+    Yields:
+        Strings representing individual CSV lines (including newlines).
+
+    Raises:
+        ValueError: If entity_type is not recognized.
+    """
+    if entity_type not in _STREAMING_ENTITY_DEFS:
+        raise ValueError(
+            f"Unknown entity type: {entity_type!r}. "
+            f"Supported types: {sorted(_STREAMING_ENTITY_DEFS.keys())}"
+        )
+
+    defn = _STREAMING_ENTITY_DEFS[entity_type]
+
+    # Yield BOM + header row
+    yield "\ufeff" + _csv_row_to_string(defn["headers"])
+
+    # Use provided query or default
+    if query is None:
+        query = defn["query_factory"]()
+
+    for record in query.yield_per(100):
+        yield _csv_row_to_string(defn["row_extractor"](record))
