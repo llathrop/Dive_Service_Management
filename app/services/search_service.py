@@ -1,42 +1,52 @@
-"""Search service layer — global search across multiple entity types.
+"""Search service layer -- global search across multiple entity types.
 
 Provides module-level functions for searching customers, service items,
-and inventory items using LIKE queries (SQLite compatible).
+inventory items, service orders, and invoices using LIKE/ilike queries
+(SQLite and MariaDB compatible).  Results include entity type, display
+text, and URL path for direct navigation.
 """
 
 from sqlalchemy import or_
 
 from app.models.customer import Customer
 from app.models.inventory import InventoryItem
+from app.models.invoice import Invoice
 from app.models.service_item import ServiceItem
+from app.models.service_order import ServiceOrder
 
 
 def global_search(query, limit=20):
-    """Search across customers, service items, and inventory items.
+    """Search across customers, service items, inventory, orders, and invoices.
 
     Returns a dict with results grouped by entity type.  Each result
-    includes an 'id', a primary display field, and a 'type' field
-    indicating the entity type.
+    includes 'id', 'display_text', 'entity_type', and 'url' fields
+    suitable for autocomplete and full search results.
 
     Args:
-        query: The search text.
+        query: The search text.  Must be at least 2 characters.
         limit: Maximum number of results per entity type.
 
     Returns:
-        A dict with keys 'customers', 'service_items', and 'inventory_items',
-        each containing a list of result dicts.
+        A dict with keys for each entity type, each containing a list
+        of result dicts.
     """
-    if not query:
+    if not query or len(query.strip()) < 2:
         return {
             "customers": [],
             "service_items": [],
             "inventory_items": [],
+            "orders": [],
+            "invoices": [],
         }
 
+    q = query.strip()
+
     return {
-        "customers": search_customers(query, limit=limit),
-        "service_items": search_service_items(query, limit=limit),
-        "inventory_items": search_inventory_items(query, limit=limit),
+        "customers": search_customers(q, limit=limit),
+        "service_items": search_service_items(q, limit=limit),
+        "inventory_items": search_inventory_items(q, limit=limit),
+        "orders": search_orders(q, limit=limit),
+        "invoices": search_invoices(q, limit=limit),
     }
 
 
@@ -50,7 +60,8 @@ def search_customers(query, limit=10):
         limit: Maximum number of results to return.
 
     Returns:
-        A list of dicts with 'id', 'display_name', 'email', and 'type' keys.
+        A list of dicts with 'id', 'display_text', 'entity_type', 'url',
+        and legacy 'display_name'/'email' keys.
     """
     if not query:
         return []
@@ -74,9 +85,12 @@ def search_customers(query, limit=10):
     return [
         {
             "id": c.id,
+            "display_text": c.display_name,
             "display_name": c.display_name,
             "email": c.email,
+            "entity_type": "customer",
             "type": "customer",
+            "url": f"/customers/{c.id}",
         }
         for c in customers
     ]
@@ -92,7 +106,8 @@ def search_service_items(query, limit=10):
         limit: Maximum number of results to return.
 
     Returns:
-        A list of dicts with 'id', 'name', 'serial_number', and 'type' keys.
+        A list of dicts with 'id', 'display_text', 'entity_type', 'url',
+        and legacy 'name'/'serial_number' keys.
     """
     if not query:
         return []
@@ -112,15 +127,22 @@ def search_service_items(query, limit=10):
         .all()
     )
 
-    return [
-        {
+    results = []
+    for item in items:
+        display = item.name
+        if item.serial_number:
+            display = f"{item.name} ({item.serial_number})"
+        results.append({
             "id": item.id,
+            "display_text": display,
             "name": item.name,
             "serial_number": item.serial_number,
+            "entity_type": "service_item",
             "type": "service_item",
-        }
-        for item in items
-    ]
+            "url": f"/items/{item.id}",
+        })
+
+    return results
 
 
 def search_inventory_items(query, limit=10):
@@ -133,7 +155,8 @@ def search_inventory_items(query, limit=10):
         limit: Maximum number of results to return.
 
     Returns:
-        A list of dicts with 'id', 'name', 'sku', and 'type' keys.
+        A list of dicts with 'id', 'display_text', 'entity_type', 'url',
+        and legacy 'name'/'sku' keys.
     """
     if not query:
         return []
@@ -152,12 +175,106 @@ def search_inventory_items(query, limit=10):
         .all()
     )
 
-    return [
-        {
+    results = []
+    for item in items:
+        display = item.name
+        if item.sku:
+            display = f"{item.name} ({item.sku})"
+        results.append({
             "id": item.id,
+            "display_text": display,
             "name": item.name,
             "sku": item.sku,
+            "entity_type": "inventory_item",
             "type": "inventory_item",
-        }
-        for item in items
-    ]
+            "url": f"/inventory/{item.id}",
+        })
+
+    return results
+
+
+def search_orders(query, limit=10):
+    """Search service orders by order number, description, or customer name.
+
+    Excludes soft-deleted orders.
+
+    Args:
+        query: The search text.
+        limit: Maximum number of results to return.
+
+    Returns:
+        A list of dicts with 'id', 'display_text', 'entity_type', and 'url'.
+    """
+    if not query:
+        return []
+
+    pattern = f"%{query}%"
+    orders = (
+        ServiceOrder.not_deleted()
+        .filter(
+            or_(
+                ServiceOrder.order_number.ilike(pattern),
+                ServiceOrder.description.ilike(pattern),
+            )
+        )
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+    for o in orders:
+        customer_name = o.customer.display_name if o.customer else "Unknown"
+        display = f"{o.order_number} - {customer_name}"
+        results.append({
+            "id": o.id,
+            "display_text": display,
+            "entity_type": "order",
+            "type": "order",
+            "url": f"/orders/{o.id}",
+            "order_number": o.order_number,
+            "status": o.status,
+        })
+
+    return results
+
+
+def search_invoices(query, limit=10):
+    """Search invoices by invoice number or customer name.
+
+    Args:
+        query: The search text.
+        limit: Maximum number of results to return.
+
+    Returns:
+        A list of dicts with 'id', 'display_text', 'entity_type', and 'url'.
+    """
+    if not query:
+        return []
+
+    pattern = f"%{query}%"
+    invoices = (
+        Invoice.query
+        .filter(
+            or_(
+                Invoice.invoice_number.ilike(pattern),
+            )
+        )
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+    for inv in invoices:
+        customer_name = inv.customer.display_name if inv.customer else "Unknown"
+        display = f"{inv.invoice_number} - {customer_name}"
+        results.append({
+            "id": inv.id,
+            "display_text": display,
+            "entity_type": "invoice",
+            "type": "invoice",
+            "url": f"/invoices/{inv.id}",
+            "invoice_number": inv.invoice_number,
+            "status": inv.status,
+        })
+
+    return results

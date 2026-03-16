@@ -1,5 +1,11 @@
-"""Export blueprint — CSV and XLSX export endpoints for entity data."""
-from flask import Blueprint, Response, request
+"""Export blueprint -- CSV and XLSX export endpoints for entity data.
+
+CSV exports use streaming responses via ``stream_with_context`` to avoid
+loading entire datasets into memory.  XLSX exports remain buffered
+(openpyxl does not support streaming).
+"""
+
+from flask import Blueprint, Response, request, stream_with_context
 from flask_security import login_required
 
 from app.services import export_service
@@ -7,17 +13,22 @@ from app.services import export_service
 export_bp = Blueprint("export", __name__, url_prefix="/export")
 
 
+def _streaming_csv_response(entity_type, filename):
+    """Build a streaming CSV response for the given entity type."""
+    generator = export_service.stream_csv_export(entity_type)
+    return Response(
+        stream_with_context(generator),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @export_bp.route("/customers/<format>")
 @login_required
 def export_customers(format):
     """Export customers to CSV or XLSX."""
     if format == "csv":
-        data = export_service.export_customers_csv()
-        return Response(
-            data,
-            mimetype="text/csv",
-            headers={"Content-Disposition": "attachment; filename=customers.csv"},
-        )
+        return _streaming_csv_response("customers", "customers.csv")
     elif format == "xlsx":
         data = export_service.export_customers_xlsx()
         return Response(
@@ -33,12 +44,7 @@ def export_customers(format):
 def export_inventory(format):
     """Export inventory to CSV or XLSX."""
     if format == "csv":
-        data = export_service.export_inventory_csv()
-        return Response(
-            data,
-            mimetype="text/csv",
-            headers={"Content-Disposition": "attachment; filename=inventory.csv"},
-        )
+        return _streaming_csv_response("inventory", "inventory.csv")
     elif format == "xlsx":
         data = export_service.export_inventory_xlsx()
         return Response(
@@ -54,12 +60,7 @@ def export_inventory(format):
 def export_orders(format):
     """Export orders to CSV or XLSX."""
     if format == "csv":
-        data = export_service.export_orders_csv()
-        return Response(
-            data,
-            mimetype="text/csv",
-            headers={"Content-Disposition": "attachment; filename=orders.csv"},
-        )
+        return _streaming_csv_response("orders", "orders.csv")
     elif format == "xlsx":
         data = export_service.export_orders_xlsx()
         return Response(
@@ -75,12 +76,7 @@ def export_orders(format):
 def export_invoices(format):
     """Export invoices to CSV or XLSX."""
     if format == "csv":
-        data = export_service.export_invoices_csv()
-        return Response(
-            data,
-            mimetype="text/csv",
-            headers={"Content-Disposition": "attachment; filename=invoices.csv"},
-        )
+        return _streaming_csv_response("invoices", "invoices.csv")
     elif format == "xlsx":
         data = export_service.export_invoices_xlsx()
         return Response(

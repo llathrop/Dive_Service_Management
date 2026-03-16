@@ -1,21 +1,15 @@
 """Search blueprint.
 
-Provides global search across customers, service items, and inventory
-items.  Includes a full results page and an HTMX autocomplete endpoint
-that returns HTML fragments for the search bar dropdown.
-
-Note: The search_service module provides dict-based search results for
-API/JSON use.  This blueprint needs ORM model objects for Jinja templates,
-so it queries models directly using the same search patterns.
+Provides global search across customers, service items, inventory items,
+service orders, and invoices.  Includes a full results page and an HTMX
+autocomplete endpoint that returns HTML fragments for the search bar
+dropdown.
 """
 
 from flask import Blueprint, render_template, request
 from flask_security import login_required
 
-from app.extensions import db
-from app.models.customer import Customer
-from app.models.inventory import InventoryItem
-from app.models.service_item import ServiceItem
+from app.services import search_service
 
 search_bp = Blueprint("search", __name__, url_prefix="/search")
 
@@ -25,67 +19,21 @@ search_bp = Blueprint("search", __name__, url_prefix="/search")
 def results():
     """Global search results page.
 
-    Searches across customers, service items, and inventory items
-    using the ``q`` query parameter.
+    Searches across customers, service items, inventory items, orders,
+    and invoices using the ``q`` query parameter via the search service.
     """
     q = request.args.get("q", "").strip()
-    customers = []
-    items = []
-    inventory = []
 
-    if q and len(q) >= 2:
-        search_term = f"%{q}%"
-
-        # Search customers
-        customers = (
-            Customer.not_deleted()
-            .filter(
-                db.or_(
-                    Customer.first_name.ilike(search_term),
-                    Customer.last_name.ilike(search_term),
-                    Customer.business_name.ilike(search_term),
-                    Customer.email.ilike(search_term),
-                    Customer.phone_primary.ilike(search_term),
-                )
-            )
-            .limit(20)
-            .all()
-        )
-
-        # Search service items
-        items = (
-            ServiceItem.not_deleted()
-            .filter(
-                db.or_(
-                    ServiceItem.name.ilike(search_term),
-                    ServiceItem.serial_number.ilike(search_term),
-                    ServiceItem.brand.ilike(search_term),
-                )
-            )
-            .limit(20)
-            .all()
-        )
-
-        # Search inventory items
-        inventory = (
-            InventoryItem.not_deleted()
-            .filter(
-                db.or_(
-                    InventoryItem.name.ilike(search_term),
-                    InventoryItem.sku.ilike(search_term),
-                    InventoryItem.manufacturer.ilike(search_term),
-                )
-            )
-            .limit(20)
-            .all()
-        )
+    search_results = search_service.global_search(q, limit=20)
 
     return render_template(
         "search/results.html",
         q=q,
-        customers=customers,
-        items=items,
-        inventory=inventory,
+        customers=search_results["customers"],
+        items=search_results["service_items"],
+        inventory=search_results["inventory_items"],
+        orders=search_results["orders"],
+        invoices=search_results["invoices"],
     )
 
 
@@ -95,56 +43,19 @@ def autocomplete():
     """HTMX endpoint for search bar autocomplete.
 
     Returns an HTML fragment with grouped results (max 5 per category).
+    Designed for debounced keyup triggers -- returns empty for queries
+    shorter than 2 characters.
     """
     q = request.args.get("q", "").strip()
-    customers = []
-    items = []
-    inventory = []
 
-    if q and len(q) >= 2:
-        search_term = f"%{q}%"
-
-        customers = (
-            Customer.not_deleted()
-            .filter(
-                db.or_(
-                    Customer.first_name.ilike(search_term),
-                    Customer.last_name.ilike(search_term),
-                    Customer.business_name.ilike(search_term),
-                )
-            )
-            .limit(5)
-            .all()
-        )
-
-        items = (
-            ServiceItem.not_deleted()
-            .filter(
-                db.or_(
-                    ServiceItem.name.ilike(search_term),
-                    ServiceItem.serial_number.ilike(search_term),
-                )
-            )
-            .limit(5)
-            .all()
-        )
-
-        inventory = (
-            InventoryItem.not_deleted()
-            .filter(
-                db.or_(
-                    InventoryItem.name.ilike(search_term),
-                    InventoryItem.sku.ilike(search_term),
-                )
-            )
-            .limit(5)
-            .all()
-        )
+    search_results = search_service.global_search(q, limit=5)
 
     return render_template(
-        "search/_autocomplete.html",
+        "partials/search_autocomplete.html",
         q=q,
-        customers=customers,
-        items=items,
-        inventory=inventory,
+        customers=search_results["customers"],
+        items=search_results["service_items"],
+        inventory=search_results["inventory_items"],
+        orders=search_results["orders"],
+        invoices=search_results["invoices"],
     )
