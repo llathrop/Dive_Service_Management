@@ -15,7 +15,7 @@ Typical usage::
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 from flask_security import SQLAlchemyUserDatastore
 
 from app.config import config_by_name
@@ -80,6 +80,16 @@ def create_app(config_class=None):
     # Register CLI commands
     # ------------------------------------------------------------------
     _register_cli(app)
+
+    # ------------------------------------------------------------------
+    # Register upload serving route
+    # ------------------------------------------------------------------
+    _register_upload_route(app)
+
+    # ------------------------------------------------------------------
+    # Register context processors
+    # ------------------------------------------------------------------
+    _register_context_processors(app)
 
     return app
 
@@ -162,6 +172,56 @@ def _register_error_handlers(app):
     @app.errorhandler(500)
     def internal_server_error(error):
         return render_template("errors/500.html"), 500
+
+
+def _register_upload_route(app):
+    """Serve uploaded files from the UPLOAD_FOLDER."""
+
+    @app.route("/uploads/<path:filename>")
+    def uploaded_file(filename):
+        upload_folder = app.config.get("UPLOAD_FOLDER", "uploads")
+        return send_from_directory(upload_folder, filename)
+
+
+def _register_context_processors(app):
+    """Register template context processors."""
+
+    @app.context_processor
+    def inject_company_branding():
+        """Make company_name, company_logo_url, and company_invoice_logo_url
+        available in all templates."""
+        try:
+            from app.services import config_service
+
+            company_name = config_service.get_config("company.name") or "Dive Service Management"
+
+            company_logo_url = _resolve_logo_url(app, "company.logo_path")
+            company_invoice_logo_url = _resolve_logo_url(app, "company.invoice_logo_path")
+        except Exception:
+            # During app startup or if DB isn't ready yet
+            company_name = "Dive Service Management"
+            company_logo_url = None
+            company_invoice_logo_url = None
+
+        return {
+            "company_name": company_name,
+            "company_logo_url": company_logo_url,
+            "company_invoice_logo_url": company_invoice_logo_url,
+        }
+
+
+def _resolve_logo_url(app, config_key):
+    """Return a URL path for a logo config key, or None if not configured."""
+    from app.services import config_service
+
+    rel_path = config_service.get_config(config_key)
+    if not rel_path:
+        return None
+    upload_folder = app.config.get("UPLOAD_FOLDER", "")
+    abs_path = os.path.join(upload_folder, rel_path)
+    if os.path.isfile(abs_path):
+        return f"/uploads/{rel_path}"
+    return None
 
 
 def _register_cli(app):
