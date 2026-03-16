@@ -342,11 +342,12 @@
 - [ ] **1b: PDF invoice generation** (fpdf2) — core business need for printable customer invoices. New `app/utils/pdf.py`, invoice blueprint route, print template, tests
 - [ ] **1c: Documentation suite** — `docs/architecture.md` (system architecture), `docs/user_guide.md` (task-oriented user use cases from UAT scripts), `docs/installation.md` (Pi/local Docker/cloud/remote DB scenarios)
 
-**Wave 2: Medium Impact (parallelizable — 3 agents; 2a depends on 1a)**
+**Wave 2: Medium Impact (parallelizable — 4 agents; 2a depends on 1a)**
 
 - [ ] **2a: Dashboard recent activity feed** — replace placeholder with live `get_recent_activity()` data (depends on audit logging being wired)
 - [ ] **2b: Cloud service integration readiness** — deployment docs for AWS/GCP/Azure, health/readiness probes, env config for managed DB/Redis, optional S3 for backups
 - [ ] **2c: Kanban view for orders** — template placeholder exists; implement drag-and-drop order status board
+- [ ] **2d: Camera image capture for service orders/items** — mobile-first photo capture using HTML5 `<input type="file" accept="image/*" capture="environment">`, attach photos to service items and order items directly from phone camera. Polymorphic Attachment model (per PROJECT_BLUEPRINT.md §2.22), upload storage in `uploads/attachments/`, thumbnail generation, gallery view on item/order detail pages. Replaces Wave 4 "File attachments" TODO with full implementation.
 
 **Wave 3: Polish & Tech Debt (parallelizable — 3 agents)**
 
@@ -359,7 +360,7 @@
 - [ ] dsm-beat healthcheck fix (consistently shows unhealthy)
 - [ ] Email notifications (SMTP configuration + delivery)
 - [ ] Saved searches per user
-- [ ] File attachments on items/orders/notes
+- [x] ~~File attachments on items/orders/notes~~ (promoted to Wave 2d: Camera image capture)
 - [ ] Generalized logging access (unified app/auth/Docker log viewer)
 - [ ] Module splitting (large blueprints like orders.py, admin.py)
 - [ ] MariaDB parity tests (test suite runs on SQLite only)
