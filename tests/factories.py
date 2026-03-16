@@ -508,3 +508,29 @@ class AuditLogFactory(BaseFactory):
     action = "create"
     entity_type = "customer"
     entity_id = factory.Sequence(lambda n: n + 1)
+
+
+# ---------------------------------------------------------------------------
+# Attachment factory
+# ---------------------------------------------------------------------------
+
+from app.models.attachment import Attachment
+
+
+class AttachmentFactory(BaseFactory):
+    """Factory for the Attachment model."""
+
+    class Meta:
+        model = Attachment
+
+    attachable_type = "service_item"
+    attachable_id = factory.Sequence(lambda n: n + 1)
+    filename = factory.Sequence(lambda n: f"photo_{n}.jpg")
+    stored_filename = LazyAttribute(lambda o: f"{uuid.uuid4().hex}.jpg")
+    file_path = LazyAttribute(
+        lambda o: f"attachments/{o.attachable_type}/2026/03/{o.stored_filename}"
+    )
+    file_size = 1024
+    mime_type = "image/jpeg"
+    description = None
+    uploaded_by = None
