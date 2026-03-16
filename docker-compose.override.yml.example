@@ -1,0 +1,46 @@
+# Docker Compose Override for Development
+# Copy this file to docker-compose.override.yml and customize as needed.
+# docker-compose.override.yml is gitignored and will automatically merge
+# with docker-compose.yml when running `docker compose up`.
+
+services:
+  web:
+    # Mount app code for hot reload (changes reflect without rebuild)
+    volumes:
+      - ./app:/app/app
+      - ./migrations:/app/migrations
+      - ./tests:/app/tests
+    # Override command with Flask dev server for auto-reload
+    command: flask run --host=0.0.0.0 --port=8080 --reload --debug
+    environment:
+      - FLASK_DEBUG=1
+      - DSM_DEBUG=true
+      - DSM_LOG_LEVEL=DEBUG
+    # Expose debugpy port for remote debugging (VS Code, PyCharm)
+    ports:
+      - "8080:8080"
+      - "5678:5678"
+
+  worker:
+    # Mount app code for worker hot reload
+    volumes:
+      - ./app:/app/app
+    environment:
+      - DSM_LOG_LEVEL=DEBUG
+
+  beat:
+    # Mount app code for beat hot reload
+    volumes:
+      - ./app:/app/app
+    environment:
+      - DSM_LOG_LEVEL=DEBUG
+
+  db:
+    # Expose MariaDB port to host for direct DB access
+    ports:
+      - "3306:3306"
+
+  redis:
+    # Expose Redis port to host for direct access
+    ports:
+      - "6379:6379"
