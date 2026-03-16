@@ -1,0 +1,93 @@
+{# Activity feed partial — rendered inline and via HTMX polling #}
+{% if recent_activity %}
+<div class="table-responsive">
+  <table class="table table-sm table-hover mb-0">
+    <thead>
+      <tr>
+        <th class="text-nowrap">Time</th>
+        <th>User</th>
+        <th>Action</th>
+        <th>Entity</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in recent_activity %}
+      <tr>
+        <td class="text-nowrap text-muted small">
+          {{ entry.created_at.strftime('%b %d, %Y %H:%M') if entry.created_at else '' }}
+        </td>
+        <td class="small">
+          {% if entry.user %}
+            {{ entry.user.first_name or entry.user.username or entry.user.email }}
+          {% else %}
+            <span class="text-muted">System</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if entry.action == 'create' %}
+            <span class="badge bg-success">Create</span>
+          {% elif entry.action == 'update' %}
+            <span class="badge bg-primary">Update</span>
+          {% elif entry.action == 'delete' %}
+            <span class="badge bg-danger">Delete</span>
+          {% elif entry.action == 'status_change' %}
+            <span class="badge bg-warning text-dark">Status</span>
+          {% elif entry.action == 'restore' %}
+            <span class="badge bg-info">Restore</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ entry.action|capitalize }}</span>
+          {% endif %}
+        </td>
+        <td class="small">
+          {% set entity_routes = {
+            'customer': 'customers.detail',
+            'service_item': 'items.detail',
+            'inventory_item': 'inventory.detail',
+            'service_order': 'orders.detail',
+            'invoice': 'invoices.detail',
+          } %}
+          {% set entity_labels = {
+            'customer': 'Customer',
+            'service_item': 'Item',
+            'inventory_item': 'Inventory',
+            'service_order': 'Order',
+            'invoice': 'Invoice',
+            'price_list_item': 'Price Item',
+            'price_list_category': 'Price Category',
+            'system_config': 'Config',
+          } %}
+          {% set route = entity_routes.get(entry.entity_type) %}
+          {% set label = entity_labels.get(entry.entity_type, entry.entity_type|replace('_', ' ')|title) %}
+          {% if route %}
+            <a href="{{ url_for(route, id=entry.entity_id) }}">{{ label }} #{{ entry.entity_id }}</a>
+          {% else %}
+            {{ label }} #{{ entry.entity_id }}
+          {% endif %}
+        </td>
+        <td class="small text-muted">
+          {% if entry.action == 'status_change' and entry.old_value and entry.new_value %}
+            Status: {{ entry.old_value }} &rarr; {{ entry.new_value }}
+          {% elif entry.action == 'update' and entry.field_name %}
+            {{ entry.field_name }}: {{ entry.old_value or '(empty)' }} &rarr; {{ entry.new_value or '(empty)' }}
+          {% elif entry.action == 'create' %}
+            Created
+          {% elif entry.action == 'delete' %}
+            Deleted
+          {% elif entry.action == 'restore' %}
+            Restored
+          {% else %}
+            {{ entry.field_name or '' }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="bi bi-clock-history text-muted" style="font-size: 3rem;"></i>
+  <p class="text-muted mt-2 mb-0">No activity yet. Activity will appear here as changes are made.</p>
+</div>
+{% endif %}
