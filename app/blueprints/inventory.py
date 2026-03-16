@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.forms.inventory import InventoryItemForm, InventorySearchForm, StockAdjustmentForm
 from app.models.inventory import InventoryItem
+from app.services import audit_service
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -169,6 +170,17 @@ def create():
         db.session.add(item)
         try:
             db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="create",
+                    entity_type="inventory_item",
+                    entity_id=item.id,
+                    user_id=current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash("Inventory item created successfully.", "success")
             return redirect(url_for("inventory.detail", id=item.id))
         except IntegrityError:
@@ -196,6 +208,17 @@ def edit(id):
             item.sku = None
         try:
             db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="update",
+                    entity_type="inventory_item",
+                    entity_id=item.id,
+                    user_id=current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash("Inventory item updated successfully.", "success")
             return redirect(url_for("inventory.detail", id=item.id))
         except IntegrityError:
@@ -218,6 +241,17 @@ def delete(id):
 
     item.soft_delete()
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="delete",
+            entity_type="inventory_item",
+            entity_id=item.id,
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
     flash("Inventory item deleted.", "success")
     return redirect(url_for("inventory.list_items"))
 
@@ -242,8 +276,23 @@ def adjust_stock(id):
                 "danger",
             )
         else:
+            old_qty = item.quantity_in_stock
             item.quantity_in_stock = new_qty
             db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="update",
+                    entity_type="inventory_item",
+                    entity_id=item.id,
+                    user_id=current_user.id,
+                    field_name="quantity_in_stock",
+                    old_value=str(old_qty),
+                    new_value=str(new_qty),
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash(
                 f"Stock adjusted by {form.adjustment.data:+}. "
                 f"New quantity: {item.quantity_in_stock}.",

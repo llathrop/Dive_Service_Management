@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.forms.customer import CustomerForm, CustomerSearchForm
 from app.models.customer import Customer
+from app.services import audit_service
 
 customers_bp = Blueprint("customers", __name__, url_prefix="/customers")
 
@@ -117,6 +118,17 @@ def create():
         db.session.add(customer)
         try:
             db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="create",
+                    entity_type="customer",
+                    entity_id=customer.id,
+                    user_id=current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash("Customer created successfully.", "success")
             return redirect(url_for("customers.detail", id=customer.id))
         except IntegrityError:
@@ -141,6 +153,17 @@ def edit(id):
         form.populate_obj(customer)
         try:
             db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="update",
+                    entity_type="customer",
+                    entity_id=customer.id,
+                    user_id=current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
             flash("Customer updated successfully.", "success")
             return redirect(url_for("customers.detail", id=customer.id))
         except IntegrityError:
@@ -163,5 +186,16 @@ def delete(id):
 
     customer.soft_delete()
     db.session.commit()
+    try:
+        audit_service.log_action(
+            action="delete",
+            entity_type="customer",
+            entity_id=customer.id,
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
     flash("Customer deleted.", "success")
     return redirect(url_for("customers.list_customers"))

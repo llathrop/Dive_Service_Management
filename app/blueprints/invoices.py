@@ -145,7 +145,9 @@ def create():
         }
         try:
             new_invoice = invoice_service.create_invoice(
-                data, created_by=current_user.id
+                data, created_by=current_user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
             )
             flash("Invoice created successfully.", "success")
             return redirect(url_for("invoices.detail", id=new_invoice.id))
@@ -184,7 +186,12 @@ def edit(id):
             "terms": form.terms.data,
         }
         try:
-            invoice_service.update_invoice(id, data)
+            invoice_service.update_invoice(
+                id, data,
+                user_id=current_user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+            )
             flash("Invoice updated successfully.", "success")
             return redirect(url_for("invoices.detail", id=id))
         except IntegrityError:
@@ -209,7 +216,12 @@ def edit(id):
 @roles_accepted("admin")
 def void_invoice(id):
     """Void an invoice (admin only)."""
-    invoice = invoice_service.void_invoice(id)
+    invoice = invoice_service.void_invoice(
+        id,
+        user_id=current_user.id,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string,
+    )
     if invoice is None:
         flash("Invoice not found.", "error")
     else:
@@ -230,7 +242,12 @@ def change_status(id):
         flash("No status provided.", "error")
         return redirect(url_for("invoices.detail", id=id))
 
-    invoice, success = invoice_service.change_status(id, new_status)
+    invoice, success = invoice_service.change_status(
+        id, new_status,
+        user_id=current_user.id,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string,
+    )
     if invoice is None:
         flash("Invoice not found.", "error")
         return redirect(url_for("invoices.list_invoices"))
@@ -325,7 +342,9 @@ def add_payment(id):
             "notes": form.notes.data,
         }
         result = invoice_service.record_payment(
-            id, data, recorded_by=current_user.id
+            id, data, recorded_by=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
         )
         if result is None:
             flash("Invoice not found.", "error")
@@ -353,7 +372,9 @@ def generate_from_order(order_id):
     """Generate an invoice from a service order."""
     try:
         invoice = invoice_service.generate_from_order(
-            order_id, created_by=current_user.id
+            order_id, created_by=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
         )
         flash(
             f"Invoice {invoice.invoice_number} generated from order.",
