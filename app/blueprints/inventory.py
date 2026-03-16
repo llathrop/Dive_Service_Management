@@ -6,14 +6,13 @@ stock adjustments, and a low-stock filtered view.  All routes require
 authentication.  Write operations require 'admin' or 'technician' role.
 """
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.forms.inventory import InventoryItemForm, InventorySearchForm, StockAdjustmentForm
-from app.models.inventory import InventoryItem
-from app.services import audit_service
+from app.services import audit_service, inventory_service
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -34,59 +33,31 @@ def list_items():
     sort = request.args.get("sort", "name")
     order = request.args.get("order", "asc")
 
-    query = InventoryItem.not_deleted()
-
     # Populate category choices dynamically
-    categories = (
-        db.session.query(InventoryItem.category)
-        .filter_by(is_deleted=False)
-        .distinct()
-        .order_by(InventoryItem.category)
-        .all()
-    )
-    form.category.choices = [("", "All")] + [
-        (c[0], c[0]) for c in categories
-    ]
+    categories = inventory_service.get_categories()
+    form.category.choices = [("", "All")] + [(c, c) for c in categories]
 
-    # Apply search filter
-    if form.q.data:
-        search_term = f"%{form.q.data}%"
-        query = query.filter(
-            db.or_(
-                InventoryItem.name.ilike(search_term),
-                InventoryItem.sku.ilike(search_term),
-                InventoryItem.manufacturer.ilike(search_term),
-                InventoryItem.description.ilike(search_term),
-            )
-        )
-
-    # Apply category filter
-    if form.category.data:
-        query = query.filter_by(category=form.category.data)
-
-    # Apply low stock filter
-    if form.low_stock_only.data:
-        query = query.filter(
-            InventoryItem.reorder_level > 0,
-            InventoryItem.quantity_in_stock <= InventoryItem.reorder_level,
-        )
-
-    # Apply active status filter
-    if form.is_active.data == "1":
-        query = query.filter_by(is_active=True)
-    elif form.is_active.data == "0":
-        query = query.filter_by(is_active=False)
-
-    # Apply sorting -- validate against allowlist to prevent attribute injection
+    # Validate sort against allowlist to prevent attribute injection
     if sort not in SORTABLE_FIELDS:
         sort = "name"
-    sort_column = getattr(InventoryItem, sort)
-    if order == "desc":
-        query = query.order_by(sort_column.desc())
-    else:
-        query = query.order_by(sort_column.asc())
 
-    pagination = query.paginate(page=page, per_page=25, error_out=False)
+    # Map is_active form value to boolean or None
+    is_active = None
+    if form.is_active.data == "1":
+        is_active = True
+    elif form.is_active.data == "0":
+        is_active = False
+
+    pagination = inventory_service.get_inventory_items(
+        page=page,
+        per_page=25,
+        search=form.q.data,
+        category=form.category.data,
+        low_stock_only=form.low_stock_only.data,
+        is_active=is_active,
+        sort=sort,
+        order=order,
+    )
 
     return render_template(
         "inventory/list.html",
@@ -104,14 +75,14 @@ def low_stock():
     """Display a filtered view of low-stock inventory items."""
     page = request.args.get("page", 1, type=int)
 
-    query = InventoryItem.not_deleted().filter(
-        InventoryItem.is_active == True,  # noqa: E712
-        InventoryItem.reorder_level > 0,
-        InventoryItem.quantity_in_stock <= InventoryItem.reorder_level,
+    pagination = inventory_service.get_inventory_items(
+        page=page,
+        per_page=25,
+        low_stock_only=True,
+        is_active=True,
+        sort="quantity_in_stock",
+        order="asc",
     )
-    query = query.order_by(InventoryItem.quantity_in_stock.asc())
-
-    pagination = query.paginate(page=page, per_page=25, error_out=False)
 
     return render_template(
         "inventory/low_stock.html",
@@ -124,9 +95,7 @@ def low_stock():
 @login_required
 def detail(id):
     """Display inventory item detail with stock adjustment form."""
-    item = db.session.get(InventoryItem, id)
-    if item is None or item.is_deleted:
-        abort(404)
+    item = inventory_service.get_inventory_item(id)
     adjustment_form = StockAdjustmentForm()
     return render_template(
         "inventory/detail.html", item=item, adjustment_form=adjustment_form
@@ -141,35 +110,35 @@ def create():
     form = InventoryItemForm()
 
     if form.validate_on_submit():
-        item = InventoryItem(
-            sku=form.sku.data or None,
-            name=form.name.data,
-            description=form.description.data,
-            category=form.category.data,
-            subcategory=form.subcategory.data,
-            manufacturer=form.manufacturer.data,
-            manufacturer_part_number=form.manufacturer_part_number.data,
-            purchase_cost=form.purchase_cost.data,
-            resale_price=form.resale_price.data,
-            markup_percent=form.markup_percent.data,
-            quantity_in_stock=form.quantity_in_stock.data or 0,
-            reorder_level=form.reorder_level.data or 0,
-            reorder_quantity=form.reorder_quantity.data,
-            unit_of_measure=form.unit_of_measure.data,
-            storage_location=form.storage_location.data,
-            is_active=form.is_active.data,
-            is_for_resale=form.is_for_resale.data,
-            preferred_supplier=form.preferred_supplier.data,
-            supplier_url=form.supplier_url.data,
-            minimum_order_quantity=form.minimum_order_quantity.data,
-            supplier_lead_time_days=form.supplier_lead_time_days.data,
-            expiration_date=form.expiration_date.data,
-            notes=form.notes.data,
-            created_by=current_user.id,
-        )
-        db.session.add(item)
+        data = {
+            "sku": form.sku.data or None,
+            "name": form.name.data,
+            "description": form.description.data,
+            "category": form.category.data,
+            "subcategory": form.subcategory.data,
+            "manufacturer": form.manufacturer.data,
+            "manufacturer_part_number": form.manufacturer_part_number.data,
+            "purchase_cost": form.purchase_cost.data,
+            "resale_price": form.resale_price.data,
+            "markup_percent": form.markup_percent.data,
+            "quantity_in_stock": form.quantity_in_stock.data or 0,
+            "reorder_level": form.reorder_level.data or 0,
+            "reorder_quantity": form.reorder_quantity.data,
+            "unit_of_measure": form.unit_of_measure.data,
+            "storage_location": form.storage_location.data,
+            "is_active": form.is_active.data,
+            "is_for_resale": form.is_for_resale.data,
+            "preferred_supplier": form.preferred_supplier.data,
+            "supplier_url": form.supplier_url.data,
+            "minimum_order_quantity": form.minimum_order_quantity.data,
+            "supplier_lead_time_days": form.supplier_lead_time_days.data,
+            "expiration_date": form.expiration_date.data,
+            "notes": form.notes.data,
+        }
         try:
-            db.session.commit()
+            item = inventory_service.create_inventory_item(
+                data, created_by=current_user.id
+            )
             try:
                 audit_service.log_action(
                     action="create",
@@ -195,9 +164,7 @@ def create():
 @roles_accepted("admin", "technician")
 def edit(id):
     """Show edit inventory item form (GET) or update the item (POST)."""
-    item = db.session.get(InventoryItem, id)
-    if item is None or item.is_deleted:
-        abort(404)
+    item = inventory_service.get_inventory_item(id)
 
     form = InventoryItemForm(obj=item)
 
@@ -235,12 +202,7 @@ def edit(id):
 @roles_accepted("admin")
 def delete(id):
     """Soft-delete an inventory item (admin only)."""
-    item = db.session.get(InventoryItem, id)
-    if item is None or item.is_deleted:
-        abort(404)
-
-    item.soft_delete()
-    db.session.commit()
+    item = inventory_service.delete_inventory_item(id)
     try:
         audit_service.log_action(
             action="delete",
@@ -261,24 +223,16 @@ def delete(id):
 @roles_accepted("admin", "technician")
 def adjust_stock(id):
     """Adjust the stock level of an inventory item."""
-    item = db.session.get(InventoryItem, id)
-    if item is None or item.is_deleted:
-        abort(404)
+    item = inventory_service.get_inventory_item(id)
 
     form = StockAdjustmentForm()
 
     if form.validate_on_submit():
-        new_qty = item.quantity_in_stock + form.adjustment.data
-        if new_qty < 0:
-            flash(
-                f"Cannot adjust by {form.adjustment.data:+}: "
-                f"would result in negative stock ({new_qty}).",
-                "danger",
+        old_qty = item.quantity_in_stock
+        try:
+            item = inventory_service.adjust_stock(
+                id, form.adjustment.data, reason=None, adjusted_by=current_user.id
             )
-        else:
-            old_qty = item.quantity_in_stock
-            item.quantity_in_stock = new_qty
-            db.session.commit()
             try:
                 audit_service.log_action(
                     action="update",
@@ -287,7 +241,7 @@ def adjust_stock(id):
                     user_id=current_user.id,
                     field_name="quantity_in_stock",
                     old_value=str(old_qty),
-                    new_value=str(new_qty),
+                    new_value=str(item.quantity_in_stock),
                     ip_address=request.remote_addr,
                     user_agent=request.user_agent.string,
                 )
@@ -298,7 +252,13 @@ def adjust_stock(id):
                 f"New quantity: {item.quantity_in_stock}.",
                 "success",
             )
+        except ValueError:
+            flash(
+                f"Cannot adjust by {form.adjustment.data:+}: "
+                f"would result in negative stock.",
+                "danger",
+            )
     else:
         flash("Invalid stock adjustment.", "danger")
 
-    return redirect(url_for("inventory.detail", id=item.id))
+    return redirect(url_for("inventory.detail", id=id))
