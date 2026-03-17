@@ -152,6 +152,7 @@ function handleFileSelect(input, type, id) {
     }
 
     previewArea.classList.remove('d-none');
+    previewArea.scrollIntoView({ behavior: 'smooth' });
     hideError(type, id);
 
     // Reset the input so the same file can be selected again

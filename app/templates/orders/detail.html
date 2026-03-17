@@ -908,6 +908,7 @@ function handleFileSelect(input, type, id) {
         previewImg.classList.add('d-none');
     }
     previewArea.classList.remove('d-none');
+    previewArea.scrollIntoView({ behavior: 'smooth' });
     hideError(type, id);
     input.value = '';
 }
