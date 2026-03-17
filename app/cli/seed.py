@@ -170,7 +170,8 @@ def _seed_system_config():
         ("company.address", "", "string", "company", "Company street address"),
         ("company.phone", "", "string", "company", "Company phone number"),
         ("company.email", "", "string", "company", "Company contact email"),
-        ("company.logo_path", "", "string", "company", "Path to uploaded logo file"),
+        ("company.logo_path", "", "string", "company", "Path to uploaded header logo file"),
+        ("company.invoice_logo_path", "", "string", "company", "Path to uploaded invoice logo file (falls back to header logo)"),
         ("company.website", "", "string", "company", "Company website URL"),
         # --- Invoice ---
         ("invoice.prefix", "INV", "string", "invoice", "Invoice number prefix"),

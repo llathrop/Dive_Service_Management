@@ -4,8 +4,10 @@ Uses fpdf2 to generate professional PDF documents without requiring
 system-level dependencies like WeasyPrint or wkhtmltopdf.
 """
 
+import os
 from decimal import Decimal
 
+from flask import current_app
 from fpdf import FPDF
 
 from app.services import config_service
@@ -41,11 +43,30 @@ def _safe_str(value, default=""):
 # Company header helper (shared between invoice and price list PDFs)
 # =========================================================================
 
+def _resolve_logo_path(config_key):
+    """Return the absolute filesystem path for a logo config key, or None."""
+    rel_path = _safe_str(config_service.get_config(config_key), "")
+    if not rel_path or ".." in rel_path or rel_path.startswith("/"):
+        return None
+    try:
+        upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
+    except RuntimeError:
+        return None
+    abs_path = os.path.join(upload_folder, rel_path)
+    if os.path.isfile(abs_path):
+        return abs_path
+    return None
+
+
 def _draw_company_header(pdf):
     """Draw the company header block at the top of the page.
 
     Reads company details from config_service and renders a left-aligned
-    block with the company name, address, phone, and email.
+    block with the company name, address, phone, and email.  If a logo
+    is configured, it is displayed to the left of the company name.
+
+    Logo resolution: ``company.invoice_logo_path`` first, then
+    ``company.logo_path`` as fallback.
 
     Returns the Y position after the header.
     """
@@ -54,7 +75,23 @@ def _draw_company_header(pdf):
     company_phone = _safe_str(config_service.get_config("company.phone"), "")
     company_email = _safe_str(config_service.get_config("company.email"), "")
 
+    # Try to resolve a logo image
+    logo_path = _resolve_logo_path("company.invoice_logo_path")
+    if logo_path is None:
+        logo_path = _resolve_logo_path("company.logo_path")
+
+    text_x = pdf.l_margin
+    if logo_path:
+        try:
+            logo_h = 15  # mm
+            pdf.image(logo_path, x=pdf.l_margin, y=pdf.get_y(), h=logo_h)
+            text_x = pdf.l_margin + 20  # offset text to the right of the logo
+        except Exception:
+            # If image fails for any reason, fall back to text-only
+            pass
+
     # Company name
+    pdf.set_x(text_x)
     pdf.set_font("Helvetica", "B", 20)
     pdf.set_text_color(*_ACCENT)
     pdf.cell(0, 10, company_name, new_x="LMARGIN", new_y="NEXT")
