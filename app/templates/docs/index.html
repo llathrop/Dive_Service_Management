@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Documentation - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Documentation</h1>
+    <small class="text-muted">{{ docs|length }} document{{ 's' if docs|length != 1 else '' }} available</small>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for doc in docs %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">
+          <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+          {{ doc.title }}
+        </h5>
+        <p class="card-text text-muted small">{{ doc.filename }}</p>
+      </div>
+      <div class="card-footer bg-transparent">
+        <a href="{{ url_for('docs.detail', slug=doc.slug) }}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-book me-1"></i> Read
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if not docs %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-file-earmark-x fs-1 text-muted mb-3 d-block"></i>
+    <h5 class="text-muted">No documentation found</h5>
+    <p class="text-muted mb-0">Documentation files should be placed in the <code>docs/</code> directory.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

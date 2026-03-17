@@ -45,5 +45,8 @@ gunicorn==22.0.0
 # Mail (optional, for future notification emails)
 Flask-Mail==0.10.0
 
+# Documentation rendering
+Markdown==3.10.2
+
 # CLI
 click==8.1.7
