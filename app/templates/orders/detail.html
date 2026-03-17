@@ -250,15 +250,15 @@
   {% if current_user.has_role('admin') or current_user.has_role('technician') %}
   <div class="collapse" id="addItemForm">
     <div class="card-body border-bottom bg-body-tertiary">
-      <form method="POST" action="{{ url_for('orders.add_item', id=order.id) }}">
+      <form method="POST" action="{{ url_for('orders.add_item', id=order.id) }}" id="addItemMainForm">
         {{ item_form.hidden_tag() }}
         <div class="row g-3 align-items-end">
           <div class="col-md-4">
             {{ render_select(item_form.service_item_id) }}
-            {% if item_form.service_item_id.choices|length <= 1 %}
-            <div class="form-text text-warning">
+            {% if item_form.service_item_id.choices|length <= 2 %}
+            <div class="form-text text-warning" id="noItemsWarning">
               <i class="bi bi-exclamation-triangle me-1"></i>
-              No service items found. <a href="{{ url_for('items.create') }}">Create one first</a>.
+              No service items found. Select "+ Create New Service Item" above.
             </div>
             {% endif %}
           </div>
@@ -277,6 +277,58 @@
           </div>
         </div>
       </form>
+
+      {# Quick-create service item inline form #}
+      <div class="collapse mt-3" id="quickCreateItemSection">
+        <div class="border rounded p-3 bg-body-secondary">
+          <h6 class="mb-3"><i class="bi bi-plus-circle me-1"></i> Create New Service Item</h6>
+          <div id="quickCreateItemAlert" class="alert d-none" role="alert"></div>
+          <form id="quickCreateItemForm">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label for="qc_item_name" class="form-label small">Item Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm" id="qc_item_name" name="name" required maxlength="255">
+              </div>
+              <div class="col-md-3">
+                <label for="qc_item_category" class="form-label small">Category</label>
+                <select class="form-select form-select-sm" id="qc_item_category" name="item_category">
+                  <option value="">-- Select --</option>
+                  <option value="Regulator">Regulator</option>
+                  <option value="BCD">BCD</option>
+                  <option value="Drysuit">Drysuit</option>
+                  <option value="Wetsuit">Wetsuit</option>
+                  <option value="Computer">Computer</option>
+                  <option value="Tank">Tank</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="qc_item_serial" class="form-label small">Serial Number</label>
+                <input type="text" class="form-control form-control-sm" id="qc_item_serial" name="serial_number" maxlength="100">
+              </div>
+              <div class="col-md-2">
+                <label for="qc_item_brand" class="form-label small">Brand</label>
+                <input type="text" class="form-control form-control-sm" id="qc_item_brand" name="brand" maxlength="100">
+              </div>
+            </div>
+            <div class="row g-2 mt-1">
+              <div class="col-md-3">
+                <label for="qc_item_model" class="form-label small">Model</label>
+                <input type="text" class="form-control form-control-sm" id="qc_item_model" name="model" maxlength="100">
+              </div>
+              <div class="col-md-3">
+                <input type="hidden" name="customer_id" value="{{ order.customer_id or '' }}">
+              </div>
+              <div class="col-md-6 d-flex align-items-end justify-content-end gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="quickCreateItemCancel">Cancel</button>
+                <button type="button" class="btn btn-sm btn-success" id="quickCreateItemSubmit">
+                  <i class="bi bi-check-lg me-1"></i> Create &amp; Select
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   </div>
   {% endif %}
@@ -923,6 +975,103 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 </script>
+
+{# ===== QUICK-CREATE SERVICE ITEM JS ===== #}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+<script>
+(function() {
+  var selectEl = document.getElementById('service_item_id');
+  var quickSection = document.getElementById('quickCreateItemSection');
+  var quickForm = document.getElementById('quickCreateItemForm');
+  var alertEl = document.getElementById('quickCreateItemAlert');
+  var submitBtn = document.getElementById('quickCreateItemSubmit');
+  var cancelBtn = document.getElementById('quickCreateItemCancel');
+
+  if (!selectEl || !quickSection) return;
+
+  // Show/hide quick-create section when dropdown changes
+  selectEl.addEventListener('change', function() {
+    if (this.value === '__new__') {
+      var bsCollapse = new bootstrap.Collapse(quickSection, {toggle: false});
+      bsCollapse.show();
+    } else {
+      var bsCollapse = bootstrap.Collapse.getInstance(quickSection);
+      if (bsCollapse) bsCollapse.hide();
+    }
+  });
+
+  // Cancel button hides the section and resets dropdown
+  cancelBtn.addEventListener('click', function() {
+    selectEl.value = '';
+    var bsCollapse = bootstrap.Collapse.getInstance(quickSection);
+    if (bsCollapse) bsCollapse.hide();
+    quickForm.reset();
+    alertEl.classList.add('d-none');
+  });
+
+  // Prevent main form submission when "__new__" is selected
+  var mainForm = document.getElementById('addItemMainForm');
+  mainForm.addEventListener('submit', function(e) {
+    if (selectEl.value === '__new__' || selectEl.value === '') {
+      e.preventDefault();
+      if (selectEl.value === '__new__') {
+        alertEl.textContent = 'Please create the service item first or select an existing one.';
+        alertEl.classList.remove('d-none', 'alert-success');
+        alertEl.classList.add('alert-warning');
+      }
+    }
+  });
+
+  // Submit quick-create form
+  submitBtn.addEventListener('click', function() {
+    var formData = new FormData(quickForm);
+
+    // Add CSRF token from the main form
+    var csrfToken = document.querySelector('#addItemMainForm input[name="csrf_token"]');
+    if (csrfToken) {
+      formData.append('csrf_token', csrfToken.value);
+    }
+
+    fetch('{{ url_for("items.quick_create") }}', {
+      method: 'POST',
+      body: formData
+    })
+    .then(function(response) {
+      return response.json().then(function(data) {
+        return {status: response.status, body: data};
+      });
+    })
+    .then(function(result) {
+      if (result.status === 201) {
+        // Add new option to the service item select and select it
+        var option = new Option(result.body.display_text, result.body.id, true, true);
+        selectEl.add(option);
+        selectEl.value = result.body.id;
+
+        // Hide quick-create section and reset form
+        var bsCollapse = bootstrap.Collapse.getInstance(quickSection);
+        if (bsCollapse) bsCollapse.hide();
+        quickForm.reset();
+        alertEl.classList.add('d-none');
+
+        // Hide "no items" warning if present
+        var noItemsWarning = document.getElementById('noItemsWarning');
+        if (noItemsWarning) noItemsWarning.classList.add('d-none');
+      } else {
+        alertEl.textContent = result.body.error || 'An error occurred.';
+        alertEl.classList.remove('d-none', 'alert-success', 'alert-warning');
+        alertEl.classList.add('alert-danger');
+      }
+    })
+    .catch(function() {
+      alertEl.textContent = 'An unexpected error occurred.';
+      alertEl.classList.remove('d-none', 'alert-success', 'alert-warning');
+      alertEl.classList.add('alert-danger');
+    });
+  });
+})();
+</script>
+{% endif %}
 
 {# ===== DELETE MODAL ===== #}
 {% if current_user.has_role('admin') %}

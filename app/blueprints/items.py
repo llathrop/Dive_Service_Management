@@ -6,7 +6,7 @@ detail fields via the DrysuitDetails model.  All routes require
 authentication.  Write operations require the 'admin' or 'technician' role.
 """
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 
@@ -205,6 +205,79 @@ def delete(id):
         pass
     flash("Service item deleted.", "success")
     return redirect(url_for("items.list_items"))
+
+
+# Valid item categories for quick-create validation
+VALID_CATEGORIES = {
+    "Regulator", "BCD", "Drysuit", "Wetsuit", "Computer", "Tank", "Other",
+}
+
+
+@items_bp.route("/quick-create", methods=["POST"])
+@login_required
+@roles_accepted("admin", "technician")
+def quick_create():
+    """Create a new service item inline and return JSON with id + display_text.
+
+    Accepts form fields: name (required), serial_number, item_category,
+    brand, model, customer_id.  Returns JSON so the frontend can add the
+    new item to the select dropdown without a page reload.
+    """
+    name = request.form.get("name", "").strip()
+    serial_number = request.form.get("serial_number", "").strip() or None
+    item_category = request.form.get("item_category", "").strip() or None
+    brand = request.form.get("brand", "").strip() or None
+    model = request.form.get("model", "").strip() or None
+    customer_id = request.form.get("customer_id", type=int) or None
+
+    if not name:
+        return jsonify({"error": "Item name is required."}), 400
+
+    # Server-side length validation
+    _MAX_LENGTHS = {"name": 255, "serial_number": 100, "brand": 100, "model": 100}
+    for field, max_len in _MAX_LENGTHS.items():
+        val = locals().get(field)
+        if val and len(val) > max_len:
+            return jsonify({"error": f"{field.replace('_', ' ').title()} exceeds {max_len} characters."}), 400
+
+    if item_category and item_category not in VALID_CATEGORIES:
+        return jsonify({"error": "Invalid item category."}), 400
+
+    # Validate customer_id exists if provided
+    if customer_id:
+        from app.models.customer import Customer
+        if not Customer.query.get(customer_id):
+            return jsonify({"error": "Customer not found."}), 400
+
+    data = {
+        "name": name,
+        "serial_number": serial_number,
+        "item_category": item_category,
+        "brand": brand,
+        "model": model,
+        "customer_id": customer_id,
+    }
+
+    try:
+        item = item_service.create_item(data, created_by=current_user.id)
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "A service item with that serial number already exists."}), 409
+
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="service_item",
+            entity_id=item.id,
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
+
+    display_text = f"{item.name} ({item.serial_number})" if item.serial_number else item.name
+    return jsonify({"id": item.id, "display_text": display_text}), 201
 
 
 def _extract_drysuit_data(drysuit_form):
