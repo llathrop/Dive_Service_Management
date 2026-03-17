@@ -227,8 +227,16 @@ def _seed_system_config():
             db.session.add(entry)
             created_count += 1
 
+    # Mark sensitive keys
+    _SENSITIVE_KEYS = {"email.smtp_password", "email.smtp_username"}
+    for key in _SENSITIVE_KEYS:
+        row = SystemConfig.query.filter_by(config_key=key).first()
+        if row and not row.is_sensitive:
+            row.is_sensitive = True
+            created_count += 1  # count as a change
+
     if created_count > 0:
         db.session.commit()
-        click.echo(f"  {created_count} system config entries created.")
+        click.echo(f"  {created_count} system config entries created/updated.")
     else:
         click.echo("  All system config entries already exist. Nothing to do.")
