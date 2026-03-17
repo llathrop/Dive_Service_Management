@@ -39,7 +39,8 @@
   <div class="card-body">
     {{ render_form_errors(form) }}
 
-    <form method="POST" action="{{ url_for('admin.settings', tab=active_tab) }}">
+    <form method="POST" action="{{ url_for('admin.settings', tab=active_tab) }}"
+          {% if active_tab == 'company' %}enctype="multipart/form-data"{% endif %}>
       {{ form.hidden_tag() }}
       <input type="hidden" name="tab" value="{{ active_tab }}">
 
@@ -47,7 +48,27 @@
         {% set field = form[field_name] %}
         {% set is_locked = locked_keys.get(config_key, false) %}
 
-        {% if is_locked %}
+        {# File upload fields get special rendering #}
+        {% if field.type == 'FileField' %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ field.id }}">{{ field.label.text }}</label>
+          {% if config_key == 'company.logo_path' and company_logo_url %}
+          <div class="mb-2">
+            <img src="{{ company_logo_url }}" alt="Current header logo" class="img-thumbnail"
+                 style="max-height: 80px;">
+            <small class="text-muted d-block">Current header logo</small>
+          </div>
+          {% elif config_key == 'company.invoice_logo_path' and company_invoice_logo_url %}
+          <div class="mb-2">
+            <img src="{{ company_invoice_logo_url }}" alt="Current invoice logo" class="img-thumbnail"
+                 style="max-height: 80px;">
+            <small class="text-muted d-block">Current invoice logo</small>
+          </div>
+          {% endif %}
+          {{ field(class="form-control", accept="image/jpeg,image/png") }}
+          <div class="form-text text-muted">JPG or PNG, max 2 MB</div>
+        </div>
+        {% elif is_locked %}
         <div class="mb-3">
           <label class="form-label">
             {{ field.label.text }}
