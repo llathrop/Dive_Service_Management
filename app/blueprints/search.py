@@ -116,6 +116,8 @@ def create_saved():
         return jsonify({"error": "Name must be 100 characters or fewer."}), 400
     if not isinstance(filters, dict):
         return jsonify({"error": "Filters must be a JSON object."}), 400
+    if len(json.dumps(filters)) > 4096:
+        return jsonify({"error": "Filters payload is too large."}), 400
 
     try:
         search = saved_search_service.create_search(
@@ -160,8 +162,11 @@ def update_saved(id):
             return jsonify({"error": "Name must be 100 characters or fewer."}), 400
 
     filters = data.get("filters")
-    if filters is not None and not isinstance(filters, dict):
-        return jsonify({"error": "Filters must be a JSON object."}), 400
+    if filters is not None:
+        if not isinstance(filters, dict):
+            return jsonify({"error": "Filters must be a JSON object."}), 400
+        if len(json.dumps(filters)) > 4096:
+            return jsonify({"error": "Filters payload is too large."}), 400
 
     is_default = data.get("is_default")
     if is_default is not None:

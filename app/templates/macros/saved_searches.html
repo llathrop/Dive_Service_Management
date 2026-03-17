@@ -123,10 +123,13 @@
 
           const nameSpan = document.createElement('span');
           nameSpan.textContent = s.name;
-          if (s.is_default) {
-            nameSpan.innerHTML += ' <span class="badge bg-primary badge-sm">default</span>';
-          }
           a.appendChild(nameSpan);
+          if (s.is_default) {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary badge-sm ms-1';
+            badge.textContent = 'default';
+            a.appendChild(badge);
+          }
 
           // Delete button
           const delBtn = document.createElement('button');
