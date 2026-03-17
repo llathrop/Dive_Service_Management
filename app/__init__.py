@@ -16,6 +16,7 @@ import os
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, send_from_directory
+from flask_login import login_required
 from flask_security import SQLAlchemyUserDatastore
 
 from app.config import config_by_name
@@ -178,9 +179,12 @@ def _register_upload_route(app):
     """Serve uploaded files from the UPLOAD_FOLDER."""
 
     @app.route("/uploads/<path:filename>")
+    @login_required
     def uploaded_file(filename):
         upload_folder = app.config.get("UPLOAD_FOLDER", "uploads")
-        return send_from_directory(upload_folder, filename)
+        response = send_from_directory(upload_folder, filename)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
 
 
 def _register_context_processors(app):
@@ -215,7 +219,7 @@ def _resolve_logo_url(app, config_key):
     from app.services import config_service
 
     rel_path = config_service.get_config(config_key)
-    if not rel_path:
+    if not rel_path or ".." in rel_path or rel_path.startswith("/"):
         return None
     upload_folder = app.config.get("UPLOAD_FOLDER", "")
     abs_path = os.path.join(upload_folder, rel_path)

@@ -442,6 +442,16 @@ def _handle_logo_uploads(form, user_id):
         if len(content) > _MAX_LOGO_SIZE:
             flash(f"{field.label.text} exceeds 2 MB limit.", "error")
             continue
+
+        # Validate magic bytes to prevent disguised file uploads
+        _MAGIC_BYTES = {
+            b"\xff\xd8\xff": "jpg",      # JPEG
+            b"\x89PNG": "png",            # PNG
+        }
+        is_valid_image = any(content.startswith(magic) for magic in _MAGIC_BYTES)
+        if not is_valid_image:
+            flash(f"{field.label.text} does not appear to be a valid image file.", "error")
+            continue
         file.seek(0)
 
         # Save with safe filename
