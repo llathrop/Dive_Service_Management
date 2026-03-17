@@ -3,6 +3,7 @@
 {% from 'macros/pagination.html' import render_pagination %}
 {% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
 {% from 'macros/status_badges.html' import invoice_status_badge %}
+{% from 'macros/saved_searches.html' import saved_search_controls %}
 
 {% block title %}Invoices - Dive Service Management{% endblock %}
 
@@ -22,7 +23,7 @@
 {# Search and filter form #}
 <div class="card mb-4">
   <div class="card-body">
-    <form method="GET" action="{{ url_for('invoices.list_invoices') }}" class="row g-3 align-items-end">
+    <form method="GET" action="{{ url_for('invoices.list_invoices') }}" class="row g-3 align-items-end" id="search-form">
       <div class="col-md-3">
         <label for="q" class="form-label">Search</label>
         <input type="text" class="form-control" id="q" name="q"
@@ -52,6 +53,9 @@
       </div>
       <div class="col-md-1">
         <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+      <div class="col-auto">
+        {{ saved_search_controls('invoice', 'search-form') }}
       </div>
     </form>
   </div>

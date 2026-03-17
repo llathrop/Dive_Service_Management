@@ -25,6 +25,7 @@ from app.models.notification_read import NotificationRead
 from app.models.system_config import SystemConfig
 from app.models.audit_log import AuditLog
 from app.models.attachment import Attachment
+from app.models.saved_search import SavedSearch
 
 __all__ = [
     "Role",
@@ -54,4 +55,5 @@ __all__ = [
     "SystemConfig",
     "AuditLog",
     "Attachment",
+    "SavedSearch",
 ]
