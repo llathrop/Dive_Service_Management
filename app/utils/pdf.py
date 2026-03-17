@@ -46,7 +46,7 @@ def _safe_str(value, default=""):
 def _resolve_logo_path(config_key):
     """Return the absolute filesystem path for a logo config key, or None."""
     rel_path = _safe_str(config_service.get_config(config_key), "")
-    if not rel_path:
+    if not rel_path or ".." in rel_path or rel_path.startswith("/"):
         return None
     try:
         upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")

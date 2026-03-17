@@ -226,6 +226,36 @@ class TestLogoUpload:
             assert not logo_path
 
 
+    def test_valid_extension_invalid_magic_bytes_rejected(self, admin_client, app):
+        """A .png file with non-PNG content is rejected by magic-byte check."""
+        with app.app_context():
+            _seed_system_config()
+
+        # Valid .png extension but HTML content (no PNG magic bytes)
+        fake_png = b"<html><script>alert(1)</script></html>"
+        data = {
+            "tab": "company",
+            "company_name": "Test Dive Shop",
+            "company_address": "",
+            "company_phone": "",
+            "company_email": "",
+            "company_website": "",
+            "logo_upload": (io.BytesIO(fake_png), "sneaky.png"),
+        }
+        resp = admin_client.post(
+            "/admin/settings?tab=company",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert b"valid image" in resp.data
+
+        with app.app_context():
+            logo_path = config_service.get_config("company.logo_path")
+            assert not logo_path
+
+
 class TestPDFBranding:
     """Test PDF generation with company branding."""
 
@@ -341,8 +371,8 @@ class TestSeedConfig:
 class TestUploadedFileServing:
     """Test that the /uploads/ route serves files."""
 
-    def test_uploaded_file_route(self, app, client):
-        """The /uploads/ route serves existing files."""
+    def test_uploaded_file_route(self, app, logged_in_client):
+        """The /uploads/ route serves existing files to authenticated users."""
         upload_folder = app.config["UPLOAD_FOLDER"]
         logos_dir = os.path.join(upload_folder, "logos")
         os.makedirs(logos_dir, exist_ok=True)
@@ -350,10 +380,24 @@ class TestUploadedFileServing:
         with open(test_file, "wb") as f:
             f.write(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50)
 
-        resp = client.get("/uploads/logos/serve_test.png")
+        resp = logged_in_client.get("/uploads/logos/serve_test.png")
         assert resp.status_code == 200
+        assert resp.headers.get("X-Content-Type-Options") == "nosniff"
 
-    def test_uploaded_file_404(self, app, client):
+    def test_uploaded_file_requires_auth(self, app, client):
+        """The /uploads/ route redirects unauthenticated users to login."""
+        upload_folder = app.config["UPLOAD_FOLDER"]
+        logos_dir = os.path.join(upload_folder, "logos")
+        os.makedirs(logos_dir, exist_ok=True)
+        test_file = os.path.join(logos_dir, "auth_test.png")
+        with open(test_file, "wb") as f:
+            f.write(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50)
+
+        resp = client.get("/uploads/logos/auth_test.png")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers.get("Location", "")
+
+    def test_uploaded_file_404(self, app, logged_in_client):
         """The /uploads/ route returns 404 for missing files."""
-        resp = client.get("/uploads/logos/nonexistent.png")
+        resp = logged_in_client.get("/uploads/logos/nonexistent.png")
         assert resp.status_code == 404
