@@ -53,7 +53,37 @@ def create_notification(
     )
     db.session.add(notification)
     db.session.commit()
+
+    # Queue email delivery (best-effort, never breaks notification creation)
+    _queue_email(notification)
+
     return notification
+
+
+def _queue_email(notification):
+    """Queue an email delivery task for a notification.
+
+    For targeted notifications, emails the specific user.
+    For broadcasts, emails all active users.
+    Never raises — failures are logged and swallowed.
+    """
+    try:
+        from app.tasks.email_tasks import send_notification_email_task
+
+        if notification.user_id:
+            # Targeted notification — email the specific user
+            send_notification_email_task.delay(
+                notification.user_id, notification.id
+            )
+        else:
+            # Broadcast — email all active users
+            active_users = User.query.filter_by(active=True).all()
+            for user in active_users:
+                if user.email:
+                    send_notification_email_task.delay(user.id, notification.id)
+    except Exception:
+        # Never break notification creation due to email failures
+        pass
 
 
 def _annotate_read_state(notifications, user_id):

@@ -6,8 +6,8 @@ rows.  ENV-locked fields are rendered as read-only in the template.
 
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField
-from wtforms import DecimalField, IntegerField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Length, NumberRange, Optional
+from wtforms import BooleanField, DecimalField, IntegerField, PasswordField, StringField, TextAreaField
+from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional
 
 
 class CompanySettingsForm(FlaskForm):
@@ -139,6 +139,43 @@ class NotificationSettingsForm(FlaskForm):
     order_due_warning_days = IntegerField(
         "Order Due Warning (days before)",
         validators=[DataRequired(), NumberRange(min=1, max=30)],
+    )
+
+
+class EmailSettingsForm(FlaskForm):
+    """Email / SMTP settings."""
+
+    email_enabled = BooleanField(
+        "Enable Email Notifications",
+        validators=[Optional()],
+    )
+    smtp_server = StringField(
+        "SMTP Server",
+        validators=[Optional(), Length(max=255)],
+    )
+    smtp_port = IntegerField(
+        "SMTP Port",
+        validators=[Optional(), NumberRange(min=1, max=65535)],
+    )
+    smtp_use_tls = BooleanField(
+        "Use TLS",
+        validators=[Optional()],
+    )
+    smtp_username = StringField(
+        "SMTP Username",
+        validators=[Optional(), Length(max=255)],
+    )
+    smtp_password = PasswordField(
+        "SMTP Password",
+        validators=[Optional(), Length(max=255)],
+    )
+    from_address = StringField(
+        "From Address",
+        validators=[Optional(), Email(), Length(max=255)],
+    )
+    from_name = StringField(
+        "From Name",
+        validators=[Optional(), Length(max=255)],
     )
 
 
