@@ -254,6 +254,15 @@
           </a>
         </li>
 
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('docs') }}"
+             href="{{ url_for('docs.index') }}"
+             title="Documentation">
+            <i class="bi bi-book"></i>
+            <span class="nav-text">Documentation</span>
+          </a>
+        </li>
+
         {# Admin section - restricted to admin role #}
         {% if current_user.is_authenticated and current_user.has_role('admin') %}
         <li class="nav-item mt-2">
