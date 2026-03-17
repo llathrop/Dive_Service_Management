@@ -10,11 +10,19 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from flask import current_app, render_template
+from flask import render_template
+from markupsafe import escape
 
 from app.services import config_service
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_header(value):
+    """Strip CRLF characters to prevent email header injection."""
+    if not value:
+        return value
+    return str(value).replace("\r", "").replace("\n", "")
 
 
 def _get_smtp_config():
@@ -64,7 +72,11 @@ def send_email(to_address, subject, html_body, text_body=None):
         logger.warning("Email sending skipped — no from_address configured.")
         return False
 
-    from_name = config["from_name"] or "Dive Service Management"
+    from_name = _sanitize_header(config["from_name"] or "Dive Service Management")
+    from_addr = _sanitize_header(from_addr)
+    to_address = _sanitize_header(to_address)
+    subject = _sanitize_header(subject)
+
     sender = f"{from_name} <{from_addr}>"
 
     msg = MIMEMultipart("alternative")
@@ -76,23 +88,27 @@ def send_email(to_address, subject, html_body, text_body=None):
         msg.attach(MIMEText(text_body, "plain"))
     msg.attach(MIMEText(html_body, "html"))
 
+    server = None
     try:
+        server = smtplib.SMTP(config["server"], config["port"], timeout=30)
         if config["use_tls"]:
-            server = smtplib.SMTP(config["server"], config["port"], timeout=30)
             server.starttls()
-        else:
-            server = smtplib.SMTP(config["server"], config["port"], timeout=30)
 
         if config["username"] and config["password"]:
             server.login(config["username"], config["password"])
 
         server.sendmail(from_addr, [to_address], msg.as_string())
-        server.quit()
         logger.info("Email sent to %s: %s", to_address, subject)
         return True
     except (smtplib.SMTPException, OSError) as exc:
         logger.error("Failed to send email to %s: %s", to_address, exc)
         return False
+    finally:
+        if server is not None:
+            try:
+                server.quit()
+            except Exception:
+                pass
 
 
 def send_notification_email(user, notification):
@@ -112,7 +128,7 @@ def send_notification_email(user, notification):
     if config is None:
         return False
 
-    subject = f"[DSM] {notification.title}"
+    subject = _sanitize_header(f"[DSM] {notification.title}")
 
     try:
         html_body = render_template(
@@ -121,10 +137,10 @@ def send_notification_email(user, notification):
             user=user,
         )
     except Exception:
-        # Fallback if template is missing or broken
+        # Fallback if template is missing or broken — escape to prevent XSS
         html_body = (
-            f"<h2>{notification.title}</h2>"
-            f"<p>{notification.message}</p>"
+            f"<h2>{escape(notification.title)}</h2>"
+            f"<p>{escape(notification.message)}</p>"
         )
 
     text_body = f"{notification.title}\n\n{notification.message}"
