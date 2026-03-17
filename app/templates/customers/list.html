@@ -2,6 +2,7 @@
 {% from 'macros/forms.html' import render_field, render_select, render_submit %}
 {% from 'macros/pagination.html' import render_pagination %}
 {% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
+{% from 'macros/saved_searches.html' import saved_search_controls %}
 
 {% block title %}Customers - Dive Service Management{% endblock %}
 
@@ -21,7 +22,7 @@
 {# Search and filter form #}
 <div class="card mb-4">
   <div class="card-body">
-    <form method="GET" action="{{ url_for('customers.list_customers') }}" class="row g-3 align-items-end">
+    <form method="GET" action="{{ url_for('customers.list_customers') }}" class="row g-3 align-items-end" id="search-form">
       <div class="col-md-5">
         <label for="q" class="form-label">Search</label>
         <input type="text" class="form-control" id="q" name="q"
@@ -38,6 +39,9 @@
       </div>
       <div class="col-md-2">
         <a href="{{ url_for('customers.list_customers') }}" class="btn btn-outline-secondary w-100">Clear</a>
+      </div>
+      <div class="col-auto">
+        {{ saved_search_controls('customer', 'search-form') }}
       </div>
     </form>
   </div>
