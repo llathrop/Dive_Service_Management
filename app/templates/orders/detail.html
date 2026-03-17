@@ -409,6 +409,18 @@
             {% endif %}
           </div>
 
+          {# Upload status indicator for multi-file uploads #}
+          {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+          <div id="upload-status-service_order_item-{{ oi.id }}" class="d-none mb-2">
+            <div class="d-flex align-items-center gap-2 text-primary">
+              <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Uploading...</span>
+              </div>
+              <span class="fw-semibold" id="upload-status-text-service_order_item-{{ oi.id }}">Uploading...</span>
+            </div>
+          </div>
+          {% endif %}
+
           {# Upload preview area #}
           {% if current_user.has_role('admin') or current_user.has_role('technician') %}
           <div id="upload-preview-service_order_item-{{ oi.id }}" class="d-none mb-2">
@@ -869,12 +881,13 @@
 
 {# ===== ATTACHMENT JS (shared functions for image capture) ===== #}
 <script>
-const pendingFiles = pendingFiles || {};
+window.pendingFiles = window.pendingFiles || {};
 
 function handleFileSelect(input, type, id) {
     const files = input.files;
     if (!files || files.length === 0) return;
     if (files.length > 1) {
+        showUploadStatus(type, id, 'Uploading ' + files.length + ' files...');
         for (let i = 0; i < files.length; i++) {
             uploadSingleFile(files[i], type, id, null);
         }
@@ -882,7 +895,7 @@ function handleFileSelect(input, type, id) {
         return;
     }
     const file = files[0];
-    pendingFiles[type + '-' + id] = file;
+    window.pendingFiles[type + '-' + id] = file;
     const previewArea = document.getElementById('upload-preview-' + type + '-' + id);
     const previewImg = document.getElementById('preview-img-' + type + '-' + id);
     const previewName = document.getElementById('preview-filename-' + type + '-' + id);
@@ -895,23 +908,24 @@ function handleFileSelect(input, type, id) {
         previewImg.classList.add('d-none');
     }
     previewArea.classList.remove('d-none');
+    previewArea.scrollIntoView({ behavior: 'smooth' });
     hideError(type, id);
     input.value = '';
 }
 
 function cancelPreview(type, id) {
-    delete pendingFiles[type + '-' + id];
+    delete window.pendingFiles[type + '-' + id];
     document.getElementById('upload-preview-' + type + '-' + id).classList.add('d-none');
     document.getElementById('preview-desc-' + type + '-' + id).value = '';
     hideError(type, id);
 }
 
 function uploadFile(type, id) {
-    const file = pendingFiles[type + '-' + id];
+    const file = window.pendingFiles[type + '-' + id];
     if (!file) return;
     const desc = document.getElementById('preview-desc-' + type + '-' + id).value.trim();
     uploadSingleFile(file, type, id, desc);
-    delete pendingFiles[type + '-' + id];
+    delete window.pendingFiles[type + '-' + id];
 }
 
 function uploadSingleFile(file, type, id, description) {
@@ -932,6 +946,7 @@ function uploadSingleFile(file, type, id, description) {
     };
     xhr.onload = function() {
         if (progressBar) progressBar.classList.add('d-none');
+        hideUploadStatus(type, id);
         if (xhr.status === 201) {
             const pa = document.getElementById('upload-preview-' + type + '-' + id);
             if (pa) { pa.classList.add('d-none'); document.getElementById('preview-desc-' + type + '-' + id).value = ''; }
@@ -941,7 +956,7 @@ function uploadSingleFile(file, type, id, description) {
             catch(e) { showError(type, id, 'Upload failed.'); }
         }
     };
-    xhr.onerror = function() { if (progressBar) progressBar.classList.add('d-none'); showError(type, id, 'Network error.'); };
+    xhr.onerror = function() { if (progressBar) progressBar.classList.add('d-none'); hideUploadStatus(type, id); showError(type, id, 'Network error.'); };
     xhr.send(formData);
 }
 
@@ -965,6 +980,20 @@ function showError(type, id, msg) {
 
 function hideError(type, id) {
     const el = document.getElementById('upload-error-' + type + '-' + id);
+    if (el) el.classList.add('d-none');
+}
+
+function showUploadStatus(type, id, msg) {
+    const el = document.getElementById('upload-status-' + type + '-' + id);
+    const textEl = document.getElementById('upload-status-text-' + type + '-' + id);
+    if (el) {
+        if (textEl) textEl.textContent = msg || 'Uploading...';
+        el.classList.remove('d-none');
+    }
+}
+
+function hideUploadStatus(type, id) {
+    const el = document.getElementById('upload-status-' + type + '-' + id);
     if (el) el.classList.add('d-none');
 }
 

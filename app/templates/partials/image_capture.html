@@ -45,6 +45,18 @@
   </div>
 
   <div class="card-body">
+    {# Upload status indicator for multi-file uploads (no preview) #}
+    {% if _can_edit %}
+    <div id="upload-status-{{ _type }}-{{ _id }}" class="d-none mb-3">
+      <div class="d-flex align-items-center gap-2 text-primary">
+        <div class="spinner-border spinner-border-sm" role="status">
+          <span class="visually-hidden">Uploading...</span>
+        </div>
+        <span class="fw-semibold" id="upload-status-text-{{ _type }}-{{ _id }}">Uploading...</span>
+      </div>
+    </div>
+    {% endif %}
+
     {# Upload preview area (hidden until file selected) #}
     {% if _can_edit %}
     <div id="upload-preview-{{ _type }}-{{ _id }}" class="d-none mb-3">
@@ -102,7 +114,7 @@
 {% set _image_capture_js_included = true %}
 <script>
 // File selection state per component instance
-const pendingFiles = {};
+window.pendingFiles = window.pendingFiles || {};
 
 function handleFileSelect(input, type, id) {
     const files = input.files;
@@ -110,6 +122,7 @@ function handleFileSelect(input, type, id) {
 
     // For multiple files, upload all immediately (no preview)
     if (files.length > 1) {
+        showUploadStatus(type, id, 'Uploading ' + files.length + ' files...');
         for (let i = 0; i < files.length; i++) {
             uploadSingleFile(files[i], type, id, null);
         }
@@ -118,7 +131,7 @@ function handleFileSelect(input, type, id) {
     }
 
     const file = files[0];
-    pendingFiles[type + '-' + id] = file;
+    window.pendingFiles[type + '-' + id] = file;
 
     const previewArea = document.getElementById('upload-preview-' + type + '-' + id);
     const previewImg = document.getElementById('preview-img-' + type + '-' + id);
@@ -139,6 +152,7 @@ function handleFileSelect(input, type, id) {
     }
 
     previewArea.classList.remove('d-none');
+    previewArea.scrollIntoView({ behavior: 'smooth' });
     hideError(type, id);
 
     // Reset the input so the same file can be selected again
@@ -146,7 +160,7 @@ function handleFileSelect(input, type, id) {
 }
 
 function cancelPreview(type, id) {
-    delete pendingFiles[type + '-' + id];
+    delete window.pendingFiles[type + '-' + id];
     const previewArea = document.getElementById('upload-preview-' + type + '-' + id);
     previewArea.classList.add('d-none');
     document.getElementById('preview-desc-' + type + '-' + id).value = '';
@@ -155,12 +169,12 @@ function cancelPreview(type, id) {
 
 function uploadFile(type, id) {
     const key = type + '-' + id;
-    const file = pendingFiles[key];
+    const file = window.pendingFiles[key];
     if (!file) return;
 
     const description = document.getElementById('preview-desc-' + type + '-' + id).value.trim();
     uploadSingleFile(file, type, id, description);
-    delete pendingFiles[key];
+    delete window.pendingFiles[key];
 }
 
 function uploadSingleFile(file, type, id, description) {
@@ -193,6 +207,7 @@ function uploadSingleFile(file, type, id, description) {
 
     xhr.onload = function() {
         if (progressBar) progressBar.classList.add('d-none');
+        hideUploadStatus(type, id);
 
         if (xhr.status === 201) {
             // Success — hide preview and refresh gallery
@@ -214,6 +229,7 @@ function uploadSingleFile(file, type, id, description) {
 
     xhr.onerror = function() {
         if (progressBar) progressBar.classList.add('d-none');
+        hideUploadStatus(type, id);
         showError(type, id, 'Network error. Please try again.');
     };
 
@@ -258,6 +274,20 @@ function showError(type, id, msg) {
 
 function hideError(type, id) {
     const el = document.getElementById('upload-error-' + type + '-' + id);
+    if (el) el.classList.add('d-none');
+}
+
+function showUploadStatus(type, id, msg) {
+    const el = document.getElementById('upload-status-' + type + '-' + id);
+    const textEl = document.getElementById('upload-status-text-' + type + '-' + id);
+    if (el) {
+        if (textEl) textEl.textContent = msg || 'Uploading...';
+        el.classList.remove('d-none');
+    }
+}
+
+function hideUploadStatus(type, id) {
+    const el = document.getElementById('upload-status-' + type + '-' + id);
     if (el) el.classList.add('d-none');
 }
 
