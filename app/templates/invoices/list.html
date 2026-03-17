@@ -129,6 +129,10 @@
 
 {{ render_pagination(invoices) }}
 {% else %}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
 {{ empty_state('No invoices found.', 'bi-receipt', url_for('invoices.create'), 'New Invoice') }}
+{% else %}
+{{ empty_state('No invoices found.', 'bi-receipt') }}
+{% endif %}
 {% endif %}
 {% endblock %}
