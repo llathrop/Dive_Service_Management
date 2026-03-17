@@ -95,6 +95,10 @@
 
 {{ render_pagination(pagination) }}
 {% else %}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
 {{ empty_state('No customers found.', 'bi-people', url_for('customers.create'), 'Add Customer') }}
+{% else %}
+{{ empty_state('No customers found.', 'bi-people') }}
+{% endif %}
 {% endif %}
 {% endblock %}

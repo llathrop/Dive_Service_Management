@@ -122,6 +122,10 @@
 
 {{ render_pagination(pagination) }}
 {% else %}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
 {{ empty_state('No inventory items found.', 'bi-box-seam', url_for('inventory.create'), 'Add Item') }}
+{% else %}
+{{ empty_state('No inventory items found.', 'bi-box-seam') }}
+{% endif %}
 {% endif %}
 {% endblock %}
