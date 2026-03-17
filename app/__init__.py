@@ -105,10 +105,11 @@ def _init_extensions(app):
     # Flask-Security-Too
     # Must be initialised AFTER db so the user datastore can reference
     # the User and Role models.
+    from app.forms.auth import ExtendedLoginForm
     from app.models.user import Role, User
 
     user_datastore = SQLAlchemyUserDatastore(db, User, Role)
-    security.init_app(app, user_datastore)
+    security.init_app(app, user_datastore, login_form=ExtendedLoginForm)
 
 
 def _register_blueprints(app):
