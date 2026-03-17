@@ -551,6 +551,71 @@ class TestBroadcastPerUserReadState:
         # B: 0 direct + 1 broadcast = 1 (unchanged)
         assert notification_service.get_unread_count(user_b.id) == 1
 
+    def test_get_notifications_annotates_direct_read_state(self, app, db_session):
+        """get_notifications() sets is_read_by_user on direct notifications."""
+        _set_session(db_session)
+        user = _make_admin_user(
+            app, db_session, username="ann_d", email="ann_d@example.com"
+        )
+
+        n = notification_service.create_notification(
+            user_id=user.id,
+            notification_type="system",
+            title="Direct Annotated",
+            message="msg",
+        )
+
+        # Before marking read
+        page = notification_service.get_notifications(user.id)
+        item = page.items[0]
+        assert item.is_read_by_user is False
+        assert item.read_at_by_user is None
+
+        # After marking read
+        notification_service.mark_as_read(n.id, user_id=user.id)
+        page = notification_service.get_notifications(user.id)
+        item = page.items[0]
+        assert item.is_read_by_user is True
+        assert item.read_at_by_user is not None
+
+    def test_get_notifications_annotates_broadcast_read_state(self, app, db_session):
+        """get_notifications() sets is_read_by_user correctly for broadcasts."""
+        _set_session(db_session)
+        user_a = _make_admin_user(
+            app, db_session, username="ann_ba", email="ann_ba@example.com"
+        )
+        user_b = _make_tech_user(
+            app, db_session, username="ann_bb", email="ann_bb@example.com"
+        )
+
+        broadcast = notification_service.create_notification(
+            user_id=None,
+            notification_type="system",
+            title="Broadcast Annotated",
+            message="msg",
+        )
+
+        # Both users see it as unread initially
+        page_a = notification_service.get_notifications(user_a.id)
+        page_b = notification_service.get_notifications(user_b.id)
+        assert page_a.items[0].is_read_by_user is False
+        assert page_b.items[0].is_read_by_user is False
+
+        # User A marks broadcast as read
+        notification_service.mark_as_read(broadcast.id, user_id=user_a.id)
+        db_session.expire_all()  # Ensure fresh query results
+
+        # User A sees it as read
+        page_a = notification_service.get_notifications(user_a.id)
+        assert page_a.items[0].is_read_by_user is True
+        assert page_a.items[0].read_at_by_user is not None
+
+        # User B still sees unread (separate call to avoid identity map
+        # clobbering the transient attributes set by _annotate_read_state)
+        page_b = notification_service.get_notifications(user_b.id)
+        assert page_b.items[0].is_read_by_user is False
+        assert page_b.items[0].read_at_by_user is None
+
     def test_broadcast_mark_read_idempotent(self, app, db_session):
         """Marking the same broadcast read twice does not create duplicate rows."""
         user = _make_admin_user(
