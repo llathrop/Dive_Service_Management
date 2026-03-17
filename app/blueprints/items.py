@@ -233,8 +233,21 @@ def quick_create():
     if not name:
         return jsonify({"error": "Item name is required."}), 400
 
+    # Server-side length validation
+    _MAX_LENGTHS = {"name": 255, "serial_number": 100, "brand": 100, "model": 100}
+    for field, max_len in _MAX_LENGTHS.items():
+        val = locals().get(field)
+        if val and len(val) > max_len:
+            return jsonify({"error": f"{field.replace('_', ' ').title()} exceeds {max_len} characters."}), 400
+
     if item_category and item_category not in VALID_CATEGORIES:
         return jsonify({"error": "Invalid item category."}), 400
+
+    # Validate customer_id exists if provided
+    if customer_id:
+        from app.models.customer import Customer
+        if not Customer.query.get(customer_id):
+            return jsonify({"error": "Customer not found."}), 400
 
     data = {
         "name": name,
