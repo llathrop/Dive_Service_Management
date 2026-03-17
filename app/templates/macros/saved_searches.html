@@ -1,0 +1,224 @@
+{# Saved search dropdown macro.
+
+   Include on any list page that supports saved searches.
+
+   Usage:
+     {% from 'macros/saved_searches.html' import saved_search_controls %}
+     {{ saved_search_controls(search_type='customer', form_id='search-form') }}
+
+   Args:
+     search_type: One of 'customer', 'order', 'inventory', 'invoice'
+     form_id: The HTML id of the search/filter form on the page
+#}
+
+{% macro saved_search_controls(search_type, form_id) %}
+<div class="d-inline-block ms-2" id="saved-search-controls">
+  <div class="btn-group">
+    {# Load saved search dropdown #}
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
+              id="saved-search-dropdown" data-bs-toggle="dropdown" aria-expanded="false"
+              data-search-type="{{ search_type }}">
+        <i class="bi bi-bookmark me-1"></i> Saved Searches
+      </button>
+      <ul class="dropdown-menu" id="saved-search-list" aria-labelledby="saved-search-dropdown">
+        <li><span class="dropdown-item text-muted" id="saved-search-loading">Loading...</span></li>
+      </ul>
+    </div>
+
+    {# Save current search button #}
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="save-search-btn"
+            title="Save current filters">
+      <i class="bi bi-bookmark-plus"></i>
+    </button>
+  </div>
+</div>
+
+{# Save search modal #}
+<div class="modal fade" id="save-search-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Save Search</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="saved-search-name" class="form-label">Name</label>
+          <input type="text" class="form-control form-control-sm" id="saved-search-name"
+                 maxlength="100" placeholder="e.g. Active orders this week" required>
+        </div>
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="saved-search-default">
+          <label class="form-check-label" for="saved-search-default">Set as default</label>
+        </div>
+        <div id="save-search-error" class="text-danger small mt-2 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="save-search-confirm">
+          <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const searchType = '{{ search_type }}';
+  const formId = '{{ form_id }}';
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+                    || document.querySelector('input[name="csrf_token"]')?.value
+                    || '';
+
+  // Collect current form filter values as a dict
+  function getFormFilters() {
+    const form = document.getElementById(formId);
+    if (!form) return {};
+    const data = new FormData(form);
+    const filters = {};
+    for (const [key, value] of data.entries()) {
+      if (value && key !== 'csrf_token' && key !== 'page') {
+        filters[key] = value;
+      }
+    }
+    return filters;
+  }
+
+  // Apply filters from a saved search to the form and submit
+  function applyFilters(filters) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    // Reset form first
+    form.reset();
+    // Set each filter value
+    for (const [key, value] of Object.entries(filters)) {
+      const input = form.querySelector('[name="' + key + '"]');
+      if (input) {
+        input.value = value;
+      }
+    }
+    form.submit();
+  }
+
+  // Load saved searches into dropdown
+  function loadSavedSearches() {
+    fetch('/search/saved?type=' + searchType)
+      .then(r => r.json())
+      .then(searches => {
+        const list = document.getElementById('saved-search-list');
+        list.innerHTML = '';
+
+        if (searches.length === 0) {
+          list.innerHTML = '<li><span class="dropdown-item text-muted small">No saved searches</span></li>';
+          return;
+        }
+
+        searches.forEach(s => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.className = 'dropdown-item d-flex justify-content-between align-items-center';
+          a.href = '#';
+
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = s.name;
+          if (s.is_default) {
+            nameSpan.innerHTML += ' <span class="badge bg-primary badge-sm">default</span>';
+          }
+          a.appendChild(nameSpan);
+
+          // Delete button
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-link btn-sm text-danger p-0 ms-2';
+          delBtn.innerHTML = '<i class="bi bi-trash"></i>';
+          delBtn.title = 'Delete';
+          delBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (confirm('Delete saved search "' + s.name + '"?')) {
+              deleteSavedSearch(s.id);
+            }
+          });
+          a.appendChild(delBtn);
+
+          a.addEventListener('click', function(e) {
+            e.preventDefault();
+            applyFilters(s.filters);
+          });
+
+          li.appendChild(a);
+          list.appendChild(li);
+        });
+      })
+      .catch(() => {
+        document.getElementById('saved-search-list').innerHTML =
+          '<li><span class="dropdown-item text-danger small">Error loading searches</span></li>';
+      });
+  }
+
+  // Delete a saved search
+  function deleteSavedSearch(id) {
+    fetch('/search/saved/' + id, {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': csrfToken },
+    })
+    .then(r => {
+      if (r.ok) loadSavedSearches();
+    });
+  }
+
+  // Save current filters
+  document.getElementById('save-search-btn').addEventListener('click', function() {
+    const modal = new bootstrap.Modal(document.getElementById('save-search-modal'));
+    document.getElementById('saved-search-name').value = '';
+    document.getElementById('saved-search-default').checked = false;
+    document.getElementById('save-search-error').classList.add('d-none');
+    modal.show();
+  });
+
+  document.getElementById('save-search-confirm').addEventListener('click', function() {
+    const name = document.getElementById('saved-search-name').value.trim();
+    const isDefault = document.getElementById('saved-search-default').checked;
+    const errorEl = document.getElementById('save-search-error');
+
+    if (!name) {
+      errorEl.textContent = 'Name is required.';
+      errorEl.classList.remove('d-none');
+      return;
+    }
+
+    fetch('/search/saved', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+      },
+      body: JSON.stringify({
+        name: name,
+        search_type: searchType,
+        filters: getFormFilters(),
+        is_default: isDefault,
+      }),
+    })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok) {
+        bootstrap.Modal.getInstance(document.getElementById('save-search-modal')).hide();
+        loadSavedSearches();
+      } else {
+        errorEl.textContent = data.error || 'Failed to save.';
+        errorEl.classList.remove('d-none');
+      }
+    })
+    .catch(() => {
+      errorEl.textContent = 'Network error.';
+      errorEl.classList.remove('d-none');
+    });
+  });
+
+  // Load on dropdown open
+  document.getElementById('saved-search-dropdown').addEventListener('click', loadSavedSearches);
+})();
+</script>
+{% endmacro %}
