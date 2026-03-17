@@ -56,6 +56,46 @@ def create_notification(
     return notification
 
 
+def _annotate_read_state(notifications, user_id):
+    """Annotate notifications with per-user read state.
+
+    For direct (user-targeted) notifications, ``is_read_by_user`` mirrors
+    ``is_read`` and ``read_at_by_user`` mirrors ``read_at``.
+
+    For broadcast notifications (``user_id is None``), reads are tracked via
+    :class:`NotificationRead` rows.  This helper queries for existing read
+    receipts and sets the attributes accordingly.
+
+    The attributes ``is_read_by_user`` and ``read_at_by_user`` are set
+    directly on each Notification instance (transient, not persisted).
+
+    Args:
+        notifications: A list of Notification instances to annotate.
+        user_id: The current user's ID.
+    """
+    broadcast_ids = [n.id for n in notifications if n.user_id is None]
+
+    # Build a lookup of broadcast notification_id -> read_at for this user
+    broadcast_read_map = {}
+    if broadcast_ids:
+        read_rows = NotificationRead.query.filter(
+            NotificationRead.notification_id.in_(broadcast_ids),
+            NotificationRead.user_id == user_id,
+        ).all()
+        broadcast_read_map = {r.notification_id: r.read_at for r in read_rows}
+
+    for n in notifications:
+        if n.user_id is not None:
+            # Direct notification: mirror the existing fields
+            n.is_read_by_user = n.is_read
+            n.read_at_by_user = n.read_at
+        else:
+            # Broadcast notification: check per-user read receipt
+            read_at = broadcast_read_map.get(n.id)
+            n.is_read_by_user = read_at is not None
+            n.read_at_by_user = read_at
+
+
 def get_notifications(user_id, unread_only=False, page=1, per_page=20):
     """Return paginated notifications for a user, newest first.
 
@@ -100,7 +140,9 @@ def get_notifications(user_id, unread_only=False, page=1, per_page=20):
 
     query = query.order_by(Notification.created_at.desc())
 
-    return db.paginate(query, page=page, per_page=per_page)
+    pagination = db.paginate(query, page=page, per_page=per_page)
+    _annotate_read_state(pagination.items, user_id)
+    return pagination
 
 
 def get_unread_count(user_id):
