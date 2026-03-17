@@ -6,6 +6,7 @@ Call ``register_cli_commands(app)`` from the application factory.
 
 from app.cli.create_admin import create_admin
 from app.cli.seed import seed_db
+from app.cli.test_email import test_email
 
 
 def register_cli_commands(app):
@@ -16,3 +17,4 @@ def register_cli_commands(app):
     """
     app.cli.add_command(seed_db)
     app.cli.add_command(create_admin)
+    app.cli.add_command(test_email)
