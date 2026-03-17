@@ -346,6 +346,20 @@ _SETTINGS_TABS = {
             "notification.order_due_warning_days": "order_due_warning_days",
         },
     },
+    "email": {
+        "label": "Email",
+        "icon": "bi-envelope",
+        "fields": {
+            "email.enabled": "email_enabled",
+            "email.smtp_server": "smtp_server",
+            "email.smtp_port": "smtp_port",
+            "email.smtp_use_tls": "smtp_use_tls",
+            "email.smtp_username": "smtp_username",
+            "email.smtp_password": "smtp_password",
+            "email.from_address": "from_address",
+            "email.from_name": "from_name",
+        },
+    },
     "security": {
         "label": "Security",
         "icon": "bi-shield-lock",
@@ -364,6 +378,7 @@ _FORM_CLASSES = {
     "invoice_tax": "InvoiceTaxSettingsForm",
     "display": "DisplaySettingsForm",
     "notification": "NotificationSettingsForm",
+    "email": "EmailSettingsForm",
     "security": "SecuritySettingsForm",
 }
 
@@ -376,12 +391,16 @@ def _get_form_class(tab_key):
 
 def _populate_form(form, tab_key):
     """Fill a form with current config values from the database."""
+    from wtforms import PasswordField as WTPasswordField
     from app.services import config_service
 
     fields = _SETTINGS_TABS[tab_key]["fields"]
     for config_key, field_name in fields.items():
         field = getattr(form, field_name, None)
         if field is not None:
+            # Never populate password fields — they always render blank
+            if isinstance(field, WTPasswordField):
+                continue
             value = config_service.get_config(config_key)
             if value is not None:
                 field.data = value
@@ -391,17 +410,23 @@ def _save_form(form, tab_key, user_id):
     """Save form data back to config_service.
 
     FileField entries are skipped here — they are handled separately
-    in ``_handle_logo_uploads()``.
+    in ``_handle_logo_uploads()``.  PasswordField entries with empty
+    values are also skipped so "leave blank = keep current" works.
     """
     from flask_wtf.file import FileField as WTFileField
+    from wtforms import PasswordField as WTPasswordField
     from app.services import config_service
 
     fields = _SETTINGS_TABS[tab_key]["fields"]
     updates = {}
     for config_key, field_name in fields.items():
         field = getattr(form, field_name, None)
-        if field is not None and not isinstance(field, WTFileField):
-            updates[config_key] = field.data
+        if field is None or isinstance(field, WTFileField):
+            continue
+        # Skip empty password fields (means "keep current value")
+        if isinstance(field, WTPasswordField) and not field.data:
+            continue
+        updates[config_key] = field.data
     return config_service.bulk_set(updates, user_id=user_id)
 
 

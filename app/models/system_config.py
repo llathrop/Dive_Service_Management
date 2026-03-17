@@ -15,6 +15,7 @@ VALID_CONFIG_TYPES = ["string", "integer", "float", "boolean", "json"]
 
 VALID_CATEGORIES = [
     "company",
+    "email",
     "invoice",
     "tax",
     "service",

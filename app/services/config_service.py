@@ -26,6 +26,12 @@ ENV_OVERRIDES: dict[str, str] = {
     "display.pagination_size": "DSM_PAGINATION_SIZE",
     "security.password_min_length": "DSM_PASSWORD_MIN_LENGTH",
     "security.session_lifetime_hours": "DSM_SESSION_LIFETIME_HOURS",
+    "email.smtp_server": "DSM_MAIL_SERVER",
+    "email.smtp_port": "DSM_MAIL_PORT",
+    "email.smtp_use_tls": "DSM_MAIL_USE_TLS",
+    "email.smtp_username": "DSM_MAIL_USERNAME",
+    "email.smtp_password": "DSM_MAIL_PASSWORD",
+    "email.from_address": "DSM_MAIL_DEFAULT_SENDER",
 }
 
 
