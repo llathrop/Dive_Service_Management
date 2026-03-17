@@ -102,7 +102,7 @@
 {% set _image_capture_js_included = true %}
 <script>
 // File selection state per component instance
-const pendingFiles = {};
+window.pendingFiles = window.pendingFiles || {};
 
 function handleFileSelect(input, type, id) {
     const files = input.files;
@@ -118,7 +118,7 @@ function handleFileSelect(input, type, id) {
     }
 
     const file = files[0];
-    pendingFiles[type + '-' + id] = file;
+    window.pendingFiles[type + '-' + id] = file;
 
     const previewArea = document.getElementById('upload-preview-' + type + '-' + id);
     const previewImg = document.getElementById('preview-img-' + type + '-' + id);
@@ -146,7 +146,7 @@ function handleFileSelect(input, type, id) {
 }
 
 function cancelPreview(type, id) {
-    delete pendingFiles[type + '-' + id];
+    delete window.pendingFiles[type + '-' + id];
     const previewArea = document.getElementById('upload-preview-' + type + '-' + id);
     previewArea.classList.add('d-none');
     document.getElementById('preview-desc-' + type + '-' + id).value = '';
@@ -155,12 +155,12 @@ function cancelPreview(type, id) {
 
 function uploadFile(type, id) {
     const key = type + '-' + id;
-    const file = pendingFiles[key];
+    const file = window.pendingFiles[key];
     if (!file) return;
 
     const description = document.getElementById('preview-desc-' + type + '-' + id).value.trim();
     uploadSingleFile(file, type, id, description);
-    delete pendingFiles[key];
+    delete window.pendingFiles[key];
 }
 
 function uploadSingleFile(file, type, id, description) {
