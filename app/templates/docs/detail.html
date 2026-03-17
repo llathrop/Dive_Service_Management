@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Documentation - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('docs.index') }}">Documentation</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  {# Sidebar: doc navigation #}
+  <div class="col-md-3 mb-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="card-title mb-0"><i class="bi bi-list-ul me-1"></i> Documents</h6>
+      </div>
+      <div class="list-group list-group-flush">
+        {% for doc in docs %}
+        <a href="{{ url_for('docs.detail', slug=doc.slug) }}"
+           class="list-group-item list-group-item-action {{ 'active' if doc.slug == current_slug else '' }}">
+          {{ doc.title }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# Main content #}
+  <div class="col-md-9">
+    <div class="card">
+      <div class="card-body markdown-body">
+        {{ content|safe }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -130,6 +130,7 @@ def _register_blueprints(app):
     from app.blueprints.auth import auth_bp
     from app.blueprints.customers import customers_bp
     from app.blueprints.dashboard import dashboard_bp
+    from app.blueprints.docs import docs_bp
     from app.blueprints.export import export_bp
     from app.blueprints.health import health_bp
     from app.blueprints.inventory import inventory_bp
@@ -147,6 +148,7 @@ def _register_blueprints(app):
     app.register_blueprint(auth_bp)
     app.register_blueprint(customers_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(docs_bp)
     app.register_blueprint(export_bp)
     app.register_blueprint(health_bp)
     app.register_blueprint(inventory_bp)
