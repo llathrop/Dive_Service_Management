@@ -48,8 +48,20 @@
         {% set field = form[field_name] %}
         {% set is_locked = locked_keys.get(config_key, false) %}
 
-        {# File upload fields get special rendering #}
-        {% if field.type == 'FileField' %}
+        {# Special field rendering by type #}
+        {% if field.type == 'PasswordField' %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ field.id }}">{{ field.label.text }}</label>
+          {% if is_locked %}
+            <input type="text" class="form-control" value="••••••••" disabled>
+            <div class="form-text text-muted">Controlled by environment variable.</div>
+          {% else %}
+            <input type="password" class="form-control" name="{{ field.name }}" id="{{ field.id }}"
+                   placeholder="Leave blank to keep current value" autocomplete="new-password">
+            <div class="form-text text-muted">Leave blank to keep the current password.</div>
+          {% endif %}
+        </div>
+        {% elif field.type == 'FileField' %}
         <div class="mb-3">
           <label class="form-label" for="{{ field.id }}">{{ field.label.text }}</label>
           {% if config_key == 'company.logo_path' and company_logo_url %}

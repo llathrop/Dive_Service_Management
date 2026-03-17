@@ -192,6 +192,15 @@ def _seed_system_config():
         ("notification.overdue_check_time", "08:00", "string", "notification", "Time of day for overdue invoice checks"),
         ("notification.retention_days", "90", "integer", "notification", "Days to keep notifications before cleanup"),
         ("notification.order_due_warning_days", "2", "integer", "notification", "Days before due date to warn"),
+        # --- Email ---
+        ("email.enabled", "false", "boolean", "email", "Master toggle for email notifications"),
+        ("email.smtp_server", "", "string", "email", "SMTP server hostname"),
+        ("email.smtp_port", "587", "integer", "email", "SMTP server port"),
+        ("email.smtp_use_tls", "true", "boolean", "email", "Use TLS for SMTP connection"),
+        ("email.smtp_username", "", "string", "email", "SMTP authentication username"),
+        ("email.smtp_password", "", "string", "email", "SMTP authentication password"),
+        ("email.from_address", "", "string", "email", "Sender email address"),
+        ("email.from_name", "", "string", "email", "Sender display name"),
         # --- Display ---
         ("display.date_format", "%Y-%m-%d", "string", "display", "Date display format"),
         ("display.currency_symbol", "$", "string", "display", "Currency symbol"),
@@ -218,8 +227,16 @@ def _seed_system_config():
             db.session.add(entry)
             created_count += 1
 
+    # Mark sensitive keys
+    _SENSITIVE_KEYS = {"email.smtp_password", "email.smtp_username"}
+    for key in _SENSITIVE_KEYS:
+        row = SystemConfig.query.filter_by(config_key=key).first()
+        if row and not row.is_sensitive:
+            row.is_sensitive = True
+            created_count += 1  # count as a change
+
     if created_count > 0:
         db.session.commit()
-        click.echo(f"  {created_count} system config entries created.")
+        click.echo(f"  {created_count} system config entries created/updated.")
     else:
         click.echo("  All system config entries already exist. Nothing to do.")
