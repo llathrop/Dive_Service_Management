@@ -107,7 +107,10 @@ def _populate_detail_form_choices(item_form, part_form, labor_form, service_form
         .order_by(ServiceItem.name)
         .all()
     )
-    item_form.service_item_id.choices = [("", "-- Select --")] + [
+    item_form.service_item_id.choices = [
+        ("", "-- Select --"),
+        ("__new__", "+ Create New Service Item"),
+    ] + [
         (si.id, f"{si.name} ({si.serial_number})" if si.serial_number else si.name)
         for si in service_items
     ]
