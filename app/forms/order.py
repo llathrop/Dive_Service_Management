@@ -19,10 +19,17 @@ from wtforms.validators import DataRequired, Length, NumberRange, Optional
 
 
 def coerce_int_or_none(value):
-    """Coerce a SelectField value to int, treating empty strings as None."""
+    """Coerce a SelectField value to int, treating empty strings as None.
+
+    Passes through non-numeric sentinel strings (e.g. '__new__') so they
+    can be used as placeholder option values in dropdowns.
+    """
     if value == "" or value is None:
         return None
-    return int(value)
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return value
 
 
 # Valid status choices for service orders.
