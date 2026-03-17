@@ -198,6 +198,14 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('items') }}"
+             href="{{ url_for('items.list_items') }}"
+             title="Service Items">
+            <i class="bi bi-wrench"></i>
+            <span class="nav-text">Service Items</span>
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('orders') }}"
              href="{{ url_for('orders.list_orders') }}"
              title="Orders">
