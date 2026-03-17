@@ -102,6 +102,10 @@
 
 {{ render_pagination(pagination) }}
 {% else %}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
 {{ empty_state('No service items found.', 'bi-tools', url_for('items.create'), 'Add Item') }}
+{% else %}
+{{ empty_state('No service items found.', 'bi-tools') }}
+{% endif %}
 {% endif %}
 {% endblock %}

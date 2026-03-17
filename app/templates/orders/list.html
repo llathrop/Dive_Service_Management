@@ -147,6 +147,10 @@
 
 {{ render_pagination(orders) }}
 {% else %}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
 {{ empty_state('No service orders found.', 'bi-clipboard-x', url_for('orders.create'), 'New Order') }}
+{% else %}
+{{ empty_state('No service orders found.', 'bi-clipboard-x') }}
+{% endif %}
 {% endif %}
 {% endblock %}
