@@ -1,0 +1,58 @@
+# =============================================================================
+# Dive Service Management - MariaDB Parity Test Compose Configuration
+# Runs the test suite against MariaDB to catch SQLite/MariaDB behavioral
+# differences before they reach production.
+#
+# Usage:
+#   docker compose -f docker-compose.test-mariadb.yml run --rm test
+#   docker compose -f docker-compose.test-mariadb.yml run --rm test python -m pytest tests/mariadb/ -v
+# =============================================================================
+
+services:
+  mariadb-test:
+    image: mariadb:11
+    environment:
+      MYSQL_ROOT_PASSWORD: testpass
+      MYSQL_DATABASE: dsm_test
+      MYSQL_USER: dsm_test
+      MYSQL_PASSWORD: dsm_test
+    ports:
+      - "3307:3306"  # Different port to avoid conflicts with production
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    tmpfs:
+      - /var/lib/mysql  # Ephemeral for speed
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - TESTING=1
+      - DSM_ENV=mariadb_testing
+      - DSM_SECRET_KEY=test-secret-key-not-for-production
+      - DSM_SECURITY_PASSWORD_SALT=test-salt-not-for-production
+      - DSM_DATABASE_URL=mysql+mysqldb://dsm_test:dsm_test@mariadb-test:3306/dsm_test?charset=utf8mb4
+      - DSM_REDIS_URL=redis://redis-test:6379/0
+    depends_on:
+      mariadb-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    command: python -m pytest tests/mariadb/ -v --tb=short
+    volumes:
+      - ./app:/app/app:ro
+      - ./tests:/app/tests:ro
+      - ./migrations:/app/migrations:ro
+      - ./pyproject.toml:/app/pyproject.toml:ro
+
+  redis-test:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

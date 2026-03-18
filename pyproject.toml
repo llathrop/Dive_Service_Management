@@ -22,12 +22,14 @@ markers = [
     "validation: End-to-end workflow tests",
     "uat: Browser-based user acceptance tests (Playwright)",
     "slow: Tests that take >5 seconds (excluded from quick runs)",
+    "mariadb: MariaDB-specific parity tests (require running MariaDB instance)",
 ]
 addopts = [
     "--strict-markers",
     "--tb=short",
     "-q",
     "--ignore=tests/uat",
+    "--ignore=tests/mariadb",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

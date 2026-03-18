@@ -120,9 +120,29 @@ class TestingConfig(Config):
     SERVER_NAME = "localhost"
 
 
+class MariaDBTestingConfig(TestingConfig):
+    """Testing configuration using MariaDB instead of SQLite.
+
+    Used for parity testing to catch SQLite/MariaDB behavioral differences.
+    The database URL defaults to a local MariaDB on port 3307 (the test
+    compose maps container 3306 -> host 3307 to avoid production conflicts).
+    """
+
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "DSM_DATABASE_URL",
+        "mysql+mysqldb://dsm_test:dsm_test@localhost:3307/dsm_test?charset=utf8mb4",
+    )
+    # MariaDB needs real connection pooling, not SQLite in-memory defaults
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_recycle": 280,
+        "pool_pre_ping": True,
+    }
+
+
 # Map environment names to config classes for the app factory
 config_by_name = {
     "development": DevelopmentConfig,
     "production": ProductionConfig,
     "testing": TestingConfig,
+    "mariadb_testing": MariaDBTestingConfig,
 }
