@@ -531,12 +531,12 @@
           {% if current_user.has_role('admin') or current_user.has_role('technician') %}
           <div class="collapse" id="addServiceForm-{{ oi.id }}">
             <div class="bg-body-tertiary rounded p-3">
-              <form method="POST" action="{{ url_for('orders.add_service', item_id=oi.id) }}">
+              <form method="POST" action="{{ url_for('orders.add_service', item_id=oi.id) }}" class="addServiceMainForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-2 align-items-end">
                   <div class="col-md-3">
                     <label for="price_list_item_id_{{ oi.id }}" class="form-label small">Price List Item</label>
-                    <select name="price_list_item_id" id="price_list_item_id_{{ oi.id }}" class="form-select form-select-sm">
+                    <select name="price_list_item_id" id="price_list_item_id_{{ oi.id }}" class="form-select form-select-sm quick-create-select" data-quick-create-target="quickCreatePriceListSection-{{ oi.id }}">
                       {% for value, label in service_form.price_list_item_id.choices %}
                       <option value="{{ value }}">{{ label }}</option>
                       {% endfor %}
@@ -571,6 +571,36 @@
                   </div>
                 </div>
               </form>
+
+              {# Quick-create price list item inline form #}
+              <div class="collapse mt-3" id="quickCreatePriceListSection-{{ oi.id }}">
+                <div class="border rounded p-3 bg-body-secondary">
+                  <h6 class="mb-3"><i class="bi bi-plus-circle me-1"></i> Create New Price List Item</h6>
+                  <div class="quickCreateAlert alert d-none" role="alert"></div>
+                  <form class="quickCreatePriceListForm">
+                    <div class="row g-2">
+                      <div class="col-md-4">
+                        <label class="form-label small">Item Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" name="name" required maxlength="255">
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label small">Price <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control form-control-sm" name="price" required step="0.01" min="0">
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label small">Description</label>
+                        <input type="text" class="form-control form-control-sm" name="description">
+                      </div>
+                      <div class="col-md-2 d-flex align-items-end gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary quickCreateCancel">Cancel</button>
+                        <button type="button" class="btn btn-sm btn-success quickCreateSubmit">
+                          <i class="bi bi-check-lg me-1"></i> Create
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
             </div>
           </div>
           {% endif %}
@@ -653,12 +683,12 @@
           {% if current_user.has_role('admin') or current_user.has_role('technician') %}
           <div class="collapse" id="addPartForm-{{ oi.id }}">
             <div class="bg-body-tertiary rounded p-3">
-              <form method="POST" action="{{ url_for('orders.add_part', item_id=oi.id) }}">
+              <form method="POST" action="{{ url_for('orders.add_part', item_id=oi.id) }}" class="addPartMainForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-2 align-items-end">
                   <div class="col-md-4">
                     <label for="inventory_item_id_{{ oi.id }}" class="form-label small">Inventory Item <span class="text-danger">*</span></label>
-                    <select name="inventory_item_id" id="inventory_item_id_{{ oi.id }}" class="form-select form-select-sm" required>
+                    <select name="inventory_item_id" id="inventory_item_id_{{ oi.id }}" class="form-select form-select-sm quick-create-select" data-quick-create-target="quickCreateInventorySection-{{ oi.id }}" required>
                       {% for value, label in part_form.inventory_item_id.choices %}
                       <option value="{{ value }}">{{ label }}</option>
                       {% endfor %}
@@ -683,6 +713,40 @@
                   </div>
                 </div>
               </form>
+
+              {# Quick-create inventory item inline form #}
+              <div class="collapse mt-3" id="quickCreateInventorySection-{{ oi.id }}">
+                <div class="border rounded p-3 bg-body-secondary">
+                  <h6 class="mb-3"><i class="bi bi-plus-circle me-1"></i> Create New Inventory Item</h6>
+                  <div class="quickCreateAlert alert d-none" role="alert"></div>
+                  <form class="quickCreateInventoryForm">
+                    <div class="row g-2">
+                      <div class="col-md-3">
+                        <label class="form-label small">Item Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" name="name" required maxlength="255">
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small">SKU</label>
+                        <input type="text" class="form-control form-control-sm" name="sku" maxlength="50">
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small">Category</label>
+                        <input type="text" class="form-control form-control-sm" name="category" placeholder="General">
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small">Unit Cost</label>
+                        <input type="number" class="form-control form-control-sm" name="unit_cost" step="0.01" min="0">
+                      </div>
+                      <div class="col-md-3 d-flex align-items-end gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary quickCreateCancel">Cancel</button>
+                        <button type="button" class="btn btn-sm btn-success quickCreateSubmit">
+                          <i class="bi bi-check-lg me-1"></i> Create
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
             </div>
           </div>
           {% endif %}
@@ -1005,63 +1069,81 @@ function formatBytes(bytes) {
 }
 </script>
 
-{# ===== QUICK-CREATE SERVICE ITEM JS ===== #}
+{# ===== REUSABLE QUICK-CREATE JS ===== #}
 {% if current_user.has_role('admin') or current_user.has_role('technician') %}
 <script>
-(function() {
-  var selectEl = document.getElementById('service_item_id');
-  var quickSection = document.getElementById('quickCreateItemSection');
-  var quickForm = document.getElementById('quickCreateItemForm');
-  var alertEl = document.getElementById('quickCreateItemAlert');
-  var submitBtn = document.getElementById('quickCreateItemSubmit');
-  var cancelBtn = document.getElementById('quickCreateItemCancel');
+/**
+ * Reusable quick-create handler for dropdown selectors.
+ * When user selects "__new__" in a <select>, shows a collapse form,
+ * POSTs to createUrl, and adds the new option to the dropdown.
+ *
+ * @param {Object} opts
+ * @param {HTMLSelectElement} opts.selectEl - The dropdown select element
+ * @param {HTMLElement} opts.collapseEl - The collapse container element
+ * @param {HTMLFormElement} opts.formEl - The inline creation form
+ * @param {HTMLElement} opts.alertEl - Alert div for error/success messages
+ * @param {HTMLElement} opts.submitBtn - The create/submit button
+ * @param {HTMLElement} opts.cancelBtn - The cancel button
+ * @param {HTMLFormElement} opts.mainForm - The parent form to block submission
+ * @param {string} opts.createUrl - The POST URL for quick-create
+ * @param {string} opts.csrfToken - CSRF token value
+ * @param {string} opts.displayKey - JSON key for display text (default: 'display_text')
+ * @param {string} opts.resetValue - Value to reset select to on cancel (default: '')
+ * @param {Function} [opts.onSuccess] - Optional callback after successful creation
+ */
+function initQuickCreate(opts) {
+  var selectEl = opts.selectEl;
+  var collapseEl = opts.collapseEl;
+  var formEl = opts.formEl;
+  var alertEl = opts.alertEl;
+  var submitBtn = opts.submitBtn;
+  var cancelBtn = opts.cancelBtn;
+  var mainForm = opts.mainForm;
+  var createUrl = opts.createUrl;
+  var csrfToken = opts.csrfToken;
+  var displayKey = opts.displayKey || 'display_text';
+  var resetValue = opts.resetValue || '';
 
-  if (!selectEl || !quickSection) return;
+  if (!selectEl || !collapseEl) return;
 
   // Show/hide quick-create section when dropdown changes
   selectEl.addEventListener('change', function() {
     if (this.value === '__new__') {
-      var bsCollapse = new bootstrap.Collapse(quickSection, {toggle: false});
+      var bsCollapse = new bootstrap.Collapse(collapseEl, {toggle: false});
       bsCollapse.show();
     } else {
-      var bsCollapse = bootstrap.Collapse.getInstance(quickSection);
+      var bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
       if (bsCollapse) bsCollapse.hide();
     }
   });
 
-  // Cancel button hides the section and resets dropdown
+  // Cancel button
   cancelBtn.addEventListener('click', function() {
-    selectEl.value = '';
-    var bsCollapse = bootstrap.Collapse.getInstance(quickSection);
+    selectEl.value = resetValue;
+    var bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
     if (bsCollapse) bsCollapse.hide();
-    quickForm.reset();
+    formEl.reset();
     alertEl.classList.add('d-none');
   });
 
-  // Prevent main form submission when "__new__" is selected
-  var mainForm = document.getElementById('addItemMainForm');
-  mainForm.addEventListener('submit', function(e) {
-    if (selectEl.value === '__new__' || selectEl.value === '') {
-      e.preventDefault();
+  // Block main form submission when __new__ is selected
+  if (mainForm) {
+    mainForm.addEventListener('submit', function(e) {
       if (selectEl.value === '__new__') {
-        alertEl.textContent = 'Please create the service item first or select an existing one.';
+        e.preventDefault();
+        alertEl.textContent = 'Please create the item first or select an existing one.';
         alertEl.classList.remove('d-none', 'alert-success');
         alertEl.classList.add('alert-warning');
       }
-    }
-  });
+    });
+  }
 
-  // Submit quick-create form
+  // Submit quick-create
   submitBtn.addEventListener('click', function() {
-    var formData = new FormData(quickForm);
+    var formData = new FormData(formEl);
+    formData.append('csrf_token', csrfToken);
 
-    // Add CSRF token from the main form
-    var csrfToken = document.querySelector('#addItemMainForm input[name="csrf_token"]');
-    if (csrfToken) {
-      formData.append('csrf_token', csrfToken.value);
-    }
-
-    fetch('{{ url_for("items.quick_create") }}', {
+    fetch(createUrl, {
       method: 'POST',
       body: formData
     })
@@ -1072,20 +1154,16 @@ function formatBytes(bytes) {
     })
     .then(function(result) {
       if (result.status === 201) {
-        // Add new option to the service item select and select it
-        var option = new Option(result.body.display_text, result.body.id, true, true);
+        var option = new Option(result.body[displayKey], result.body.id, true, true);
         selectEl.add(option);
         selectEl.value = result.body.id;
 
-        // Hide quick-create section and reset form
-        var bsCollapse = bootstrap.Collapse.getInstance(quickSection);
+        var bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
         if (bsCollapse) bsCollapse.hide();
-        quickForm.reset();
+        formEl.reset();
         alertEl.classList.add('d-none');
 
-        // Hide "no items" warning if present
-        var noItemsWarning = document.getElementById('noItemsWarning');
-        if (noItemsWarning) noItemsWarning.classList.add('d-none');
+        if (opts.onSuccess) opts.onSuccess(result.body);
       } else {
         alertEl.textContent = result.body.error || 'An error occurred.';
         alertEl.classList.remove('d-none', 'alert-success', 'alert-warning');
@@ -1098,7 +1176,84 @@ function formatBytes(bytes) {
       alertEl.classList.add('alert-danger');
     });
   });
+}
+
+// ===== Initialize Service Item quick-create =====
+(function() {
+  var selectEl = document.getElementById('service_item_id');
+  var section = document.getElementById('quickCreateItemSection');
+  if (!selectEl || !section) return;
+
+  var csrfToken = document.querySelector('#addItemMainForm input[name="csrf_token"]');
+
+  initQuickCreate({
+    selectEl: selectEl,
+    collapseEl: section,
+    formEl: document.getElementById('quickCreateItemForm'),
+    alertEl: document.getElementById('quickCreateItemAlert'),
+    submitBtn: document.getElementById('quickCreateItemSubmit'),
+    cancelBtn: document.getElementById('quickCreateItemCancel'),
+    mainForm: document.getElementById('addItemMainForm'),
+    createUrl: '{{ url_for("items.quick_create") }}',
+    csrfToken: csrfToken ? csrfToken.value : '',
+    displayKey: 'display_text',
+    onSuccess: function() {
+      var noItemsWarning = document.getElementById('noItemsWarning');
+      if (noItemsWarning) noItemsWarning.classList.add('d-none');
+    }
+  });
 })();
+
+// ===== Initialize Price List Item quick-create (per order item) =====
+document.querySelectorAll('.quickCreatePriceListForm').forEach(function(formEl) {
+  var section = formEl.closest('.collapse');
+  if (!section) return;
+  var sectionId = section.id;
+  var container = section.closest('.bg-body-tertiary');
+  var mainForm = container ? container.querySelector('.addServiceMainForm') : null;
+  var selectEl = container ? container.querySelector('select[name="price_list_item_id"]') : null;
+  if (!selectEl) return;
+
+  var csrfInput = mainForm ? mainForm.querySelector('input[name="csrf_token"]') : null;
+
+  initQuickCreate({
+    selectEl: selectEl,
+    collapseEl: section,
+    formEl: formEl,
+    alertEl: section.querySelector('.quickCreateAlert'),
+    submitBtn: section.querySelector('.quickCreateSubmit'),
+    cancelBtn: section.querySelector('.quickCreateCancel'),
+    mainForm: null,  // Don't block service form — price list item is optional
+    createUrl: '{{ url_for("price_list.quick_create") }}',
+    csrfToken: csrfInput ? csrfInput.value : '',
+    displayKey: 'display_text'
+  });
+});
+
+// ===== Initialize Inventory Item quick-create (per order item) =====
+document.querySelectorAll('.quickCreateInventoryForm').forEach(function(formEl) {
+  var section = formEl.closest('.collapse');
+  if (!section) return;
+  var container = section.closest('.bg-body-tertiary');
+  var mainForm = container ? container.querySelector('.addPartMainForm') : null;
+  var selectEl = container ? container.querySelector('select[name="inventory_item_id"]') : null;
+  if (!selectEl) return;
+
+  var csrfInput = mainForm ? mainForm.querySelector('input[name="csrf_token"]') : null;
+
+  initQuickCreate({
+    selectEl: selectEl,
+    collapseEl: section,
+    formEl: formEl,
+    alertEl: section.querySelector('.quickCreateAlert'),
+    submitBtn: section.querySelector('.quickCreateSubmit'),
+    cancelBtn: section.querySelector('.quickCreateCancel'),
+    mainForm: mainForm,
+    createUrl: '{{ url_for("inventory.quick_create") }}',
+    csrfToken: csrfInput ? csrfInput.value : '',
+    displayKey: 'display_text'
+  });
+});
 </script>
 {% endif %}
 

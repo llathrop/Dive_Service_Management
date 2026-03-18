@@ -6,7 +6,7 @@ stock adjustments, and a low-stock filtered view.  All routes require
 authentication.  Write operations require 'admin' or 'technician' role.
 """
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 
@@ -262,3 +262,81 @@ def adjust_stock(id):
         flash("Invalid stock adjustment.", "danger")
 
     return redirect(url_for("inventory.detail", id=id))
+
+
+@inventory_bp.route("/quick-create", methods=["POST"])
+@login_required
+@roles_accepted("admin", "technician")
+def quick_create():
+    """Create a new inventory item inline and return JSON with id + display_text.
+
+    Accepts form fields: name (required), sku (optional), category (optional),
+    unit_cost (optional), quantity_in_stock (optional, default 0),
+    reorder_level (optional, default 0).  Returns JSON so the frontend can add
+    the new item to the select dropdown without a page reload.
+    """
+    name = request.form.get("name", "").strip()
+    sku = request.form.get("sku", "").strip() or None
+    category = request.form.get("category", "").strip() or "General"
+    unit_cost_str = request.form.get("unit_cost", "").strip()
+    qty_str = request.form.get("quantity_in_stock", "").strip()
+    reorder_str = request.form.get("reorder_level", "").strip()
+
+    if not name:
+        return jsonify({"error": "Item name is required."}), 400
+
+    if len(name) > 255:
+        return jsonify({"error": "Name exceeds 255 characters."}), 400
+
+    unit_cost = None
+    if unit_cost_str:
+        try:
+            unit_cost = float(unit_cost_str)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Unit cost must be a valid number."}), 400
+
+    quantity_in_stock = 0
+    if qty_str:
+        try:
+            quantity_in_stock = float(qty_str)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Quantity must be a valid number."}), 400
+
+    reorder_level = 0
+    if reorder_str:
+        try:
+            reorder_level = float(reorder_str)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Reorder level must be a valid number."}), 400
+
+    data = {
+        "name": name,
+        "sku": sku,
+        "category": category,
+        "purchase_cost": unit_cost,
+        "quantity_in_stock": quantity_in_stock,
+        "reorder_level": reorder_level,
+    }
+
+    try:
+        item = inventory_service.create_inventory_item(
+            data, created_by=current_user.id
+        )
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "An inventory item with that SKU already exists."}), 409
+
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="inventory_item",
+            entity_id=item.id,
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
+
+    display_text = f"{item.name} (SKU: {item.sku})" if item.sku else item.name
+    return jsonify({"id": item.id, "display_text": display_text}), 201

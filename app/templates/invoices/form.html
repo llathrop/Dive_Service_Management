@@ -33,6 +33,53 @@
       <div class="row">
         <div class="col-md-6">
           {{ render_select(form.customer_id) }}
+
+          {# Quick-create customer inline form #}
+          <div class="collapse mt-2" id="quickCreateCustomerSection">
+            <div class="border rounded p-3 bg-body-secondary">
+              <h6 class="mb-3"><i class="bi bi-plus-circle me-1"></i> Create New Customer</h6>
+              <div id="quickCreateCustomerAlert" class="alert d-none" role="alert"></div>
+              <form id="quickCreateCustomerForm">
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <label class="form-label small">Type</label>
+                    <select class="form-select form-select-sm" name="customer_type" id="qc_customer_type">
+                      <option value="individual">Individual</option>
+                      <option value="business">Business</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4" id="qc_first_name_group">
+                    <label class="form-label small">First Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="first_name">
+                  </div>
+                  <div class="col-md-4" id="qc_last_name_group">
+                    <label class="form-label small">Last Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="last_name">
+                  </div>
+                </div>
+                <div class="row g-2 mt-1">
+                  <div class="col-md-4 d-none" id="qc_business_name_group">
+                    <label class="form-label small">Business Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="business_name">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small">Email</label>
+                    <input type="email" class="form-control form-control-sm" name="email">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small">Phone</label>
+                    <input type="text" class="form-control form-control-sm" name="phone_primary">
+                  </div>
+                  <div class="col-md-4 d-flex align-items-end gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="quickCreateCustomerCancel">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-success" id="quickCreateCustomerSubmit">
+                      <i class="bi bi-check-lg me-1"></i> Create
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
         <div class="col-md-6">
           <div class="mb-3">
@@ -103,4 +150,89 @@
        class="btn btn-outline-secondary">Cancel</a>
   </div>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var selectEl = document.getElementById('customer_id');
+  var section = document.getElementById('quickCreateCustomerSection');
+  var formEl = document.getElementById('quickCreateCustomerForm');
+  var alertEl = document.getElementById('quickCreateCustomerAlert');
+  var submitBtn = document.getElementById('quickCreateCustomerSubmit');
+  var cancelBtn = document.getElementById('quickCreateCustomerCancel');
+  var typeSelect = document.getElementById('qc_customer_type');
+
+  if (!selectEl || !section) return;
+
+  // Toggle business/individual fields
+  if (typeSelect) {
+    typeSelect.addEventListener('change', function() {
+      var isBiz = this.value === 'business';
+      document.getElementById('qc_first_name_group').classList.toggle('d-none', isBiz);
+      document.getElementById('qc_last_name_group').classList.toggle('d-none', isBiz);
+      document.getElementById('qc_business_name_group').classList.toggle('d-none', !isBiz);
+    });
+  }
+
+  selectEl.addEventListener('change', function() {
+    if (this.value === '__new__') {
+      var bsCollapse = new bootstrap.Collapse(section, {toggle: false});
+      bsCollapse.show();
+    } else {
+      var bsCollapse = bootstrap.Collapse.getInstance(section);
+      if (bsCollapse) bsCollapse.hide();
+    }
+  });
+
+  cancelBtn.addEventListener('click', function() {
+    selectEl.value = '';
+    var bsCollapse = bootstrap.Collapse.getInstance(section);
+    if (bsCollapse) bsCollapse.hide();
+    formEl.reset();
+    alertEl.classList.add('d-none');
+    // Reset type toggle
+    document.getElementById('qc_first_name_group').classList.remove('d-none');
+    document.getElementById('qc_last_name_group').classList.remove('d-none');
+    document.getElementById('qc_business_name_group').classList.add('d-none');
+  });
+
+  submitBtn.addEventListener('click', function() {
+    var formData = new FormData(formEl);
+    var csrfToken = document.querySelector('form input[name="csrf_token"]');
+    if (csrfToken) formData.append('csrf_token', csrfToken.value);
+
+    fetch('{{ url_for("orders.quick_create_customer") }}', {
+      method: 'POST',
+      body: formData
+    })
+    .then(function(response) {
+      return response.json().then(function(data) {
+        return {status: response.status, body: data};
+      });
+    })
+    .then(function(result) {
+      if (result.status === 201) {
+        var option = new Option(result.body.display_name, result.body.id, true, true);
+        selectEl.add(option);
+        selectEl.value = result.body.id;
+
+        var bsCollapse = bootstrap.Collapse.getInstance(section);
+        if (bsCollapse) bsCollapse.hide();
+        formEl.reset();
+        alertEl.classList.add('d-none');
+      } else {
+        alertEl.textContent = result.body.error || 'An error occurred.';
+        alertEl.classList.remove('d-none', 'alert-success', 'alert-warning');
+        alertEl.classList.add('alert-danger');
+      }
+    })
+    .catch(function() {
+      alertEl.textContent = 'An unexpected error occurred.';
+      alertEl.classList.remove('d-none', 'alert-success', 'alert-warning');
+      alertEl.classList.add('alert-danger');
+    });
+  });
+})();
+</script>
 {% endblock %}
