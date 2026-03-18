@@ -10,6 +10,7 @@ from flask import (
     Blueprint,
     Response,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -289,3 +290,74 @@ def edit_category(id):
         flash("Invalid category data.", "error")
 
     return redirect(url_for("price_list.categories"))
+
+
+@price_list_bp.route("/quick-create", methods=["POST"])
+@login_required
+@roles_accepted("admin", "technician")
+def quick_create():
+    """Create a new price list item inline and return JSON with id + display_text.
+
+    Accepts form fields: name (required), price (required), category_id (optional),
+    description (optional).  Returns JSON so the frontend can add the new item
+    to the select dropdown without a page reload.
+    """
+    name = request.form.get("name", "").strip()
+    price_str = request.form.get("price", "").strip()
+    category_id = request.form.get("category_id", type=int) or None
+    description = request.form.get("description", "").strip() or None
+
+    if not name:
+        return jsonify({"error": "Item name is required."}), 400
+
+    if len(name) > 255:
+        return jsonify({"error": "Name exceeds 255 characters."}), 400
+
+    if not price_str:
+        return jsonify({"error": "Price is required."}), 400
+
+    try:
+        price = float(price_str)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Price must be a valid number."}), 400
+
+    if price < 0:
+        return jsonify({"error": "Price must be zero or greater."}), 400
+
+    # Default to first active category if none provided
+    if not category_id:
+        categories = price_list_service.get_categories(active_only=True)
+        if categories:
+            category_id = categories[0].id
+        else:
+            return jsonify({"error": "No active price list categories exist."}), 400
+
+    data = {
+        "category_id": category_id,
+        "name": name,
+        "description": description,
+        "price": price,
+    }
+
+    try:
+        item = price_list_service.create_price_list_item(
+            data, updated_by=current_user.id
+        )
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "A price list item with that name already exists."}), 409
+
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="price_list_item",
+            entity_id=item.id,
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
+
+    display_text = f"{item.name} (${item.price})"
+    return jsonify({"id": item.id, "display_text": display_text}), 201

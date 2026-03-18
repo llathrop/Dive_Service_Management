@@ -97,7 +97,10 @@ def _populate_detail_form_choices(item_form, part_form, labor_form, service_form
         .order_by(InventoryItem.name)
         .all()
     )
-    part_form.inventory_item_id.choices = [("", "-- Select --")] + [
+    part_form.inventory_item_id.choices = [
+        ("", "-- Select --"),
+        ("__new__", "+ Create New Inventory Item"),
+    ] + [
         (ii.id, f"{ii.name} (SKU: {ii.sku})" if ii.sku else ii.name)
         for ii in inv_items
     ]
@@ -113,7 +116,8 @@ def _populate_detail_form_choices(item_form, part_form, labor_form, service_form
         .all()
     )
     service_form.price_list_item_id.choices = [
-        ("", "-- Select (or leave blank for custom) --")
+        ("", "-- Select (or leave blank for custom) --"),
+        ("__new__", "+ Create New Price List Item"),
     ] + [
         (pi.id, f"{pi.name} (${pi.price})")
         for pi in price_items

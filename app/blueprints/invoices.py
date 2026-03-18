@@ -62,7 +62,10 @@ def _populate_invoice_form_choices(form):
         .order_by(Customer.last_name, Customer.first_name)
         .all()
     )
-    form.customer_id.choices = [("", "-- Select --")] + [
+    form.customer_id.choices = [
+        ("", "-- Select --"),
+        ("__new__", "+ Create New Customer"),
+    ] + [
         (c.id, c.display_name) for c in customers
     ]
 
