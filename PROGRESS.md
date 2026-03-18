@@ -356,12 +356,37 @@
 
 ---
 
-### Backlog — Remaining (Wave 4: Lower Priority)
+### Wave 4A: Infrastructure & Polish (Complete)
 
-- [ ] dsm-beat healthcheck fix (consistently shows unhealthy)
-- [ ] Email notifications (SMTP configuration + delivery)
-- [ ] Saved searches per user
-- [ ] Generalized logging access (unified app/auth/Docker log viewer)
-- [ ] Module splitting (large blueprints like orders.py, admin.py)
-- [ ] MariaDB parity tests (test suite runs on SQLite only)
-- [ ] Broadcast notification UI alignment
+- [x] **Beat healthcheck fix** — dsm-beat container healthcheck now works reliably ([PR #29](https://github.com/llathrop/Dive_Service_Management/pull/29))
+- [x] **Vendor frontend libs** — Bootstrap, HTMX, Alpine.js, Chart.js served from static files instead of CDN ([PR #30](https://github.com/llathrop/Dive_Service_Management/pull/30))
+- [x] **Extended login form** — Flask-Security ExtendedLoginForm wired up ([PR #31](https://github.com/llathrop/Dive_Service_Management/pull/31))
+- [x] **Compose override template** — docker-compose.override.yml.example for dev workflow ([PR #32](https://github.com/llathrop/Dive_Service_Management/pull/32))
+- [x] **Company branding** — logo upload, company name in header/invoices ([PR #33](https://github.com/llathrop/Dive_Service_Management/pull/33))
+
+### Wave 4B: Features (Complete)
+
+- [x] **Email notifications** — SMTP-based delivery via email_service.py, reads config from SystemConfig at send-time, Celery async delivery, SMTP settings editable from admin UI
+- [x] **Saved searches** — per-user, per-type JSON filter storage with CRUD API and reusable Jinja macro; SavedSearch model with migration g7b8c9d0e1f2
+- [x] **Broadcast notification UI** — notification list page with broadcast/personal distinction, mark-as-read for broadcast notifications via NotificationRead join table
+- [x] **In-app docs viewer** — docs blueprint serving project documentation from the sidebar
+
+### Wave 4C: Technical Debt (Complete)
+
+- [x] **Module splitting** — admin/ package (5 modules: users, settings, data, audit, logs) and orders/ package (7 modules: items, labor, notes, parts, services, status)
+- [x] **Admin log viewer** — allowlist-based path traversal prevention, HTMX 5s polling, admin-only access via log_service.py
+- [x] **MariaDB parity tests** — test suite validates MariaDB-specific behavior alongside SQLite
+
+### Wave 4D: UX Enhancements (Complete)
+
+- [x] **Inline dropdown creation** — 4 quick-create patterns (customers, inventory items, price list categories, tags) allowing creation without leaving the current form
+- [x] **Docker persistent test container** — avoids rebuild overhead, supports rapid test iteration
+
+### Wave 4E: Documentation Updates (Complete)
+
+- [x] PROJECT_BLUEPRINT.md updated (file structure, features, implementation status)
+- [x] README.md updated (test count, tech stack, features, blueprint count)
+- [x] PROGRESS.md updated (Wave 4A-E entries)
+- [x] MEMORY.md verified and corrected
+
+**Tests**: 1418 total, all passing

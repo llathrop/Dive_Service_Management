@@ -14,10 +14,15 @@ While initially built for a drysuit repair shop, the architecture supports any i
 - **Invoicing** — invoice generation from service orders, line item management, payment recording, and status tracking
 - **Reports** — revenue, orders, inventory, customer, and accounts receivable aging reports with Chart.js visualizations
 - **Repair Tools** — seal size calculator, material estimator, pricing calculator, leak test log, valve reference guide, unit converter
-- **Notifications** — in-app alerts for low stock, order status changes, and payment events
-- **Data Export** — CSV and XLSX export for customers, inventory, orders, and invoices
-- **Admin Panel** — user management with role-based access control (admin, technician, viewer), system settings, and data management
-- **Theme Support** — light, dark, and auto themes via Bootstrap 5
+- **Notifications** — in-app alerts for low stock, order status changes, and payment events; email notifications via SMTP
+- **Saved Searches** — per-user saved filter combinations with reusable macro across all list views
+- **Data Export** — CSV and XLSX export for customers, inventory, orders, and invoices; streaming CSV for large datasets
+- **Data Import** — column mapping wizard with fuzzy auto-detect, CSV and XLSX support, row-level validation
+- **File Attachments** — polymorphic file uploads with mobile camera capture (HTML5 capture="environment")
+- **Admin Panel** — user management with role-based access control (admin, technician, viewer), editable system settings, audit log viewer, application log viewer, data management with backup/import
+- **Inline Quick-Create** — dropdown creation for customers, inventory items, price list categories, and tags without leaving the current form
+- **In-App Documentation** — built-in docs viewer accessible from the sidebar
+- **Theme Support** — light, dark, and auto themes via Bootstrap 5 with company branding
 
 ## Technology Stack
 
@@ -29,6 +34,8 @@ While initially built for a drysuit repair shop, the architecture supports any i
 | Auth | Flask-Security-Too (argon2 password hashing, role-based access) |
 | Frontend | Jinja2 templates, Bootstrap 5.3, HTMX 2.0, Alpine.js 3.14 |
 | Charts | Chart.js 4.x |
+| PDF | fpdf2 (invoices, price lists) |
+| Email | smtplib (SMTP notifications, configurable from admin UI) |
 | Server | Gunicorn (production), Flask dev server (development) |
 | Container | Docker + Docker Compose |
 
@@ -118,7 +125,12 @@ python3 -m pytest --cov=app --cov-report=html
 ### Docker-based Testing
 
 ```bash
+# One-off test run
 docker compose -f docker-compose.test.yml run --rm test
+
+# Persistent test container (avoids rebuild overhead)
+docker compose -f docker-compose.test.yml up -d test
+docker compose -f docker-compose.test.yml exec test pytest
 ```
 
 ## Project Structure
@@ -128,7 +140,7 @@ app/
   __init__.py          # Application factory
   config.py            # Configuration classes
   extensions.py        # Flask extension initialization
-  blueprints/          # Route handlers (15 blueprints)
+  blueprints/          # Route handlers (17 blueprints)
   models/              # SQLAlchemy models
   services/            # Business logic layer
   forms/               # WTForms form classes
@@ -136,7 +148,7 @@ app/
   static/              # CSS, JS, images
   cli/                 # Flask CLI commands
 migrations/            # Alembic database migrations
-tests/                 # Test suite (802 tests)
+tests/                 # Test suite (1418 tests)
   smoke/               # Application startup and health tests
   unit/                # Model and service unit tests
   blueprint/           # Route and view tests
@@ -176,12 +188,25 @@ The included `docker-compose.yml` provides a production-ready setup with:
 
 - **web** — Flask application with Gunicorn
 - **db** — MariaDB 11 LTS with health checks and persistent storage
+- **redis** — Redis for Celery broker and caching
+- **worker** — Celery worker for background tasks
+- **beat** — Celery Beat for scheduled tasks (low stock checks, overdue alerts)
 
 Both containers support ARM64 (Raspberry Pi) and x86-64 architectures.
 
 ### Raspberry Pi
 
 The application runs on Raspberry Pi 4+ with 4GB RAM. Use the standard Docker Compose setup; all container images provide multi-architecture support.
+
+## Documentation
+
+Detailed documentation is available in the `docs/` directory:
+
+- [Architecture](docs/architecture.md) — system design, data model, service layer patterns
+- [User Guide](docs/user_guide.md) — task-oriented guide by user role
+- [Installation](docs/installation.md) — setup for Docker, Pi, and cloud deployments
+- [Configuration](docs/configuration.md) — environment variables and system settings reference
+- [Cloud Deployment](docs/cloud_deployment.md) — AWS, GCP, and Azure deployment guides
 
 ## License
 
