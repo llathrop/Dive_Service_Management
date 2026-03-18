@@ -1312,11 +1312,12 @@ Each entity list page has its own search bar that uses FULLTEXT search on that e
 - Tags are auto-suggested as user types (HTMX autocomplete from `/api/tags/suggest?q=`)
 - Clicking a tag anywhere in the UI filters the current list by that tag
 
-### 5.5 Saved Searches
+### 5.5 Saved Searches (Implemented)
 
 - Users can save their current filter combination as a named saved search
-- Saved searches appear in a dropdown on the entity list page
-- One saved search per entity type can be marked as default (auto-applied on page load)
+- Saved searches appear in a dropdown on the entity list page via reusable Jinja macro
+- Per-user, per-entity-type JSON filter storage with full CRUD API
+- `SavedSearch` model with Alembic migration `g7b8c9d0e1f2`
 
 ### 5.6 Dedicated Billing Search
 
@@ -1417,7 +1418,7 @@ A specialized search page (`/billing/search`) with fields specifically designed 
   - Low stock check: every 6 hours (configurable)
   - Overdue invoice check: daily at 8:00 AM (configurable)
   - Order approaching due: daily at 8:00 AM
-- **Future**: Email notifications (SMTP configuration in system settings, not implemented in v1)
+- **Email notifications**: SMTP-based delivery via `email_service.py`, reads config from SystemConfig at send-time, Celery async delivery. SMTP settings editable from admin UI.
 
 ### 7.3 Implementation
 
@@ -1807,7 +1808,7 @@ All prefixed with `DSM_` for namespacing.
 
 ### 9.3 Database-Stored Configuration (editable via Admin UI)
 
-> **Implementation status**: The `system_config` table and `config_service.py` are being implemented as part of the Admin Overhaul (PR A). The tabbed settings UI (PR B) will make all entries below editable from `/admin/settings`. Settings controlled by environment variables (e.g., `DSM_SECRET_KEY`, `DSM_DATABASE_URL`) are shown as read-only in the UI with an explanation that they are ENV-locked.
+> **Implementation status**: Complete. The `system_config` table, `config_service.py`, and tabbed settings UI at `/admin/settings` are fully implemented (Admin Overhaul PRs #19-#23). All entries below are editable from the admin UI. Settings controlled by environment variables (e.g., `DSM_SECRET_KEY`, `DSM_DATABASE_URL`) are shown as read-only with an explanation that they are ENV-locked. The admin audit log viewer at `/admin/audit` displays all configuration changes.
 
 Organized by category in the `system_config` table:
 
@@ -1937,25 +1938,38 @@ Dive_Service_Management/
 |   |   |-- price_list.py             # PriceListCategory, PriceListItem, PriceListItemParts, AppliedService
 |   |   |-- mixins.py                  # Common model mixins (TimestampMixin, SoftDeleteMixin, AuditMixin)
 |   |
-|   |-- blueprints/                    # Flask blueprints (route handlers)
+|   |-- blueprints/                    # Flask blueprints (17 total)
 |   |   |-- __init__.py
 |   |   |-- auth.py                    # Login, logout, password management
 |   |   |-- dashboard.py               # Dashboard views
 |   |   |-- customers.py               # Customer CRUD and search
-|   |   |-- orders.py                  # Service order CRUD, status management
+|   |   |-- orders/                    # Service order package (split from monolithic file)
+|   |   |   |-- __init__.py            # Blueprint registration, list/create/edit/delete routes
+|   |   |   |-- items.py               # Order item management routes
+|   |   |   |-- labor.py               # Labor entry routes
+|   |   |   |-- notes.py               # Service note routes
+|   |   |   |-- parts.py               # Parts used routes
+|   |   |   |-- services.py            # Applied service routes
+|   |   |   |-- status.py              # Status change routes
 |   |   |-- items.py                   # Service item CRUD, serial lookup
 |   |   |-- inventory.py               # Inventory CRUD, stock management
 |   |   |-- invoices.py                # Invoice CRUD, generation, payments
 |   |   |-- price_list.py              # Price list management, apply services
-|   |   |-- billing.py                 # Dedicated billing search
 |   |   |-- reports.py                 # Report generation views
 |   |   |-- tools.py                   # Calculator and tool views
-|   |   |-- admin.py                   # Admin pages (users, config, data mgmt)
+|   |   |-- admin/                     # Admin package (split from monolithic file)
+|   |   |   |-- __init__.py            # Blueprint registration
+|   |   |   |-- users.py               # User management routes
+|   |   |   |-- settings.py            # System settings routes
+|   |   |   |-- data.py                # Data management and import routes
+|   |   |   |-- audit.py               # Audit log viewer routes
+|   |   |   |-- logs.py                # Application log viewer routes
 |   |   |-- search.py                  # Global search endpoint
 |   |   |-- notifications.py           # Notification endpoints
-|   |   |-- export.py                  # Export endpoints (CSV, XLSX, JSON, PDF)
-|   |   |-- import_data.py             # Import endpoints and processing
-|   |   |-- api.py                     # HTMX fragment endpoints (partials, autocomplete, etc.)
+|   |   |-- export.py                  # Export endpoints (CSV, XLSX, PDF)
+|   |   |-- health.py                  # Health check endpoints (/health, /health/ready, /health/live)
+|   |   |-- attachments.py             # File upload and camera capture endpoints
+|   |   |-- docs.py                    # In-app documentation viewer
 |   |
 |   |-- services/                      # Business logic layer
 |   |   |-- __init__.py
@@ -1973,6 +1987,10 @@ Dive_Service_Management/
 |   |   |-- price_list_service.py       # Price list CRUD, apply/remove services, price snapshots
 |   |   |-- tag_service.py             # Tag management
 |   |   |-- report_service.py          # Report data aggregation
+|   |   |-- email_service.py           # SMTP email delivery (reads config from SystemConfig)
+|   |   |-- saved_search_service.py    # Per-user saved search CRUD
+|   |   |-- log_service.py             # Application log file reading (allowlist-based path safety)
+|   |   |-- data_management_service.py # DB stats, backup, migration status
 |   |
 |   |-- forms/                         # WTForms form classes
 |   |   |-- __init__.py
@@ -2411,62 +2429,69 @@ All reports support date range filtering, export to CSV/XLSX/PDF, and are viewab
 
 ---
 
-## 13. Implementation Phases (Suggested)
+## 13. Implementation Phases
 
-### Phase 1 -- Foundation (Weeks 1-3)
+> All phases are complete. See `PROGRESS.md` for detailed per-phase tracking.
 
-- Project scaffolding (directory structure, Docker setup, config system)
-- `scripts/setup.sh` deployment script (first-time install, upgrade, backup/restore, status)
-- Makefile with common development shortcuts
-- Database schema and migrations (Alembic)
+### Phase 1 -- Foundation (Complete, 36 tests)
+
+- Project scaffolding, Docker setup, config system, Makefile, deployment script
+- Database schema and Alembic migrations
 - Base template with navigation, theme support
-- User authentication and role-based access
+- User authentication and role-based access (Flask-Security-Too)
 - Flask CLI commands (seed-db, create-admin)
+- Health check endpoint
 
-### Phase 2 -- Core Entities (Weeks 4-6)
+### Phase 2 -- Core Entities (Complete, 377 tests cumulative)
 
-- Customer CRUD (list, detail, form, search)
-- Service Item CRUD (with serial lookup and drysuit-specific fields)
-- Inventory Item CRUD (with stock management)
-- Price List management (categories, items, linked parts) with seed data for common drysuit repairs
-- Tagging system
-- Global search
+- Customer, ServiceItem, InventoryItem, PriceList CRUD with full service layers
+- Tagging system (polymorphic)
+- Global search with HTMX autocomplete
 
-### Phase 3 -- Service Workflow (Weeks 7-9)
+### Phase 3 -- Service Workflow (Complete, 516 tests cumulative)
 
-- Service Order CRUD with full workflow
-- Service Order Items (linking items to orders)
-- Applied Services (price list picker + custom ad-hoc items on order items)
-- Parts Used (with inventory deduction, including auto-deduct from applied services)
-- Labor Entry
-- Service Notes
-- Order status workflow with timeline
-- Tab system for open work items
+- Service Order CRUD with full status workflow
+- Applied Services, Parts Used, Labor Entries, Service Notes
+- Order number generation with retry-on-IntegrityError
 
-### Phase 4 -- Billing (Weeks 10-11)
+### Phase 4 -- Billing (Complete, 635 tests cumulative)
 
-- Invoice generation from orders (with applied services as primary line item source)
-- Invoice CRUD and status management
-- Payment recording
-- Invoice PDF generation
-- Billing search page
-- Printable/exportable customer-facing price list
+- Invoice generation from orders, line item management, payment recording
+- Invoice status state machine (INVOICE_STATUS_TRANSITIONS)
 
-### Phase 5 -- Reports, Tools, Polish (Weeks 12-14)
-- All reports with charts
-- Calculators and tools
-- Import/export functionality
-- Notification system (in-app + scheduled checks)
-- Celery background tasks
+### Phase 5 -- Reports, Tools, Polish (Complete, 726 tests cumulative)
 
-### Phase 6 -- Production Readiness (Weeks 15-16)
+- 5 report types with Chart.js visualizations
+- 6 repair tools (seal calculator, material estimator, etc.)
+- CSV/XLSX export, notification system, Celery background tasks
 
-- Documentation (setup, user guide, configuration reference)
-- Docker optimization (multi-stage build, health checks, resource limits)
-- Security review (CSRF, XSS, SQL injection prevention, rate limiting)
-- Performance testing on Raspberry Pi
-- Backup/restore scripts
-- **Testing**: Final full regression (`pytest`), coverage report, fix any gaps below target
+### Phase 6 -- Production Readiness (Complete, 726 tests)
+
+- Alembic migration for Phases 3-5, Docker verification, security audit
+
+### Post-Phase 6 Reviews (Complete, 809 tests cumulative)
+
+- 3 rounds of external review fixes (CODEX, Gemini)
+- Critical fixes: inventory decimals, notification broadcast reads, status bypass prevention
+- Admin overhaul: SystemConfig, editable settings UI, data management, CSV import
+
+### Sprint 2026-03-13 (Complete, 939 tests cumulative)
+
+- Quick-create customer modal, AuditLog model + viewer, UAT admin tests
+
+### Sprint 2026-03-15 Waves 1-3 (Complete, 1246 tests cumulative)
+
+- Audit wiring, PDF invoices (fpdf2), documentation suite
+- Dashboard activity feed, health probes (/health/ready, /health/live), kanban board, camera capture
+- Service layer refactoring, FULLTEXT search + streaming exports, import column mapping wizard
+
+### Wave 4A-D (Complete, 1418 tests cumulative)
+
+- **4A**: Beat healthcheck fix, vendor frontend libs, extended login form, compose override template, company branding
+- **4B**: Email notifications (SMTP), saved searches (per-user), broadcast notification UI, in-app docs viewer
+- **4C**: Module splitting (admin/ and orders/ packages), admin log viewer, MariaDB parity tests
+- **4D**: Inline dropdown creation (4 quick-create patterns), Docker persistent test container
+- **4E**: Planning documentation updates
 
 ---
 
@@ -2926,8 +2951,8 @@ Each cloud guide should cover:
 ### 15.4 Health and Readiness Endpoints
 
 - `GET /health` — Returns 200 if app is running (already implemented)
-- `GET /health/ready` — Returns 200 only if DB and Redis connections are healthy (future enhancement)
-- `GET /health/live` — Returns 200 always (Kubernetes liveness probe, future)
+- `GET /health/ready` — Returns 200 only if DB and Redis connections are healthy (implemented)
+- `GET /health/live` — Returns 200 always (Kubernetes liveness probe, implemented)
 
 ---
 
