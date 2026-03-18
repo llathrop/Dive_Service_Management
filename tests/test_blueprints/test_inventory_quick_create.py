@@ -111,6 +111,45 @@ class TestQuickCreateInventoryValidation:
         assert "error" in data
         assert "name" in data["error"].lower()
 
+    def test_name_too_long(self, admin_client):
+        """Name exceeding 255 chars returns 400."""
+        resp = admin_client.post(QUICK_CREATE_URL, data={
+            "name": "X" * 256,
+        })
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "error" in data
+
+    def test_negative_unit_cost(self, admin_client):
+        """Negative unit cost returns 400."""
+        resp = admin_client.post(QUICK_CREATE_URL, data={
+            "name": "Neg Cost Part",
+            "unit_cost": "-5.00",
+        })
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "error" in data
+
+    def test_negative_quantity(self, admin_client):
+        """Negative quantity returns 400."""
+        resp = admin_client.post(QUICK_CREATE_URL, data={
+            "name": "Neg Qty Part",
+            "quantity_in_stock": "-1",
+        })
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "error" in data
+
+    def test_non_numeric_cost(self, admin_client):
+        """Non-numeric unit cost returns 400."""
+        resp = admin_client.post(QUICK_CREATE_URL, data={
+            "name": "Bad Cost Part",
+            "unit_cost": "abc",
+        })
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "error" in data
+
     def test_duplicate_sku(self, admin_client):
         """Duplicate SKU returns 409."""
         resp1 = admin_client.post(QUICK_CREATE_URL, data={

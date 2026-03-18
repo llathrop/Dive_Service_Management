@@ -8,7 +8,7 @@ from app.extensions import db
 from app.forms.service_order_item import ServiceOrderItemForm
 from app.models.customer import Customer
 from app.models.service_item import ServiceItem
-from app.services import order_service
+from app.services import audit_service, order_service
 
 from app.blueprints.orders import orders_bp
 
@@ -24,6 +24,18 @@ def quick_create_customer():
     business_name = request.form.get("business_name", "").strip() or None
     email = request.form.get("email", "").strip() or None
     phone_primary = request.form.get("phone_primary", "").strip() or None
+
+    # Validate input lengths
+    if first_name and len(first_name) > 100:
+        return jsonify({"error": "First name exceeds 100 characters."}), 400
+    if last_name and len(last_name) > 100:
+        return jsonify({"error": "Last name exceeds 100 characters."}), 400
+    if business_name and len(business_name) > 200:
+        return jsonify({"error": "Business name exceeds 200 characters."}), 400
+    if email and len(email) > 254:
+        return jsonify({"error": "Email exceeds 254 characters."}), 400
+    if phone_primary and len(phone_primary) > 30:
+        return jsonify({"error": "Phone number exceeds 30 characters."}), 400
 
     # Validate required name fields based on customer type
     if customer_type == "business":
@@ -49,6 +61,16 @@ def quick_create_customer():
     except IntegrityError:
         db.session.rollback()
         return jsonify({"error": "A customer with that email already exists."}), 409
+
+    try:
+        audit_service.log_action(
+            action="create",
+            entity_type="customer",
+            entity_id=customer.id,
+            details={"name": customer.display_name, "source": "quick_create"},
+        )
+    except Exception:
+        pass
 
     return jsonify({"id": customer.id, "display_name": customer.display_name}), 201
 
