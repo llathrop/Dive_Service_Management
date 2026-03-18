@@ -375,6 +375,60 @@ docker compose up -d
 
 ---
 
+## Running Tests (Docker)
+
+DSM provides two Docker-based approaches for running tests. Both use SQLite in-memory, so no MariaDB or Redis is required.
+
+### Persistent Test Container (Recommended for Development)
+
+The persistent test runner stays running and mounts your source code as volumes. Code changes are reflected instantly with no rebuild needed.
+
+```bash
+# Build and start the persistent test container
+docker compose -f docker-compose.test-dev.yml build
+docker compose -f docker-compose.test-dev.yml up -d
+
+# Run the full test suite
+docker compose -f docker-compose.test-dev.yml exec test pytest
+
+# Run specific tests
+docker compose -f docker-compose.test-dev.yml exec test pytest tests/unit/ -v
+docker compose -f docker-compose.test-dev.yml exec test pytest -k "test_customer"
+docker compose -f docker-compose.test-dev.yml exec test pytest --cov=app
+
+# Stop the container when done
+docker compose -f docker-compose.test-dev.yml down
+```
+
+Rebuild the container only when Python dependencies change:
+
+```bash
+docker compose -f docker-compose.test-dev.yml build test
+docker compose -f docker-compose.test-dev.yml up -d
+```
+
+### Run-Once Test Container
+
+The run-once approach builds a fresh container each time. This is useful for CI or one-off test runs.
+
+```bash
+docker compose -f docker-compose.test.yml build
+docker compose -f docker-compose.test.yml run --rm test
+docker compose -f docker-compose.test.yml run --rm test pytest tests/ -v --cov=app
+```
+
+### Local Testing (Without Docker)
+
+If you have a local Python virtual environment set up:
+
+```bash
+.venv/bin/python3 -m pytest
+```
+
+This requires all dependencies from `requirements.txt` and `requirements-test.txt` (or `requirements-dev.txt`) to be installed in the virtual environment.
+
+---
+
 ## Troubleshooting
 
 ### Port 8080 Already in Use
