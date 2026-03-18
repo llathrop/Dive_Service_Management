@@ -1,0 +1,12 @@
+{# Partial template for log content — used by HTMX polling #}
+{% if result.error %}
+<div class="alert alert-warning mb-0">
+  <i class="bi bi-exclamation-triangle me-1"></i> {{ result.error }}
+</div>
+{% elif result.lines %}
+{% for line in result.lines %}
+{{ line }}
+{% endfor %}
+{% else %}
+<span class="text-muted">(empty log file)</span>
+{% endif %}
