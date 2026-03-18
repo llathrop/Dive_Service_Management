@@ -269,11 +269,19 @@
           <hr class="sidebar-divider">
         </li>
         <li class="nav-item">
-          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin') }}"
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin') and request.endpoint != 'admin.logs' and request.endpoint != 'admin.logs_tail' }}"
              href="{{ url_for('admin.hub') }}"
              title="Admin">
             <i class="bi bi-gear"></i>
             <span class="nav-text">Admin</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint in ('admin.logs', 'admin.logs_tail') }}"
+             href="{{ url_for('admin.logs') }}"
+             title="Logs">
+            <i class="bi bi-terminal"></i>
+            <span class="nav-text">Logs</span>
           </a>
         </li>
         {% endif %}

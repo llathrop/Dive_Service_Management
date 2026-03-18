@@ -305,4 +305,4 @@ def _extract_sample_values(file_content, file_type, source_columns):
 
 
 # Import submodules to register their routes on admin_bp
-from app.blueprints.admin import users, settings, data, audit  # noqa: E402, F401
+from app.blueprints.admin import users, settings, data, audit, logs  # noqa: E402, F401
