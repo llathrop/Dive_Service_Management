@@ -122,6 +122,16 @@ class TestQuickCreatePriceListValidation:
         assert "error" in data
         assert "name" in data["error"].lower()
 
+    def test_name_too_long(self, admin_client, price_category):
+        """Name exceeding 255 chars returns 400."""
+        resp = admin_client.post(QUICK_CREATE_URL, data={
+            "name": "X" * 256,
+            "price": "10.00",
+        })
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "error" in data
+
     def test_price_required(self, admin_client, price_category):
         """Missing price returns 400."""
         resp = admin_client.post(QUICK_CREATE_URL, data={

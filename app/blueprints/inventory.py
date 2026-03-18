@@ -309,6 +309,14 @@ def quick_create():
         except (ValueError, TypeError):
             return jsonify({"error": "Reorder level must be a valid number."}), 400
 
+    # Validate non-negative values
+    if unit_cost is not None and unit_cost < 0:
+        return jsonify({"error": "Unit cost must be zero or positive."}), 400
+    if quantity_in_stock < 0:
+        return jsonify({"error": "Quantity must be zero or positive."}), 400
+    if reorder_level < 0:
+        return jsonify({"error": "Reorder level must be zero or positive."}), 400
+
     data = {
         "name": name,
         "sku": sku,
