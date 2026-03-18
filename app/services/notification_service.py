@@ -5,6 +5,7 @@ notifications.  Includes convenience helpers for domain-specific events
 such as low-stock alerts, order status changes, and payment receipts.
 """
 
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy import and_
@@ -82,8 +83,9 @@ def _queue_email(notification):
                 if user.email:
                     send_notification_email_task.delay(user.id, notification.id)
     except Exception:
-        # Never break notification creation due to email failures
-        pass
+        logging.getLogger(__name__).debug(
+            "Failed to queue email for notification %s", notification.id, exc_info=True
+        )
 
 
 def _annotate_read_state(notifications, user_id):
