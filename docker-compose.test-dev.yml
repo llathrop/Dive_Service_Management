@@ -1,0 +1,38 @@
+# =============================================================================
+# Dive Service Management - Persistent Test Runner for Development
+# Keeps the test container running so you can execute tests instantly.
+# Uses SQLite in-memory (no MariaDB/Redis needed).
+#
+# Usage:
+#   docker compose -f docker-compose.test-dev.yml up -d
+#   docker compose -f docker-compose.test-dev.yml exec test pytest
+#   docker compose -f docker-compose.test-dev.yml exec test pytest tests/unit/ -v
+#   docker compose -f docker-compose.test-dev.yml exec test pytest -k "test_customer"
+#   docker compose -f docker-compose.test-dev.yml exec test pytest --cov=app
+#
+# The container stays running. Re-run tests instantly without rebuild.
+# Source code changes are reflected immediately via volume mounts.
+#
+# To rebuild after dependency changes:
+#   docker compose -f docker-compose.test-dev.yml build test
+# =============================================================================
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test-dev
+    volumes:
+      - ./app:/app/app
+      - ./tests:/app/tests
+      - ./migrations:/app/migrations
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./docs:/app/docs:ro
+    environment:
+      - DSM_ENV=testing
+      - DSM_SECRET_KEY=test-secret-key-not-for-production
+      - DSM_SECURITY_PASSWORD_SALT=test-salt-not-for-production
+    tmpfs:
+      - /tmp
+    stdin_open: true
+    tty: true
