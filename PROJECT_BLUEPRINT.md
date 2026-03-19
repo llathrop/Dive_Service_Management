@@ -3015,6 +3015,56 @@ Complete reference for all configuration options:
 
 ---
 
+## 17. Development Process & Quality Gates
+
+### 17.1 Worktree-Based Parallel Development
+
+Development uses git worktrees to enable parallel agent work in isolated directories. Each agent operates in its own worktree, avoiding conflicts between concurrent changes. This allows multiple features or fixes to be developed simultaneously without branch switching or merge conflicts during active development.
+
+### 17.2 Wave Structure
+
+Work is organized into waves for dependency management:
+
+- **Wave A**: Independent tasks with no cross-dependencies (can run in parallel)
+- **Wave B**: Tasks that depend on Wave A outputs
+- **Wave C**: Integration, audit, and documentation tasks that depend on A+B
+
+Within each wave, tasks are assigned to parallel agents. Dependencies between waves are explicit: Wave B agents receive the merged output of Wave A before starting.
+
+### 17.3 Review Pipeline
+
+Every change goes through a multi-stage review before merge:
+
+1. **Dev agent** implements the feature/fix in an isolated worktree
+2. **Lead review** checks architecture alignment, code quality, and test coverage
+3. **QA agent** runs targeted tests and verifies acceptance criteria
+4. **Security agent** audits for injection, auth bypass, data exposure, and other vulnerabilities
+5. **Merge** via cherry-pick into the main branch
+
+### 17.4 Cherry-Pick Merge Strategy
+
+Rather than merging feature branches directly, individual commits are cherry-picked onto master. This keeps the commit history linear and allows selective inclusion of changes. Each cherry-picked commit is verified with a full test suite run before pushing.
+
+### 17.5 Post-Wave Security Audit
+
+At the end of each wave (after all tasks are merged), a dedicated security review examines:
+
+- New routes for auth/role enforcement
+- Database queries for injection vectors
+- File handling for path traversal
+- Input validation completeness
+- Audit log coverage for new write paths
+
+### 17.6 Testing Strategy
+
+- **During development**: Run targeted tests related to the feature being built (e.g., `pytest tests/unit/models/test_service_item.py -v`)
+- **At wave milestones**: Run the full test suite to catch regressions (`pytest`)
+- **Pre-push**: Full suite must pass with no failures
+- **Docker-based testing preferred**: Use the persistent test container (`docker-compose.test-dev.yml`) to avoid rebuild overhead and permission issues
+- **Coverage target**: 80% minimum (currently ~92%)
+
+---
+
 ### Critical Files for Implementation
 
 - `/home/llathrop/Projects/Dive_Service_Management/app/__init__.py` - Application factory: the entry point where Flask app is created, extensions initialized, blueprints registered. Must be built first as everything depends on it.

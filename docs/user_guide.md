@@ -96,6 +96,8 @@ When creating a new service order, if the customer does not already exist:
 2. Fill in the minimum required fields (name and optionally email/phone).
 3. Save the new customer -- they will be automatically selected in the order form's customer dropdown.
 
+This also works on mobile and touch devices. The quick-create dropdowns for customers, inventory items, price list categories, and tags are fully touch-compatible.
+
 ### Searching for Customers
 
 - **From the customer list**: Use the search box at the top of the customer list page. Type a name, email, or phone number and the results will filter.
@@ -107,9 +109,13 @@ When creating a new service order, if the customer does not already exist:
 2. The detail page shows:
    - Contact information and address
    - Service items (equipment) owned by this customer
-   - Associated service orders
+   - **Open Orders** -- active service orders (intake through ready_for_pickup)
+   - **Completed Orders** -- orders with picked_up or cancelled status
    - Invoice history
    - Tags applied to this customer
+3. Use the **New Order** button on the customer detail page to create a service order pre-populated with this customer.
+
+<!-- Screenshot: docs/screenshots/customer_detail.png -->
 
 ### Editing a Customer
 
@@ -135,7 +141,7 @@ Customers are soft-deleted, meaning the record is hidden but preserved:
 2. Click **New Item**.
 3. Fill in:
    - **Name** (required) -- a descriptive name for the equipment
-   - **Customer** -- select the owner from the dropdown
+   - **Customer** (required) -- select the owner from the dropdown. Every item must belong to a customer. You can reassign an item to a different customer later by editing the item and changing the customer dropdown.
    - **Item Category** -- the type of equipment (e.g., Drysuit, BCD, Regulator)
    - **Serial Number** (optional but recommended)
    - **Brand** and **Model** (optional)
@@ -151,9 +157,12 @@ Customers are soft-deleted, meaning the record is hidden but preserved:
 The item detail page shows:
 
 - Equipment specifications
-- Owner information
+- Owner information (with link to customer detail)
 - Drysuit details (if applicable)
-- Service history (orders that included this item)
+- **Service history** -- a list of all service orders that included this item, showing order number, status, date received, and assigned technician. This is derived from the `ServiceOrderItem` -> `ServiceOrder` relationship.
+- File attachments associated with this item
+
+<!-- Screenshot: docs/screenshots/item_detail_service_history.png -->
 
 ---
 
