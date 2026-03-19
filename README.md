@@ -208,6 +208,24 @@ Detailed documentation is available in the `docs/` directory:
 - [Configuration](docs/configuration.md) — environment variables and system settings reference
 - [Cloud Deployment](docs/cloud_deployment.md) — AWS, GCP, and Azure deployment guides
 
+## Known Limitations & TODOs
+
+The codebase currently has no TODO, FIXME, or HACK comments. The following
+items were identified during codebase audit and are tracked here for future
+sprint planning:
+
+- **`tag_filter` macro references missing `api.tag_suggestions` endpoint** --
+  The `tag_filter` macro in `app/templates/macros/tags.html` calls
+  `url_for('api.tag_suggestions', ...)` but no `api` blueprint or
+  `tag_suggestions` route exists. The macro is currently unused in any
+  template, so this causes no runtime errors. Implementing the endpoint
+  or removing the macro should happen before any template uses it.
+
+- **`export_service.py` CSV functions are duplicated between buffered and
+  streaming paths** -- The column definitions and row extractors appear in
+  both the `export_*_csv()` functions and the `_STREAMING_ENTITY_DEFS`
+  registry. A future refactor could unify them.
+
 ## License
 
 See [LICENSE](LICENSE) for details.

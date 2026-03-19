@@ -1,16 +1,18 @@
-"""Admin blueprint — package layout."""
+"""Admin blueprint — hub route, settings helpers, and import helpers.
 
-import base64
+Submodules (users, settings, data, audit, logs) are imported at the
+bottom of this file to register their routes on ``admin_bp``.
+"""
+
 import os
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
-from flask_security import current_user, hash_password, roles_required
+from flask import Blueprint, current_app, flash, render_template
+from flask_security import roles_required
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.user import Role, User
-from app.services import audit_service
 
 # Maximum logo file size: 2 MB
 _MAX_LOGO_SIZE = 2 * 1024 * 1024

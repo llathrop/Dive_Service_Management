@@ -1,7 +1,7 @@
 """Orders blueprint — Labor entry routes."""
 
 from flask import flash, redirect, url_for
-from flask_security import current_user, login_required, roles_accepted
+from flask_security import login_required, roles_accepted
 
 from app.extensions import db
 from app.forms.labor import LaborEntryForm

@@ -1,5 +1,5 @@
 """Reports blueprint — data visualization and report generation."""
-from datetime import date, timedelta
+from datetime import date
 
 from flask import Blueprint, render_template, request
 from flask_security import login_required

@@ -1,6 +1,10 @@
-"""Orders blueprint — package layout."""
+"""Orders blueprint — CRUD routes, kanban view, and shared helpers.
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+Submodules (items, services, parts, labor, notes, status) are imported
+at the bottom of this file to register their routes on ``orders_bp``.
+"""
+
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 

@@ -10,7 +10,7 @@ All options can also be entered interactively if omitted.
 import click
 from flask import current_app
 from flask.cli import with_appcontext
-from flask_security import SQLAlchemyUserDatastore, hash_password
+from flask_security import hash_password
 
 from app.extensions import db
 from app.models.user import Role, User

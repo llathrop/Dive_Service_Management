@@ -6,7 +6,7 @@ condition, warranty information, and links to related notes, parts, labor,
 and applied services.
 """
 
-from sqlalchemy import Index, UniqueConstraint
+from sqlalchemy import UniqueConstraint
 
 from app.extensions import db
 from app.models.mixins import TimestampMixin

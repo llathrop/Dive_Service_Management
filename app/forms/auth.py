@@ -6,13 +6,11 @@ only where the application needs custom fields or validation (e.g.
 adding a ``username`` field to registration, or customising the login
 form's look-and-feel).
 
-For Phase 1, registration is disabled (``SECURITY_REGISTERABLE=False``)
-so only the login form customization is relevant.
+Registration is disabled (``SECURITY_REGISTERABLE=False``), so only the
+login form customization is relevant.
 """
 
 from flask_security.forms import LoginForm
-from wtforms import StringField
-from wtforms.validators import DataRequired
 
 
 class ExtendedLoginForm(LoginForm):

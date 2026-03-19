@@ -1,7 +1,7 @@
 """Orders blueprint — Order item and quick-create customer routes."""
 
 from flask import flash, jsonify, redirect, request, url_for
-from flask_security import current_user, login_required, roles_accepted
+from flask_security import login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db

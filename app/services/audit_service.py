@@ -4,7 +4,7 @@ Provides functions to create audit trail entries for data changes and
 to query the audit log with filtering and pagination.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import and_
 
