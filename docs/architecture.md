@@ -105,8 +105,10 @@ All 17 blueprints are registered in `_register_blueprints()`. Each blueprint own
 | `auth` | (none) | Login/logout (delegates to Flask-Security) |
 | `customers` | `/customers` | Customer CRUD, individual/business types |
 | `dashboard` | `/dashboard` | Main landing page with live summary cards |
-| `export` | `/export` | XLSX export functionality |
-| `health` | (none) | `/health` endpoint for Docker health checks |
+| `attachments` | `/attachments` | File upload, gallery, and mobile camera capture |
+| `docs` | `/docs` | In-app documentation viewer |
+| `export` | `/export` | CSV/XLSX export and streaming downloads |
+| `health` | (none) | `/health`, `/health/ready`, `/health/live` probes |
 | `inventory` | `/inventory` | Inventory item management, stock tracking |
 | `invoices` | `/invoices` | Invoice lifecycle, line items, payments |
 | `items` | `/items` | Service item (equipment) management |
