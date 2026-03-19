@@ -390,3 +390,22 @@
 - [x] MEMORY.md verified and corrected
 
 **Tests**: 1418 total, all passing
+
+---
+
+### Sprint 2026-03-18 (Complete)
+
+**Wave A: Quick Fixes & Infrastructure** (parallel)
+- [x] **#41: Mobile quick-create fix** — `getOrCreateInstance` for Bootstrap dropdowns, `scrollIntoView` after creation, `touch-action: manipulation` CSS for reliable touch handling
+- [x] **#43: Auto DB backup before migrations** — `docker-entrypoint.sh` detects pending Alembic migrations and runs `mariadb-dump` with `--single-transaction` before applying them. Controlled by `DSM_AUTO_BACKUP_ON_UPGRADE` env var. Backups stored in `./backups/` as compressed `.sql.gz` files.
+
+**Wave B: Service Item Customer Requirement** (#42)
+- [x] **#42: Service items require customer** — `customer_id` column changed from nullable to `NOT NULL` via migration `h8c9d0e1f2g3`. Smart orphan resolution: migration creates "Default / Unassigned" customer and reassigns orphaned items before adding the constraint. Service history displayed on item detail page. Customer detail page now shows open orders and completed orders separately. Item form includes customer dropdown for reassignment. Item attachments shown on order detail page.
+
+**Wave C: Codebase Audit & Documentation**
+- [x] Documentation updates for Sprint 2026-03-18 changes
+- [x] PROGRESS.md, MEMORY.md, architecture.md, user_guide.md, configuration.md updated
+
+**GitHub Issues**: #41, #42, #43 — all closed
+
+**Tests**: 1448 total, all passing

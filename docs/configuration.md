@@ -76,6 +76,12 @@ These variables are defined but mail functionality is not yet active:
 | `DSM_MAIL_USERNAME` | *(none)* | SMTP authentication username. |
 | `DSM_MAIL_PASSWORD` | *(none)* | SMTP authentication password. |
 
+### Database Maintenance
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DSM_AUTO_BACKUP_ON_UPGRADE` | `true` | When `true`, the web container automatically creates a compressed `mariadb-dump` backup before applying pending Alembic migrations. Backups are stored in `./backups/` on the host. Set to `false` to disable. The backup is best-effort: if it fails, a warning is logged but migration proceeds normally. |
+
 ### Deployment Profile
 
 | Variable | Default | Description |

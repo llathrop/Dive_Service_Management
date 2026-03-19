@@ -97,7 +97,7 @@ Extensions are created in `app/extensions.py` as uninitialized singletons, then 
 
 ### Blueprint Registration
 
-All 15 blueprints are registered in `_register_blueprints()`. Each blueprint owns a URL prefix and a set of related views:
+All 17 blueprints are registered in `_register_blueprints()`. Each blueprint owns a URL prefix and a set of related views:
 
 | Blueprint | URL Prefix | Description |
 |-----------|-----------|-------------|
@@ -206,7 +206,7 @@ AuditLog (action tracking)
 | `User` | `users` | -- | Roles (M2M via `user_roles`), Notifications |
 | `Role` | `roles` | -- | Users (M2M) |
 | `Customer` | `customers` | Timestamp, SoftDelete, Audit | ServiceItems, ServiceOrders, Invoices |
-| `ServiceItem` | `service_items` | Timestamp, SoftDelete, Audit | Customer (FK), DrysuitDetails (1:1) |
+| `ServiceItem` | `service_items` | Timestamp, SoftDelete, Audit | Customer (FK, required NOT NULL), DrysuitDetails (1:1) |
 | `DrysuitDetails` | `drysuit_details` | Timestamp | ServiceItem (1:1, unique FK) |
 | `InventoryItem` | `inventory_items` | Timestamp, SoftDelete, Audit | PartUsed (referenced) |
 | `PriceListCategory` | `price_list_categories` | Timestamp | PriceListItems |
@@ -245,8 +245,13 @@ A **TaggableMixin** in `app/models/tag.py` provides `add_tag()`, `remove_tag()`,
 - **Price snapshots**: When a price list item is applied to an order, the service name, description, and price are copied into `AppliedService` fields. This preserves the price at time of service even if the price list changes later.
 - **Many-to-many invoices**: The `invoice_orders` association table links invoices to service orders, allowing one invoice to cover multiple orders or one order to appear on multiple invoices.
 - **DrysuitDetails extension table**: Drysuit-specific fields (seal types, zipper configuration, valve details, boot information) are stored in a separate 1:1 table rather than adding nullable columns to the generic `ServiceItem` table.
+- **Required customer ownership**: Every `ServiceItem` must belong to a `Customer` (`customer_id NOT NULL`). This was enforced via the `h8c9d0e1f2g3` migration which resolved orphaned items by creating a "Default / Unassigned" customer and reassigning orphans before adding the NOT NULL constraint.
+- **Smart orphan resolution migration**: The migration pattern for adding NOT NULL constraints on existing nullable FK columns: (1) create a fallback parent record, (2) reassign orphaned rows, (3) alter column to NOT NULL. This avoids data loss while enforcing referential integrity.
+- **Service history on items**: Item detail pages display service history by querying `ServiceOrderItem` -> `ServiceOrder`, showing all orders that included a given piece of equipment.
+- **Customer order split**: Customer detail pages split orders into active (open statuses) and completed (picked_up, cancelled) sections for clearer workflow visibility.
 - **Inventory uses Decimal**: `quantity_in_stock` and `reorder_level` are `Numeric(10,2)` to support fractional quantities without floating-point rounding errors.
 - **Negative stock prevention**: `add_part_used()` checks available stock before deduction and raises `ValueError` if the deduction would drive stock below zero.
+- **Automatic pre-migration backup**: The `docker-entrypoint.sh` detects pending Alembic migrations and creates a compressed `mariadb-dump` backup before applying them. Controlled by the `DSM_AUTO_BACKUP_ON_UPGRADE` env var (defaults to true).
 
 ### Migration Chain
 
@@ -259,6 +264,9 @@ Migrations are stored in `migrations/versions/` and applied in order:
 5. `p0_2_notification_reads_table` -- Post-review: add notification_reads for broadcast read tracking
 6. `d4e5f6a7b8c9` -- System config table
 7. `e5f6a7b8c9d0` -- Audit log table
+8. `f6a7b8c9d0e1` -- Attachments table
+9. `g7b8c9d0e1f2` -- Saved searches table
+10. `h8c9d0e1f2g3` -- Service item customer_id NOT NULL (with smart orphan resolution)
 
 The `docker-entrypoint.sh` runs `flask db upgrade` automatically on web container startup, so schema updates are applied when a new version is deployed.
 
@@ -453,6 +461,7 @@ All containers communicate over the `dsm-net` bridge network. Only the web conta
 1. MariaDB starts and initializes (creates database and user from `MARIADB_*` env vars on first run)
 2. Redis starts and passes health check
 3. Web container starts and runs `docker-entrypoint.sh`:
+   - Detects pending migrations and creates a compressed `mariadb-dump` backup if any are found (controlled by `DSM_AUTO_BACKUP_ON_UPGRADE`, defaults to true)
    - Runs `flask db upgrade` to apply any pending migrations
    - Runs `flask seed-db` to seed default data (idempotent)
    - In production mode, either step failing causes the container to exit with code 1

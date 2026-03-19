@@ -148,13 +148,17 @@ app/
   static/              # CSS, JS, images
   cli/                 # Flask CLI commands
 migrations/            # Alembic database migrations
-tests/                 # Test suite (1418 tests)
+tests/                 # Test suite (1448 tests)
   smoke/               # Application startup and health tests
   unit/                # Model and service unit tests
   blueprint/           # Route and view tests
   uat/                 # User acceptance test infrastructure
 docs/                  # Documentation and UAT scripts
 ```
+
+## Development Workflow
+
+Development follows a structured wave-based process with parallel worktree isolation, multi-stage review (dev, lead, QA, security), and cherry-pick merges. See [PROJECT_BLUEPRINT.md](PROJECT_BLUEPRINT.md#17-development-process--quality-gates) for the full process description.
 
 ## Architecture
 
