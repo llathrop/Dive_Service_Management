@@ -5,7 +5,7 @@ loading entire datasets into memory.  XLSX exports remain buffered
 (openpyxl does not support streaming).
 """
 
-from flask import Blueprint, Response, request, stream_with_context
+from flask import Blueprint, Response, stream_with_context
 from flask_security import login_required
 
 from app.services import export_service

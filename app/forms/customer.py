@@ -15,7 +15,7 @@ from wtforms import (
     SubmitField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Email, Length, Optional, ValidationError
+from wtforms.validators import Email, Length, Optional
 
 
 class CustomerForm(FlaskForm):

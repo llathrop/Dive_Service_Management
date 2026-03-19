@@ -5,7 +5,6 @@ system-level dependencies like WeasyPrint or wkhtmltopdf.
 """
 
 import os
-from decimal import Decimal
 
 from flask import current_app
 from fpdf import FPDF

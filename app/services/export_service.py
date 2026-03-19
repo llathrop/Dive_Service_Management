@@ -20,7 +20,6 @@ import io
 from datetime import date, datetime
 from decimal import Decimal
 
-from app.extensions import db
 from app.models.customer import Customer
 from app.models.inventory import InventoryItem
 from app.models.invoice import Invoice
