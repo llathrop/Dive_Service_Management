@@ -4,21 +4,26 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 from app.services import item_service
-from tests.factories import CustomerFactory, ServiceItemFactory
+from tests.factories import BaseFactory, CustomerFactory, ServiceItemFactory
+
+
+@pytest.fixture(autouse=True)
+def _bind_factories(db_session):
+    BaseFactory._meta.sqlalchemy_session = db_session
+    CustomerFactory._meta.sqlalchemy_session = db_session
+    ServiceItemFactory._meta.sqlalchemy_session = db_session
 
 
 class TestGetItems:
     """Tests for item_service.get_items()."""
 
     def test_returns_paginated_results(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         ServiceItemFactory.create_batch(3)
 
         result = item_service.get_items(page=1, per_page=25)
         assert result.total == 3
 
     def test_search_filters_by_name(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         ServiceItemFactory(name="Scubapro MK25")
         ServiceItemFactory(name="Aqualung Legend")
 
@@ -27,7 +32,6 @@ class TestGetItems:
         assert result.items[0].name == "Scubapro MK25"
 
     def test_search_filters_by_serial(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         ServiceItemFactory(serial_number="SN-UNIQUE-123")
         ServiceItemFactory(serial_number="SN-OTHER-456")
 
@@ -35,7 +39,6 @@ class TestGetItems:
         assert result.total == 1
 
     def test_excludes_soft_deleted(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         item = ServiceItemFactory()
         item.soft_delete()
         db_session.commit()
@@ -44,7 +47,6 @@ class TestGetItems:
         assert result.total == 0
 
     def test_sorting(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         ServiceItemFactory(name="Zebra Reg")
         ServiceItemFactory(name="Alpha BCD")
 
@@ -57,7 +59,6 @@ class TestGetItem:
     """Tests for item_service.get_item()."""
 
     def test_returns_item_by_id(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         item = ServiceItemFactory()
 
         result = item_service.get_item(item.id)
@@ -68,7 +69,6 @@ class TestGetItem:
             item_service.get_item(9999)
 
     def test_raises_404_for_soft_deleted(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         item = ServiceItemFactory()
         item.soft_delete()
         db_session.commit()
@@ -81,10 +81,12 @@ class TestCreateItem:
     """Tests for item_service.create_item()."""
 
     def test_creates_basic_item(self, app, db_session):
+        customer = CustomerFactory()
         data = {
             "name": "Test Regulator",
             "item_category": "Regulator",
             "serviceability": "serviceable",
+            "customer_id": customer.id,
         }
         item = item_service.create_item(data, created_by=1)
         assert item.id is not None
@@ -92,9 +94,11 @@ class TestCreateItem:
         assert item.created_by == 1
 
     def test_creates_item_with_drysuit_details(self, app, db_session):
+        customer = CustomerFactory()
         data = {
             "name": "My Drysuit",
             "item_category": "Drysuit",
+            "customer_id": customer.id,
         }
         drysuit_data = {
             "size": "L",
@@ -107,7 +111,6 @@ class TestCreateItem:
         assert item.drysuit_details.material_type == "Trilaminate"
 
     def test_creates_item_with_customer(self, app, db_session):
-        CustomerFactory._meta.sqlalchemy_session = db_session
         customer = CustomerFactory()
 
         data = {
@@ -118,7 +121,8 @@ class TestCreateItem:
         assert item.customer_id == customer.id
 
     def test_empty_serial_stored_as_none(self, app, db_session):
-        data = {"name": "No Serial", "serial_number": ""}
+        customer = CustomerFactory()
+        data = {"name": "No Serial", "serial_number": "", "customer_id": customer.id}
         item = item_service.create_item(data)
         assert item.serial_number is None
 
@@ -127,14 +131,12 @@ class TestUpdateItem:
     """Tests for item_service.update_item()."""
 
     def test_updates_fields(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         item = ServiceItemFactory(name="Old Name")
 
         result = item_service.update_item(item.id, {"name": "New Name"})
         assert result.name == "New Name"
 
     def test_clears_empty_serial(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         item = ServiceItemFactory(serial_number="SN-123")
 
         result = item_service.update_item(
@@ -151,7 +153,6 @@ class TestDeleteItem:
     """Tests for item_service.delete_item()."""
 
     def test_soft_deletes_item(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         item = ServiceItemFactory()
 
         result = item_service.delete_item(item.id)
@@ -166,7 +167,6 @@ class TestLookupBySerial:
     """Tests for item_service.lookup_by_serial()."""
 
     def test_finds_item_by_serial(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         ServiceItemFactory(serial_number="LOOKUP-SN-001")
 
         result = item_service.lookup_by_serial("LOOKUP-SN-001")
@@ -182,7 +182,6 @@ class TestLookupBySerial:
         assert result is None
 
     def test_excludes_soft_deleted(self, app, db_session):
-        ServiceItemFactory._meta.sqlalchemy_session = db_session
         item = ServiceItemFactory(serial_number="DELETED-SN")
         item.soft_delete()
         db_session.commit()

@@ -6,14 +6,13 @@ WTForms form classes for managing customer-owned service items
 
 from flask_wtf import FlaskForm
 from wtforms import (
-    HiddenField,
     IntegerField,
     SelectField,
     StringField,
     SubmitField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Length, NumberRange, Optional
+from wtforms.validators import DataRequired, InputRequired, Length, NumberRange, Optional
 
 
 class ServiceItemForm(FlaskForm):
@@ -69,7 +68,11 @@ class ServiceItemForm(FlaskForm):
         validators=[Optional(), NumberRange(min=1900, max=2100)],
     )
     notes = TextAreaField("Notes", validators=[Optional()])
-    customer_id = HiddenField("Customer ID")
+    customer_id = SelectField(
+        "Customer",
+        coerce=int,
+        validators=[InputRequired()],
+    )
     submit = SubmitField("Save Item")
 
 

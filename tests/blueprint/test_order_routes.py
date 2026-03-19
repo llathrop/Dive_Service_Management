@@ -45,12 +45,15 @@ def _create_customer(db_session, **overrides):
     return customer
 
 
-def _create_service_item(db_session, **overrides):
+def _create_service_item(db_session, customer=None, **overrides):
     """Create and persist a ServiceItem with sensible defaults."""
+    if customer is None:
+        customer = _create_customer(db_session, email=f"itemowner-{id(overrides)}@example.com")
     defaults = dict(
         name="Test Regulator",
         item_category="Regulator",
         serviceability="serviceable",
+        customer_id=customer.id,
     )
     defaults.update(overrides)
     item = ServiceItem(**defaults)

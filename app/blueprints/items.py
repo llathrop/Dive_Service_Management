@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.forms.item import DrysuitDetailsForm, ServiceItemForm
+from app.models.customer import Customer
 from app.services import audit_service, item_service
 
 items_bp = Blueprint("items", __name__, url_prefix="/items")
@@ -69,7 +70,8 @@ def lookup():
 def detail(id):
     """Display a service item detail page."""
     item = item_service.get_item(id)
-    return render_template("items/detail.html", item=item)
+    service_history = item_service.get_service_history(id)
+    return render_template("items/detail.html", item=item, service_history=service_history)
 
 
 @items_bp.route("/new", methods=["GET", "POST"])
@@ -80,10 +82,13 @@ def create():
     form = ServiceItemForm()
     drysuit_form = DrysuitDetailsForm(prefix="drysuit")
 
+    # Populate customer choices
+    form.customer_id.choices = _customer_choices()
+
     # Pre-populate customer_id from query string if provided
     customer_id = request.args.get("customer_id", type=int)
     if request.method == "GET" and customer_id:
-        form.customer_id.data = str(customer_id)
+        form.customer_id.data = customer_id
 
     if form.validate_on_submit():
         data = {
@@ -140,6 +145,9 @@ def edit(id):
     drysuit_form = DrysuitDetailsForm(
         prefix="drysuit", obj=item.drysuit_details
     )
+
+    # Populate customer choices
+    form.customer_id.choices = _customer_choices()
 
     if form.validate_on_submit():
         data = {
@@ -233,6 +241,9 @@ def quick_create():
     if not name:
         return jsonify({"error": "Item name is required."}), 400
 
+    if not customer_id:
+        return jsonify({"error": "Customer is required."}), 400
+
     # Server-side length validation
     _MAX_LENGTHS = {"name": 255, "serial_number": 100, "brand": 100, "model": 100}
     for field, max_len in _MAX_LENGTHS.items():
@@ -278,6 +289,12 @@ def quick_create():
 
     display_text = f"{item.name} ({item.serial_number})" if item.serial_number else item.name
     return jsonify({"id": item.id, "display_text": display_text}), 201
+
+
+def _customer_choices():
+    """Return a list of (id, display_name) tuples for the customer dropdown."""
+    customers = Customer.not_deleted().order_by(Customer.last_name, Customer.first_name).all()
+    return [(c.id, c.display_name) for c in customers]
 
 
 def _extract_drysuit_data(drysuit_form):

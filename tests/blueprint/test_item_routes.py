@@ -33,6 +33,8 @@ def _create_customer(db_session):
 
 def _create_item(db_session, customer_id=None, **overrides):
     """Create and persist a ServiceItem with sensible defaults."""
+    if customer_id is None:
+        customer_id = _create_customer(db_session).id
     defaults = dict(
         name="Test Regulator",
         item_category="Regulator",
@@ -40,10 +42,9 @@ def _create_item(db_session, customer_id=None, **overrides):
         brand="Apeks",
         model="XTX50",
         serviceability="serviceable",
+        customer_id=customer_id,
     )
     defaults.update(overrides)
-    if customer_id:
-        defaults["customer_id"] = customer_id
     item = ServiceItem(**defaults)
     db.session.add(item)
     db.session.commit()
@@ -214,6 +215,9 @@ class TestTechnicianCRUD:
         assert b"name" in response.data.lower()
 
     def test_create_post_works(self, logged_in_client, app, db_session):
+        with app.app_context():
+            customer = _create_customer(db_session)
+            cust_id = customer.id
         response = logged_in_client.post(
             "/items/new",
             data={
@@ -221,6 +225,7 @@ class TestTechnicianCRUD:
                 "item_category": "BCD",
                 "serviceability": "serviceable",
                 "serial_number": "SN-NEW-001",
+                "customer_id": str(cust_id),
             },
             follow_redirects=False,
         )
@@ -278,6 +283,7 @@ class TestTechnicianCRUD:
         with app.app_context():
             item = _create_item(db_session)
             item_id = item.id
+            cust_id = item.customer_id
         response = logged_in_client.post(
             f"/items/{item_id}/edit",
             data={
@@ -285,6 +291,7 @@ class TestTechnicianCRUD:
                 "item_category": "Regulator",
                 "serviceability": "serviceable",
                 "serial_number": "SN-12345",
+                "customer_id": str(cust_id),
             },
             follow_redirects=False,
         )
@@ -325,6 +332,9 @@ class TestAdminCRUD:
         assert response.status_code == 200
 
     def test_create_post_works(self, admin_client, app, db_session):
+        with app.app_context():
+            customer = _create_customer(db_session)
+            cust_id = customer.id
         response = admin_client.post(
             "/items/new",
             data={
@@ -332,6 +342,7 @@ class TestAdminCRUD:
                 "item_category": "BCD",
                 "serviceability": "serviceable",
                 "serial_number": "SN-ADM-001",
+                "customer_id": str(cust_id),
             },
             follow_redirects=False,
         )
@@ -345,6 +356,7 @@ class TestAdminCRUD:
         with app.app_context():
             item = _create_item(db_session)
             item_id = item.id
+            cust_id = item.customer_id
         response = admin_client.post(
             f"/items/{item_id}/edit",
             data={
@@ -352,6 +364,7 @@ class TestAdminCRUD:
                 "item_category": "Regulator",
                 "serviceability": "serviceable",
                 "serial_number": "SN-12345",
+                "customer_id": str(cust_id),
             },
             follow_redirects=False,
         )

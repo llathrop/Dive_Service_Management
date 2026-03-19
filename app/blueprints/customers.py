@@ -60,7 +60,14 @@ def list_customers():
 def detail(id):
     """Display a single customer's detail page."""
     customer = customer_service.get_customer(id)
-    return render_template("customers/detail.html", customer=customer)
+    open_orders = customer_service.get_customer_orders(id, active_only=True)
+    completed_orders = customer_service.get_customer_orders(id, active_only=False)
+    return render_template(
+        "customers/detail.html",
+        customer=customer,
+        open_orders=open_orders,
+        completed_orders=completed_orders,
+    )
 
 
 @customers_bp.route("/new", methods=["GET", "POST"])

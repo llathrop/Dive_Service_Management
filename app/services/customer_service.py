@@ -184,6 +184,21 @@ def delete_customer(customer_id):
     return customer
 
 
+def get_customer_orders(customer_id, active_only=None):
+    """Return orders for a customer. active_only=True for open, False for completed."""
+    from app.models.service_order import ServiceOrder
+
+    ACTIVE_STATUSES = [
+        "intake", "assessment", "awaiting_approval", "in_progress", "awaiting_parts",
+    ]
+    query = ServiceOrder.not_deleted().filter_by(customer_id=customer_id)
+    if active_only is True:
+        query = query.filter(ServiceOrder.status.in_(ACTIVE_STATUSES))
+    elif active_only is False:
+        query = query.filter(~ServiceOrder.status.in_(ACTIVE_STATUSES))
+    return query.order_by(ServiceOrder.date_received.desc()).all()
+
+
 def search_customers(query_string, limit=20):
     """Quick search for autocomplete.
 
