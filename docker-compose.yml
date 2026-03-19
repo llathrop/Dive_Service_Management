@@ -23,6 +23,7 @@ services:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
       - ./instance:/app/instance
+      - ./backups:/app/backups
     restart: unless-stopped
     networks:
       - dsm-net

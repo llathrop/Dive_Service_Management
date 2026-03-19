@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     default-libmysqlclient-dev \
     libffi8 \
     curl \
+    mariadb-client \
     # -----------------------------------------------------------------------
     # WeasyPrint dependencies (OPTIONAL - uncomment for complex PDF layouts)
     # These add ~150MB to the image and are slow to install on ARM64.
@@ -52,7 +53,7 @@ COPY . .
 
 # Create required directories
 RUN mkdir -p /app/uploads/logos /app/uploads/imports /app/uploads/exports \
-             /app/uploads/attachments /app/logs /app/instance
+             /app/uploads/attachments /app/logs /app/instance /app/backups
 
 # Create non-root user and set ownership
 RUN useradd -m -r -s /bin/bash dsm \

@@ -297,7 +297,7 @@ To upgrade to a new version of DSM:
    docker compose up -d --build
    ```
 
-   The web container automatically runs `flask db upgrade` on startup, applying any new migrations. The seed command runs next, adding any new default data.
+   The web container automatically runs `flask db upgrade` on startup, applying any new migrations. Before running migrations, DSM creates a compressed SQL backup if pending migrations are detected (see [Automatic Pre-Migration Backup](#automatic-pre-migration-backup) below). The seed command runs next, adding any new default data.
 
 3. **Verify the upgrade:**
 
@@ -316,6 +316,50 @@ If an upgrade causes issues:
 3. Rebuild and restart: `docker compose up -d --build`
 
 Database rollback requires restoring from a backup if new migrations have already been applied.
+
+### Automatic Pre-Migration Backup
+
+When the web container starts and detects pending Alembic migrations, it automatically creates a compressed SQL dump of the database before applying them. This provides a recovery point in case a migration fails or causes data issues.
+
+**How it works:**
+
+- The entrypoint script compares `flask db current` with `flask db heads` to detect pending migrations.
+- If migrations are pending, `mariadb-dump` creates a gzipped backup at `/app/backups/dsm_pre_migrate_<timestamp>.sql.gz`.
+- The backup uses `--single-transaction` for a consistent snapshot without locking tables.
+- Backup files are stored in the `./backups/` directory on the host (mounted into the container).
+
+**Disabling auto-backup:**
+
+Set the environment variable in your `.env` file:
+
+```bash
+DSM_AUTO_BACKUP_ON_UPGRADE=false
+```
+
+**Backup behavior:**
+
+- Backup is best-effort: if it fails, a warning is logged but the migration proceeds normally.
+- No backup is created when there are no pending migrations (to avoid unnecessary disk usage).
+- Backups are compressed with gzip to minimize storage requirements.
+
+**Restoring from a pre-migration backup:**
+
+```bash
+# Stop the application
+docker compose down
+
+# Start only the database
+docker compose up -d db
+
+# Wait for it to be healthy
+docker compose exec db healthcheck.sh --connect --innodb_initialized
+
+# Restore the backup (decompress and pipe to mysql)
+gunzip -c backups/dsm_pre_migrate_20260318_120000.sql.gz | docker compose exec -T db mysql -u root -p"$MARIADB_ROOT_PASSWORD" dsm
+
+# Start all services
+docker compose up -d
+```
 
 ---
 
