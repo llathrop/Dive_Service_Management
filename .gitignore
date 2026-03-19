@@ -69,7 +69,8 @@ docker-compose.override.yml
 uploads/
 logs/
 instance/
-backups/
+backups/*
+!backups/.gitkeep
 
 # ---------- Database ----------
 *.sql

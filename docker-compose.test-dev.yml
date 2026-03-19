@@ -28,6 +28,10 @@ services:
       - ./migrations:/app/migrations
       - ./pyproject.toml:/app/pyproject.toml
       - ./docs:/app/docs:ro
+      - ./Dockerfile:/app/Dockerfile:ro
+      - ./docker-entrypoint.sh:/app/docker-entrypoint.sh:ro
+      - ./.env.example:/app/.env.example:ro
+      - ./backups:/app/backups:ro
     environment:
       - DSM_ENV=testing
       - DSM_SECRET_KEY=test-secret-key-not-for-production
