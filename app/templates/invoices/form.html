@@ -177,7 +177,11 @@
 
   selectEl.addEventListener('change', function() {
     if (this.value === '__new__') {
-      var bsCollapse = new bootstrap.Collapse(section, {toggle: false});
+      var bsCollapse = bootstrap.Collapse.getOrCreateInstance(section, {toggle: false});
+      section.addEventListener('shown.bs.collapse', function onShown() {
+        section.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        section.removeEventListener('shown.bs.collapse', onShown);
+      });
       bsCollapse.show();
     } else {
       var bsCollapse = bootstrap.Collapse.getInstance(section);

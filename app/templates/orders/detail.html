@@ -1109,7 +1109,11 @@ function initQuickCreate(opts) {
   // Show/hide quick-create section when dropdown changes
   selectEl.addEventListener('change', function() {
     if (this.value === '__new__') {
-      var bsCollapse = new bootstrap.Collapse(collapseEl, {toggle: false});
+      var bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl, {toggle: false});
+      collapseEl.addEventListener('shown.bs.collapse', function onShown() {
+        collapseEl.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        collapseEl.removeEventListener('shown.bs.collapse', onShown);
+      });
       bsCollapse.show();
     } else {
       var bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
