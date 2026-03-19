@@ -37,6 +37,9 @@ def _create_customer(db_session, **overrides):
 
 def _create_service_item(db_session, **overrides):
     """Create and persist a ServiceItem with sensible defaults."""
+    if "customer_id" not in overrides:
+        customer = _create_customer(db_session, email=f"itemowner-{id(overrides)}@example.com")
+        overrides["customer_id"] = customer.id
     defaults = dict(
         name="Search Regulator",
         item_category="Regulator",

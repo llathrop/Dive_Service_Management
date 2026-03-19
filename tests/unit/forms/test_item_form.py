@@ -12,8 +12,15 @@ from app.forms.item import DrysuitDetailsForm, ServiceItemForm
 pytestmark = pytest.mark.unit
 
 
+def _form_with_choices(formdata=None, **kwargs):
+    """Create a ServiceItemForm with customer choices pre-populated."""
+    form = ServiceItemForm(formdata=formdata, **kwargs)
+    form.customer_id.choices = [(1, "Test Customer"), (42, "Another Customer")]
+    return form
+
+
 # ---------------------------------------------------------------------------
-# ServiceItemForm — valid data
+# ServiceItemForm -- valid data
 # ---------------------------------------------------------------------------
 
 
@@ -22,10 +29,11 @@ class TestServiceItemFormValid:
 
     def test_valid_minimal(self, app):
         with app.test_request_context():
-            form = ServiceItemForm(
+            form = _form_with_choices(
                 formdata=MultiDict([
                     ("name", "My Regulator"),
                     ("item_category", "Regulator"),
+                    ("customer_id", "1"),
                 ])
             )
             assert form.validate(), form.errors
@@ -33,17 +41,18 @@ class TestServiceItemFormValid:
     def test_valid_with_empty_category(self, app):
         """Selecting the blank '-- Select --' option is allowed."""
         with app.test_request_context():
-            form = ServiceItemForm(
+            form = _form_with_choices(
                 formdata=MultiDict([
                     ("name", "Mystery Item"),
                     ("item_category", ""),
+                    ("customer_id", "1"),
                 ])
             )
             assert form.validate(), form.errors
 
     def test_valid_all_fields(self, app):
         with app.test_request_context():
-            form = ServiceItemForm(
+            form = _form_with_choices(
                 formdata=MultiDict([
                     ("serial_number", "REG-2024-001"),
                     ("name", "Apeks XTX50"),
@@ -61,7 +70,7 @@ class TestServiceItemFormValid:
 
 
 # ---------------------------------------------------------------------------
-# ServiceItemForm — invalid data
+# ServiceItemForm -- invalid data
 # ---------------------------------------------------------------------------
 
 
@@ -70,10 +79,11 @@ class TestServiceItemFormInvalid:
 
     def test_missing_name(self, app):
         with app.test_request_context():
-            form = ServiceItemForm(
+            form = _form_with_choices(
                 formdata=MultiDict([
                     ("name", ""),
                     ("item_category", "Regulator"),
+                    ("customer_id", "1"),
                 ])
             )
             assert not form.validate()
@@ -81,11 +91,12 @@ class TestServiceItemFormInvalid:
 
     def test_year_too_low(self, app):
         with app.test_request_context():
-            form = ServiceItemForm(
+            form = _form_with_choices(
                 formdata=MultiDict([
                     ("name", "Old Suit"),
                     ("item_category", "Drysuit"),
                     ("year_manufactured", "1800"),
+                    ("customer_id", "1"),
                 ])
             )
             assert not form.validate()
@@ -93,11 +104,12 @@ class TestServiceItemFormInvalid:
 
     def test_year_too_high(self, app):
         with app.test_request_context():
-            form = ServiceItemForm(
+            form = _form_with_choices(
                 formdata=MultiDict([
                     ("name", "Future Suit"),
                     ("item_category", "Drysuit"),
                     ("year_manufactured", "2200"),
+                    ("customer_id", "1"),
                 ])
             )
             assert not form.validate()
@@ -105,7 +117,7 @@ class TestServiceItemFormInvalid:
 
 
 # ---------------------------------------------------------------------------
-# ServiceItemForm — defaults
+# ServiceItemForm -- defaults
 # ---------------------------------------------------------------------------
 
 
@@ -119,7 +131,7 @@ class TestServiceItemFormDefaults:
 
 
 # ---------------------------------------------------------------------------
-# DrysuitDetailsForm — valid data
+# DrysuitDetailsForm -- valid data
 # ---------------------------------------------------------------------------
 
 

@@ -122,12 +122,15 @@ def _make_order(db_session, customer=None, **kwargs):
     return order
 
 
-def _make_service_item(db_session, **kwargs):
+def _make_service_item(db_session, customer=None, **kwargs):
     """Create and persist a ServiceItem."""
+    if customer is None:
+        customer = _make_customer(db_session, first_name="ItemOwner", last_name=f"O{id(kwargs)}")
     defaults = {
         "name": "Test Regulator",
         "item_category": "Regulator",
         "serviceability": "serviceable",
+        "customer_id": customer.id,
     }
     defaults.update(kwargs)
     item = ServiceItem(**defaults)

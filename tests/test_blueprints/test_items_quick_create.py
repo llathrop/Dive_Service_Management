@@ -21,16 +21,25 @@ def _bind_factories(db_session):
     ServiceOrderFactory._meta.sqlalchemy_session = db_session
 
 
+@pytest.fixture()
+def customer(db_session):
+    """Create a customer for quick-create tests."""
+    c = CustomerFactory()
+    db_session.commit()
+    return c
+
+
 class TestQuickCreateItemSuccess:
     """POST /items/quick-create creates a service item and returns JSON."""
 
-    def test_quick_create_item_success(self, admin_client, app):
+    def test_quick_create_item_success(self, admin_client, app, db_session, customer):
         resp = admin_client.post(QUICK_CREATE_URL, data={
             "name": "Apeks XTX50",
             "item_category": "Regulator",
             "serial_number": "REG-001",
             "brand": "Apeks",
             "model": "XTX50",
+            "customer_id": customer.id,
         })
         assert resp.status_code == 201
         data = resp.get_json()
@@ -46,30 +55,29 @@ class TestQuickCreateItemSuccess:
             assert item.brand == "Apeks"
             assert item.model == "XTX50"
 
-    def test_quick_create_item_technician(self, logged_in_client):
+    def test_quick_create_item_technician(self, logged_in_client, db_session, customer):
         """Technician role can also quick-create service items."""
         resp = logged_in_client.post(QUICK_CREATE_URL, data={
             "name": "Suunto D5",
             "item_category": "Computer",
+            "customer_id": customer.id,
         })
         assert resp.status_code == 201
         data = resp.get_json()
         assert data["display_text"] == "Suunto D5"
 
-    def test_quick_create_item_minimal(self, admin_client):
-        """Only name is required; all other fields are optional."""
+    def test_quick_create_item_minimal(self, admin_client, db_session, customer):
+        """Name and customer_id are required; all other fields are optional."""
         resp = admin_client.post(QUICK_CREATE_URL, data={
             "name": "Mystery Gear",
+            "customer_id": customer.id,
         })
         assert resp.status_code == 201
         data = resp.get_json()
         assert data["display_text"] == "Mystery Gear"
 
-    def test_quick_create_item_with_customer(self, admin_client, app, db_session):
+    def test_quick_create_item_with_customer(self, admin_client, app, db_session, customer):
         """Customer ID is passed through to the new service item."""
-        customer = CustomerFactory()
-        db_session.commit()
-
         resp = admin_client.post(QUICK_CREATE_URL, data={
             "name": "Customer BCD",
             "item_category": "BCD",
@@ -108,28 +116,40 @@ class TestQuickCreateItemValidation:
         assert "error" in data
         assert "name" in data["error"].lower()
 
-    def test_quick_create_item_invalid_category(self, admin_client):
+    def test_quick_create_item_missing_customer(self, admin_client):
+        """Missing customer_id returns 400."""
+        resp = admin_client.post(QUICK_CREATE_URL, data={
+            "name": "No Customer Item",
+        })
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "Customer is required" in data["error"]
+
+    def test_quick_create_item_invalid_category(self, admin_client, db_session, customer):
         """Invalid category returns 400."""
         resp = admin_client.post(QUICK_CREATE_URL, data={
             "name": "Bad Category Item",
             "item_category": "Spaceship",
+            "customer_id": customer.id,
         })
         assert resp.status_code == 400
         data = resp.get_json()
         assert "error" in data
         assert "category" in data["error"].lower()
 
-    def test_quick_create_item_duplicate_serial(self, admin_client):
+    def test_quick_create_item_duplicate_serial(self, admin_client, db_session, customer):
         """Duplicate serial number returns 409."""
         resp1 = admin_client.post(QUICK_CREATE_URL, data={
             "name": "First Item",
             "serial_number": "DUPE-001",
+            "customer_id": customer.id,
         })
         assert resp1.status_code == 201
 
         resp2 = admin_client.post(QUICK_CREATE_URL, data={
             "name": "Second Item",
             "serial_number": "DUPE-001",
+            "customer_id": customer.id,
         })
         assert resp2.status_code == 409
         data = resp2.get_json()

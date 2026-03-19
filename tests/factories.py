@@ -144,7 +144,7 @@ class ServiceItemFactory(BaseFactory):
     serviceability = "serviceable"
     brand = Faker("company")
     model = Faker("bothify", text="??-####")
-    customer = None
+    customer = SubFactory(CustomerFactory)
 
 
 # ---------------------------------------------------------------------------

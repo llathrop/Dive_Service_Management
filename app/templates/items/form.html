@@ -24,7 +24,6 @@
       action="{{ url_for('items.edit', id=item.id) if is_edit else url_for('items.create') }}"
       x-data="{ category: '{{ form.item_category.data or '' }}' }">
   {{ form.hidden_tag() }}
-  {{ form.customer_id() }}
 
   {# Item Information #}
   <div class="card mb-4">
@@ -32,6 +31,11 @@
       <h5 class="card-title mb-0">Item Information</h5>
     </div>
     <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          {{ render_select(form.customer_id) }}
+        </div>
+      </div>
       <div class="row">
         <div class="col-md-6">
           {{ render_field(form.name, placeholder='Item name') }}

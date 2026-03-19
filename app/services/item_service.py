@@ -213,6 +213,21 @@ def lookup_by_serial(serial_number):
     return ServiceItem.not_deleted().filter_by(serial_number=serial_number).first()
 
 
+def get_service_history(item_id):
+    """Return ServiceOrderItems for this item with their orders, newest first."""
+    from app.models.service_order import ServiceOrder
+    from app.models.service_order_item import ServiceOrderItem
+
+    return (
+        db.session.query(ServiceOrderItem)
+        .join(ServiceOrder)
+        .filter(ServiceOrderItem.service_item_id == item_id)
+        .filter(ServiceOrder.is_deleted == False)  # noqa: E712
+        .order_by(ServiceOrder.date_received.desc())
+        .all()
+    )
+
+
 def _populate_drysuit(drysuit, data):
     """Copy drysuit data (dict) onto a DrysuitDetails instance.
 

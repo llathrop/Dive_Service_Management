@@ -44,7 +44,7 @@ class ServiceItem(TimestampMixin, SoftDeleteMixin, AuditMixin, db.Model):
     customer_id = db.Column(
         db.Integer,
         db.ForeignKey("customers.id"),
-        nullable=True,
+        nullable=False,
     )
 
     # --- Custom fields (JSON) ---

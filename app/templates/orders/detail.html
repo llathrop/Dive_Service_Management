@@ -470,6 +470,23 @@
           </div>
         </div>
 
+        {# ---- Equipment Record Photos ---- #}
+        {% if oi.service_item %}
+        <details class="mb-3">
+          <summary class="text-muted small"><i class="bi bi-camera me-1"></i>Equipment record photos</summary>
+          <div class="mt-2" id="gallery-service_item-{{ oi.service_item.id }}"
+               hx-get="{{ url_for('attachments.gallery', attachable_type='service_item', attachable_id=oi.service_item.id) }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="text-center py-1">
+              <div class="spinner-border spinner-border-sm text-muted" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </details>
+        {% endif %}
+
         {# ---- Applied Services Sub-section ---- #}
         <div class="mb-3">
           <div class="d-flex justify-content-between align-items-center mb-2">

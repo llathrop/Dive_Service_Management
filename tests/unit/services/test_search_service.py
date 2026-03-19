@@ -31,6 +31,9 @@ def _make_customer(db_session, **kwargs):
 
 def _make_service_item(db_session, **kwargs):
     """Create and persist a ServiceItem with sensible defaults."""
+    if "customer_id" not in kwargs:
+        customer = _make_customer(db_session, first_name="ItemOwner", last_name=f"O{id(kwargs)}")
+        kwargs["customer_id"] = customer.id
     defaults = {
         "name": "Test Equipment",
     }

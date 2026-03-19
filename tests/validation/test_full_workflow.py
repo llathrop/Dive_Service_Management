@@ -292,6 +292,7 @@ class TestFullServiceWorkflow:
                 email="cancel@example.com",
             )
             db_session.add(customer)
+            db_session.flush()
 
             part = InventoryItem(
                 sku="CANCEL-PART",
