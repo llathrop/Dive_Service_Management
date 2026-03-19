@@ -224,6 +224,13 @@ body {
   opacity: 0.7;
 }
 
+/* Quick-create and interactive form elements: eliminate mobile tap delay */
+.form-select,
+.collapse button,
+.collapse .btn {
+  touch-action: manipulation;
+}
+
 /* ---- Form Styling Enhancements ---- */
 .form-control:focus,
 .form-select:focus {
