@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.attachment import Attachment
+from app.models.service_order_item import ServiceOrderItem
 
 # Allowed MIME types for upload
 ALLOWED_MIME_TYPES = {
@@ -207,6 +208,56 @@ def delete_attachment(attachment_id):
     db.session.delete(attachment)
     db.session.commit()
     return True
+
+
+def get_unified_attachments(service_item_id):
+    """Return all attachments for a service item and its service order items.
+
+    Provides a complete visual history by combining direct item photos
+    with photos taken during service visits.
+
+    Args:
+        service_item_id: ID of the ServiceItem.
+
+    Returns:
+        tuple: (direct_attachments, order_attachments) where
+            direct_attachments is a list of Attachment objects for the item,
+            order_attachments is a list of dicts with keys 'order_item',
+            'order', and 'attachments' for each service order item that
+            has attachments.
+    """
+    # Direct attachments on the service item
+    direct = (
+        Attachment.query
+        .filter_by(attachable_type="service_item", attachable_id=service_item_id)
+        .order_by(Attachment.created_at.desc())
+        .all()
+    )
+
+    # Find all service order items referencing this equipment
+    order_items = (
+        ServiceOrderItem.query
+        .filter_by(service_item_id=service_item_id)
+        .all()
+    )
+
+    # Collect attachments for each order item that has any
+    order_attachments = []
+    for oi in order_items:
+        atts = (
+            Attachment.query
+            .filter_by(attachable_type="service_order_item", attachable_id=oi.id)
+            .order_by(Attachment.created_at.desc())
+            .all()
+        )
+        if atts:
+            order_attachments.append({
+                "order_item": oi,
+                "order": oi.order,
+                "attachments": atts,
+            })
+
+    return direct, order_attachments
 
 
 def get_attachment_path(attachment):
