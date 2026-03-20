@@ -196,3 +196,23 @@ def gallery(attachable_type, attachable_id):
         attachable_id=attachable_id,
         can_edit=can_edit,
     )
+
+
+@attachments_bp.route("/gallery/unified/<int:service_item_id>")
+@login_required
+def unified_gallery(service_item_id):
+    """Return an HTML fragment with the unified photo history for a service item.
+
+    Combines direct item attachments with photos from all service order
+    items referencing this equipment.  Designed to be loaded via hx-get.
+    """
+    direct, order_attachments = attachment_service.get_unified_attachments(
+        service_item_id
+    )
+
+    return render_template(
+        "partials/unified_gallery.html",
+        direct_attachments=direct,
+        order_attachments=order_attachments,
+        service_item_id=service_item_id,
+    )
