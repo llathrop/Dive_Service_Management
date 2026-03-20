@@ -1,0 +1,96 @@
+{# Unified gallery fragment — shows combined photo history for a service item.
+
+   Loaded via HTMX into the item detail page.  Displays two sections:
+   1. Item Photos — direct attachments on the service item
+   2. Service Visit Photos — attachments from service order items, grouped by order
+#}
+
+{# --- Item Photos --- #}
+<h6 class="fw-semibold mb-2"><i class="bi bi-camera me-1"></i>Item Photos</h6>
+{% if direct_attachments %}
+<div class="row g-2 mb-4">
+  {% for att in direct_attachments %}
+  <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+    <div class="card h-100">
+      <a href="{{ url_for('attachments.serve_file', id=att.id) }}" target="_blank"
+         class="text-decoration-none">
+        {% if att.is_image %}
+        <img src="{{ url_for('attachments.thumbnail', id=att.id) }}"
+             class="card-img-top"
+             alt="{{ att.filename }}"
+             style="height: 120px; object-fit: cover;"
+             loading="lazy">
+        {% else %}
+        <div class="card-img-top d-flex align-items-center justify-content-center bg-light"
+             style="height: 120px;">
+          <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 2.5rem;"></i>
+        </div>
+        {% endif %}
+      </a>
+      <div class="card-body p-2">
+        <p class="card-text small text-truncate mb-0" title="{{ att.filename }}">
+          {{ att.filename }}
+        </p>
+        {% if att.description %}
+        <p class="card-text small text-muted text-truncate mb-0" title="{{ att.description }}">
+          {{ att.description }}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-muted small mb-3">No item photos.</p>
+{% endif %}
+
+{# --- Service Visit Photos --- #}
+<h6 class="fw-semibold mb-2"><i class="bi bi-clock-history me-1"></i>Service Visit Photos</h6>
+{% if order_attachments %}
+{% for group in order_attachments %}
+<div class="mb-3">
+  <p class="small fw-semibold mb-1">
+    <a href="{{ url_for('orders.detail', id=group.order.id) }}">
+      {{ group.order.order_number }}
+    </a>
+    <span class="text-muted ms-1">{{ group.order.date_received.strftime('%Y-%m-%d') }}</span>
+  </p>
+  <div class="row g-2">
+    {% for att in group.attachments %}
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+      <div class="card h-100">
+        <a href="{{ url_for('attachments.serve_file', id=att.id) }}" target="_blank"
+           class="text-decoration-none">
+          {% if att.is_image %}
+          <img src="{{ url_for('attachments.thumbnail', id=att.id) }}"
+               class="card-img-top"
+               alt="{{ att.filename }}"
+               style="height: 120px; object-fit: cover;"
+               loading="lazy">
+          {% else %}
+          <div class="card-img-top d-flex align-items-center justify-content-center bg-light"
+               style="height: 120px;">
+            <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 2.5rem;"></i>
+          </div>
+          {% endif %}
+        </a>
+        <div class="card-body p-2">
+          <p class="card-text small text-truncate mb-0" title="{{ att.filename }}">
+            {{ att.filename }}
+          </p>
+          {% if att.description %}
+          <p class="card-text small text-muted text-truncate mb-0" title="{{ att.description }}">
+            {{ att.description }}
+          </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<p class="text-muted small mb-0">No service visit photos.</p>
+{% endif %}
