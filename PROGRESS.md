@@ -256,7 +256,7 @@
 3. All schema changes must have Alembic migration scripts
 4. Database seeding must be idempotent and run automatically
 
-### Post-Phase 6: Third Review Fix-ups — CODEX Re-Review (In Progress)
+### Post-Phase 6: Third Review Fix-ups — CODEX Re-Review (Complete)
 
 **Trigger**: CODEX static re-review (2026-03-04, updated 2026-03-10) identified remaining correctness and usability issues.
 
@@ -409,3 +409,20 @@
 **GitHub Issues**: #41, #42, #43 — all closed
 
 **Tests**: 1448 total, all passing
+
+### Sprint 2026-03-22 (Complete)
+
+**Wave A: Issue #44 — Unified Gallery**
+- [x] **#44: Unified photo gallery** — Service item detail page now shows a "Complete Photo History" combining direct item photos and photos from all service order items. New `get_unified_attachments()` service function, `/attachments/gallery/unified/<id>` endpoint, HTMX-loaded gallery partial grouped by source. 10 new tests (6 unit, 4 blueprint).
+
+**Wave B: Comprehensive Project Review** (4 parallel agents)
+- [x] **Code audit** — Found 3 P1 (unwired notification triggers), 12 P2 (unused service functions, inconsistent update patterns), 7 P3 (dead templates/forms, stale comments). No TODOs/FIXMEs remaining. 10 feature proposals generated.
+- [x] **Documentation audit** — 27 findings (6 P1, 9 P2, 12 P3). Stale model counts, outdated health check descriptions, email system misclaimed as inactive, missing screenshots.
+- [x] **Test suite review** — ~37 duplicate tests identified across 4 service test files. 42 files missing pytest markers. No blueprint or model test overlap despite dual directories. conftest duplication with MariaDB.
+- [x] **Security audit** — 0 P0, 7 P1 (missing CSRF on 2 forms, no security headers, export/reports lack role restrictions, no rate limiting), 8 P2, 8 P3. No SQL injection, XSS, or critical vulnerabilities found.
+
+**Wave C: TODO Consolidation**
+- [x] Consolidated 48 actionable items from all 4 audits into `docs/review/consolidated_todos.md` (P1: 11, P2: 20, P3: 17)
+
+**GitHub Issues**: #44 — closed
+**Tests**: 1458 total, all passing
