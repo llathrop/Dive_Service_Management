@@ -5,7 +5,7 @@ from flask_security import current_user, hash_password, roles_required
 
 from app.extensions import db
 from app.models.user import Role, User
-from app.services import audit_service
+from app.services import audit_service, config_service
 
 from app.blueprints.admin import admin_bp, _get_datastore
 
@@ -33,6 +33,9 @@ def create_user():
         role_ids = request.form.getlist("roles")
 
         # Validation
+        min_length = config_service.get_config(
+            "security.password_min_length", default=8
+        )
         errors = []
         if not username:
             errors.append("Username is required.")
@@ -42,8 +45,10 @@ def create_user():
             errors.append("First name is required.")
         if not last_name:
             errors.append("Last name is required.")
-        if not password or len(password) < 8:
-            errors.append("Password must be at least 8 characters.")
+        if not password or len(password) < min_length:
+            errors.append(
+                f"Password must be at least {min_length} characters."
+            )
         if User.query.filter_by(username=username).first():
             errors.append("Username already exists.")
         if User.query.filter_by(email=email).first():
@@ -113,6 +118,9 @@ def edit_user(id):
         password = request.form.get("password", "")
         role_ids = request.form.getlist("roles")
 
+        min_length = config_service.get_config(
+            "security.password_min_length", default=8
+        )
         errors = []
         if not username:
             errors.append("Username is required.")
@@ -128,8 +136,10 @@ def edit_user(id):
         existing = User.query.filter_by(email=email).first()
         if existing and existing.id != user.id:
             errors.append("Email already exists.")
-        if password and len(password) < 8:
-            errors.append("Password must be at least 8 characters.")
+        if password and len(password) < min_length:
+            errors.append(
+                f"Password must be at least {min_length} characters."
+            )
 
         if errors:
             for e in errors:
@@ -236,8 +246,13 @@ def reset_password(id):
         return redirect(url_for("admin.list_users"))
 
     new_password = request.form.get("new_password", "")
-    if not new_password or len(new_password) < 8:
-        flash("Password must be at least 8 characters.", "error")
+    min_length = config_service.get_config(
+        "security.password_min_length", default=8
+    )
+    if not new_password or len(new_password) < min_length:
+        flash(
+            f"Password must be at least {min_length} characters.", "error"
+        )
         return redirect(url_for("admin.edit_user", id=id))
 
     user.password = hash_password(new_password)

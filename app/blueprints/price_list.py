@@ -168,12 +168,27 @@ def edit(id):
     _populate_category_choices(form)
 
     if form.validate_on_submit():
-        form.populate_obj(item)
-        if not item.code:
-            item.code = None
-        item.updated_by = current_user.id
+        data = {
+            "category_id": form.category_id.data,
+            "code": form.code.data or None,
+            "name": form.name.data,
+            "description": form.description.data,
+            "price": form.price.data,
+            "cost": form.cost.data,
+            "price_tier": form.price_tier.data,
+            "is_per_unit": form.is_per_unit.data,
+            "default_quantity": form.default_quantity.data,
+            "unit_label": form.unit_label.data,
+            "auto_deduct_parts": form.auto_deduct_parts.data,
+            "is_taxable": form.is_taxable.data,
+            "sort_order": form.sort_order.data or 0,
+            "is_active": form.is_active.data,
+            "internal_notes": form.internal_notes.data,
+        }
         try:
-            db.session.commit()
+            item = price_list_service.update_price_list_item(
+                id, data, updated_by=current_user.id
+            )
             try:
                 audit_service.log_action(
                     action="update",
@@ -283,8 +298,13 @@ def edit_category(id):
     form = PriceListCategoryForm(obj=category)
 
     if form.validate_on_submit():
-        form.populate_obj(category)
-        db.session.commit()
+        data = {
+            "name": form.name.data,
+            "description": form.description.data,
+            "sort_order": form.sort_order.data or 0,
+            "is_active": form.is_active.data,
+        }
+        category = price_list_service.update_category(id, data)
         try:
             audit_service.log_action(
                 action="update",

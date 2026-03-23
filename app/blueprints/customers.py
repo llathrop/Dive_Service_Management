@@ -135,9 +135,31 @@ def edit(id):
     form = CustomerForm(obj=customer)
 
     if form.validate_on_submit():
-        form.populate_obj(customer)
+        data = {
+            "customer_type": form.customer_type.data,
+            "first_name": form.first_name.data,
+            "last_name": form.last_name.data,
+            "business_name": form.business_name.data,
+            "contact_person": form.contact_person.data,
+            "email": form.email.data,
+            "phone_primary": form.phone_primary.data,
+            "phone_secondary": form.phone_secondary.data,
+            "address_line1": form.address_line1.data,
+            "address_line2": form.address_line2.data,
+            "city": form.city.data,
+            "state_province": form.state_province.data,
+            "postal_code": form.postal_code.data,
+            "country": form.country.data,
+            "preferred_contact": form.preferred_contact.data,
+            "tax_exempt": form.tax_exempt.data,
+            "tax_id": form.tax_id.data,
+            "payment_terms": form.payment_terms.data,
+            "credit_limit": form.credit_limit.data,
+            "notes": form.notes.data,
+            "referral_source": form.referral_source.data,
+        }
         try:
-            db.session.commit()
+            customer = customer_service.update_customer(id, data)
             try:
                 audit_service.log_action(
                     action="update",
