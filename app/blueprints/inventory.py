@@ -169,12 +169,33 @@ def edit(id):
     form = InventoryItemForm(obj=item)
 
     if form.validate_on_submit():
-        form.populate_obj(item)
-        # Ensure empty SKU is stored as None (unique constraint)
-        if not item.sku:
-            item.sku = None
+        data = {
+            "sku": form.sku.data or None,
+            "name": form.name.data,
+            "description": form.description.data,
+            "category": form.category.data,
+            "subcategory": form.subcategory.data,
+            "manufacturer": form.manufacturer.data,
+            "manufacturer_part_number": form.manufacturer_part_number.data,
+            "purchase_cost": form.purchase_cost.data,
+            "resale_price": form.resale_price.data,
+            "markup_percent": form.markup_percent.data,
+            "quantity_in_stock": form.quantity_in_stock.data or 0,
+            "reorder_level": form.reorder_level.data or 0,
+            "reorder_quantity": form.reorder_quantity.data,
+            "unit_of_measure": form.unit_of_measure.data,
+            "storage_location": form.storage_location.data,
+            "is_active": form.is_active.data,
+            "is_for_resale": form.is_for_resale.data,
+            "preferred_supplier": form.preferred_supplier.data,
+            "supplier_url": form.supplier_url.data,
+            "minimum_order_quantity": form.minimum_order_quantity.data,
+            "supplier_lead_time_days": form.supplier_lead_time_days.data,
+            "expiration_date": form.expiration_date.data,
+            "notes": form.notes.data,
+        }
         try:
-            db.session.commit()
+            item = inventory_service.update_inventory_item(id, data)
             try:
                 audit_service.log_action(
                     action="update",
