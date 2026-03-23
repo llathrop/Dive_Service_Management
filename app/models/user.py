@@ -106,6 +106,9 @@ class User(TimestampMixin, db.Model, UserMixin):
     current_login_ip = db.Column(db.String(45), nullable=True)
     login_count = db.Column(db.Integer, default=0)
 
+    # --- Preferences ---
+    dashboard_config = db.Column(db.Text, nullable=True)  # JSON string
+
     # --- Relationships ---
     roles = db.relationship(
         "Role",

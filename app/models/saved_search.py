@@ -12,7 +12,7 @@ from app.extensions import db
 from app.models.mixins import TimestampMixin
 
 
-VALID_SEARCH_TYPES = ["customer", "order", "inventory", "invoice"]
+VALID_SEARCH_TYPES = ["customer", "order", "inventory", "invoice", "item"]
 
 
 class SavedSearch(TimestampMixin, db.Model):

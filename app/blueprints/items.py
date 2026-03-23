@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.forms.item import DrysuitDetailsForm, ServiceItemForm
 from app.models.customer import Customer
-from app.services import audit_service, item_service
+from app.services import audit_service, item_service, saved_search_service
 
 items_bp = Blueprint("items", __name__, url_prefix="/items")
 
@@ -28,10 +28,28 @@ SORTABLE_FIELDS = {
 @login_required
 def list_items():
     """List service items with pagination and search."""
-    page = request.args.get("page", 1, type=int)
-    q = request.args.get("q", "")
-    sort = request.args.get("sort", "name")
-    order = request.args.get("order", "asc")
+    # Apply default saved search when no filter params are provided
+    filter_keys = ["q", "sort", "order"]
+    if not any(request.args.get(k) for k in filter_keys):
+        default_search = saved_search_service.get_default_search(
+            user_id=current_user.id, search_type="item"
+        )
+        if default_search:
+            filters = default_search.filters
+            page = int(filters.get("page", 1))
+            q = filters.get("q", "")
+            sort = filters.get("sort", "name")
+            order = filters.get("order", "asc")
+        else:
+            page = request.args.get("page", 1, type=int)
+            q = request.args.get("q", "")
+            sort = request.args.get("sort", "name")
+            order = request.args.get("order", "asc")
+    else:
+        page = request.args.get("page", 1, type=int)
+        q = request.args.get("q", "")
+        sort = request.args.get("sort", "name")
+        order = request.args.get("order", "asc")
 
     # Validate sort against allowlist to prevent attribute injection
     if sort not in SORTABLE_FIELDS:

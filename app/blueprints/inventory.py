@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.forms.inventory import InventoryItemForm, InventorySearchForm, StockAdjustmentForm
-from app.services import audit_service, inventory_service
+from app.services import audit_service, inventory_service, saved_search_service
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -28,10 +28,30 @@ SORTABLE_FIELDS = {
 @login_required
 def list_items():
     """List inventory items with pagination, search, and filtering."""
-    form = InventorySearchForm(request.args)
-    page = request.args.get("page", 1, type=int)
-    sort = request.args.get("sort", "name")
-    order = request.args.get("order", "asc")
+    # Apply default saved search when no filter params are provided
+    filter_keys = ["q", "category", "low_stock_only", "is_active", "sort", "order"]
+    if not any(request.args.get(k) for k in filter_keys):
+        default_search = saved_search_service.get_default_search(
+            user_id=current_user.id, search_type="inventory"
+        )
+        if default_search:
+            filters = default_search.filters
+            from werkzeug.datastructures import ImmutableMultiDict
+            args = ImmutableMultiDict(filters)
+            form = InventorySearchForm(args)
+            page = int(filters.get("page", 1))
+            sort = filters.get("sort", "name")
+            order = filters.get("order", "asc")
+        else:
+            form = InventorySearchForm(request.args)
+            page = request.args.get("page", 1, type=int)
+            sort = request.args.get("sort", "name")
+            order = request.args.get("order", "asc")
+    else:
+        form = InventorySearchForm(request.args)
+        page = request.args.get("page", 1, type=int)
+        sort = request.args.get("sort", "name")
+        order = request.args.get("order", "asc")
 
     # Populate category choices dynamically
     categories = inventory_service.get_categories()
