@@ -60,6 +60,18 @@ def download_backup():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"dsm_backup_{timestamp}.sql"
 
+    try:
+        audit_service.log_action(
+            action="download_backup",
+            entity_type="system",
+            entity_id=0,
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+        )
+    except Exception:
+        pass
+
     return Response(
         sql_dump,
         mimetype="application/sql",

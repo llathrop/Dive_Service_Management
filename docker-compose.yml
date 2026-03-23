@@ -12,7 +12,7 @@ services:
     image: dsm-web:latest
     container_name: dsm-web
     ports:
-      - "${DSM_BIND_ADDRESS:-0.0.0.0}:${DSM_PORT:-8080}:8080"
+      - "${DSM_BIND_ADDRESS:-127.0.0.1}:${DSM_PORT:-8080}:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -65,14 +65,16 @@ services:
   redis:
     image: redis:7-alpine
     container_name: dsm-redis
-    command: redis-server --appendonly yes --maxmemory 64mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 64mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-dsm_redis_dev}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-dsm_redis_dev}
     volumes:
       - dsm-redis-data:/data
     restart: unless-stopped
     networks:
       - dsm-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping 2>/dev/null | grep -q PONG"]
       interval: 10s
       timeout: 5s
       start_period: 5s

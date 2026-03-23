@@ -38,7 +38,7 @@ services:
 
   # Reduce Redis memory for Pi
   redis:
-    command: redis-server --appendonly yes --maxmemory 32mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 32mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-dsm_redis_dev}
 
   # Remove Celery worker (Huey runs in-process instead)
   worker:
