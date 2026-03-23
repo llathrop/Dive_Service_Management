@@ -233,6 +233,106 @@
 </div>
 {% endif %}
 
+{# ===== INVOICE SECTION ===== #}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-receipt me-2"></i>Invoice</h5>
+  </div>
+  <div class="card-body">
+    {% set linked_invoices = order.invoices.all() %}
+    {% if linked_invoices %}
+      {# Invoice already exists for this order #}
+      {% for inv in linked_invoices %}
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <a href="{{ url_for('invoices.detail', id=inv.id) }}" class="fw-semibold">
+            {{ inv.invoice_number }}
+          </a>
+          <span class="badge bg-{{ 'success' if inv.status == 'paid' else 'secondary' }} ms-2">{{ inv.status|title }}</span>
+        </div>
+        <div>
+          <span class="fw-semibold">${{ "%.2f"|format(inv.total) }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      {# Cost preview and generate button #}
+      <div id="cost-preview"
+           hx-get="{{ url_for('invoices.cost_preview', order_id=order.id) }}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <div class="text-center py-2">
+          <div class="spinner-border spinner-border-sm text-muted" role="status">
+            <span class="visually-hidden">Loading preview...</span>
+          </div>
+          <span class="text-muted ms-2">Loading cost preview...</span>
+        </div>
+      </div>
+      <template id="cost-preview-template">
+        <table class="table table-sm mb-3">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th class="text-end">Qty</th>
+              <th class="text-end">Unit Price</th>
+              <th class="text-end">Total</th>
+            </tr>
+          </thead>
+          <tbody id="preview-line-items"></tbody>
+          <tfoot>
+            <tr class="fw-bold">
+              <td colspan="3">Grand Total</td>
+              <td class="text-end" id="preview-grand-total"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </template>
+      <script>
+        function escHtml(s) {
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+        document.addEventListener('htmx:afterSwap', function(evt) {
+          if (evt.detail.target.id === 'cost-preview') {
+            try {
+              var data = JSON.parse(evt.detail.target.textContent);
+              var html = '<table class="table table-sm mb-3"><thead><tr>';
+              html += '<th>Description</th><th class="text-end">Qty</th>';
+              html += '<th class="text-end">Unit Price</th><th class="text-end">Total</th>';
+              html += '</tr></thead><tbody>';
+              if (data.line_items && data.line_items.length > 0) {
+                data.line_items.forEach(function(item) {
+                  html += '<tr><td>' + escHtml(item.description) + '</td>';
+                  html += '<td class="text-end">' + parseFloat(item.quantity).toFixed(2) + '</td>';
+                  html += '<td class="text-end">$' + parseFloat(item.unit_price).toFixed(2) + '</td>';
+                  html += '<td class="text-end">$' + parseFloat(item.total).toFixed(2) + '</td></tr>';
+                });
+              } else {
+                html += '<tr><td colspan="4" class="text-muted text-center">No billable items yet</td></tr>';
+              }
+              html += '</tbody><tfoot><tr class="fw-bold"><td colspan="3">Grand Total</td>';
+              html += '<td class="text-end">$' + parseFloat(data.grand_total).toFixed(2) + '</td>';
+              html += '</tr></tfoot></table>';
+              evt.detail.target.innerHTML = html;
+            } catch(e) {
+              evt.detail.target.innerHTML = '<p class="text-muted">Unable to load cost preview.</p>';
+            }
+          }
+        });
+      </script>
+      <form method="POST" action="{{ url_for('invoices.generate_from_order', order_id=order.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-primary">
+          <i class="bi bi-receipt me-1"></i> Generate Invoice
+        </button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 {# ===== SERVICE ITEMS SECTION ===== #}
 <div class="card mb-4">
   <div class="card-header d-flex justify-content-between align-items-center">

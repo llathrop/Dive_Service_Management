@@ -369,6 +369,106 @@ def generate_invoice_number():
 
 
 # =========================================================================
+# Cost Preview for Service Order
+# =========================================================================
+
+def get_order_cost_preview(order_id):
+    """Calculate what an invoice would look like without creating one.
+
+    Read-only function that reuses the line-item logic from
+    ``generate_from_order()`` but does NOT persist anything.
+
+    Args:
+        order_id: The primary key of the service order.
+
+    Returns:
+        A dict with keys: ``subtotal``, ``line_items``, ``rush_fee``,
+        ``discount``, ``grand_total``.
+
+    Raises:
+        ValueError: If the order is not found.
+    """
+    order = db.session.get(ServiceOrder, order_id)
+    if order is None:
+        raise ValueError(f"Service order {order_id} not found.")
+
+    line_items = []
+    subtotal = Decimal("0.00")
+
+    for order_item in order.order_items.all():
+        # Applied services
+        for applied_service in order_item.applied_services.all():
+            line_total = applied_service.line_total if applied_service.line_total is not None else Decimal("0.00")
+            line_items.append({
+                "description": applied_service.service_name,
+                "quantity": str(applied_service.quantity),
+                "unit_price": str(applied_service.unit_price),
+                "total": str(line_total),
+                "type": "service",
+            })
+            subtotal += line_total
+
+        # Parts used (non-auto-deducted only)
+        for part in order_item.parts_used.all():
+            if not part.is_auto_deducted:
+                line_total = part.line_total if part.line_total is not None else Decimal("0.00")
+                line_items.append({
+                    "description": part.inventory_item.name,
+                    "quantity": str(part.quantity),
+                    "unit_price": str(part.unit_price_at_use),
+                    "total": str(line_total),
+                    "type": "part",
+                })
+                subtotal += line_total
+
+        # Labor entries
+        for entry in order_item.labor_entries.all():
+            tech_name = entry.tech.display_name if entry.tech else "Technician"
+            description = f"{tech_name}: {entry.description or 'Labor'}"
+            line_total = entry.line_total if entry.line_total is not None else Decimal("0.00")
+            line_items.append({
+                "description": description,
+                "quantity": str(entry.hours),
+                "unit_price": str(entry.hourly_rate),
+                "total": str(line_total),
+                "type": "labor",
+            })
+            subtotal += line_total
+
+    # Rush fee
+    rush_fee = Decimal(str(order.rush_fee)) if order.rush_fee is not None else Decimal("0.00")
+    if rush_fee > 0:
+        line_items.append({
+            "description": "Rush Fee",
+            "quantity": "1",
+            "unit_price": str(rush_fee),
+            "total": str(rush_fee),
+            "type": "fee",
+        })
+
+    # Discount
+    discount_amount = Decimal(str(order.discount_amount)) if order.discount_amount is not None else Decimal("0.00")
+    if discount_amount > 0:
+        line_items.append({
+            "description": "Discount",
+            "quantity": "1",
+            "unit_price": str(-discount_amount),
+            "total": str(-discount_amount),
+            "type": "discount",
+        })
+
+    grand_total = subtotal + rush_fee - discount_amount
+
+    return {
+        "subtotal": str(subtotal),
+        "line_items": line_items,
+        "rush_fee": str(rush_fee),
+        "discount": str(discount_amount),
+        "grand_total": str(grand_total),
+    }
+
+
+# =========================================================================
 # Generate Invoice from Service Order
 # =========================================================================
 
@@ -394,6 +494,13 @@ def generate_from_order(order_id, created_by=None, ip_address=None, user_agent=N
     order = db.session.get(ServiceOrder, order_id)
     if order is None:
         raise ValueError(f"Service order {order_id} not found.")
+
+    # Check for existing invoice linked to this order
+    existing = db.session.query(invoice_orders.c.invoice_id).filter(
+        invoice_orders.c.order_id == order_id
+    ).first()
+    if existing:
+        raise ValueError(f"Invoice already exists for order {order_id}")
 
     customer = order.customer
 
@@ -513,6 +620,12 @@ def generate_from_order(order_id, created_by=None, ip_address=None, user_agent=N
             order_id=order.id,
         )
     )
+
+    # Auto-mark $0 invoices as paid
+    if invoice.total is not None and invoice.total == 0:
+        invoice.status = "paid"
+        invoice.paid_date = date.today()
+        invoice.balance_due = Decimal("0.00")
 
     db.session.commit()
     try:

@@ -75,6 +75,23 @@
   </div>
 </div>
 
+{# Hide completed/picked-up toggle #}
+<div class="d-flex justify-content-end mb-2">
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" id="showCompletedToggle"
+           {% if hide_completed != 'true' %}checked{% endif %}
+           hx-get="{{ url_for('orders.list_orders') }}"
+           hx-include="#search-form"
+           hx-vals='js:{"hide_completed": document.getElementById("showCompletedToggle").checked ? "false" : "true"}'
+           hx-target="body"
+           hx-push-url="true"
+           hx-swap="outerHTML">
+    <label class="form-check-label" for="showCompletedToggle">
+      Show picked-up / cancelled orders
+    </label>
+  </div>
+</div>
+
 {# Orders table #}
 {% if orders.items %}
 <div class="card">

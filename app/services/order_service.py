@@ -73,6 +73,7 @@ def get_orders(
     date_to=None,
     sort="date_received",
     order="desc",
+    exclude_statuses=None,
 ):
     """Return paginated, filtered, sorted service orders.
 
@@ -87,11 +88,16 @@ def get_orders(
         date_to: Optional end date for date_received range.
         sort: Column name to sort by.  Must be in SORTABLE_FIELDS.
         order: Sort direction, 'asc' or 'desc'.
+        exclude_statuses: Optional set of status strings to exclude from results.
 
     Returns:
         A SQLAlchemy pagination object.
     """
     query = ServiceOrder.not_deleted()
+
+    # Exclude terminal statuses when requested (e.g. hide completed orders)
+    if exclude_statuses:
+        query = query.filter(ServiceOrder.status.notin_(exclude_statuses))
 
     # Apply search filter
     if search:
@@ -386,10 +392,38 @@ def change_status(order_id, new_status, user_id=None, ip_address=None, user_agen
     # Set milestone dates
     if new_status == "completed":
         order.date_completed = date.today()
+
+        # Update last_service_date on all associated service items
+        for soi in order.order_items.all():
+            if soi.service_item:
+                soi.service_item.last_service_date = date.today()
+
     elif new_status == "picked_up":
         order.date_picked_up = date.today()
 
     db.session.commit()
+
+    # Auto-generate invoice when order is completed (if none exists)
+    if new_status == "completed":
+        try:
+            from app.models.invoice import invoice_orders
+            existing = (
+                db.session.query(invoice_orders.c.invoice_id)
+                .filter(invoice_orders.c.order_id == order.id)
+                .first()
+            )
+            if existing is None:
+                from app.services import invoice_service
+                invoice_service.generate_from_order(
+                    order.id, created_by=user_id,
+                    ip_address=ip_address, user_agent=user_agent,
+                )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Auto-invoice generation failed for order %s", order.id, exc_info=True
+            )
+
     try:
         audit_service.log_action(
             action="status_change",
