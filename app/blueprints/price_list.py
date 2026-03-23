@@ -6,9 +6,12 @@ with individual priced items inside each.  Category management and price
 changes require the 'admin' role.  All routes require authentication.
 """
 
+import json
+
 from flask import (
     Blueprint,
     Response,
+    abort,
     flash,
     jsonify,
     redirect,
@@ -21,6 +24,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.forms.price_list import PriceListCategoryForm, PriceListItemForm
+from app.models.price_list import PriceListItemPart
 from app.services import audit_service, price_list_service
 
 price_list_bp = Blueprint("price_list", __name__, url_prefix="/price-list")
@@ -92,8 +96,15 @@ def download_pdf():
 @login_required
 def detail(id):
     """Display price list item detail."""
+    from app.models.inventory import InventoryItem
+
     item = price_list_service.get_price_list_item(id)
-    return render_template("price_list/detail.html", item=item)
+    inventory_items = InventoryItem.query.filter_by(is_active=True).order_by(
+        InventoryItem.name
+    ).all()
+    return render_template(
+        "price_list/detail.html", item=item, inventory_items=inventory_items
+    )
 
 
 @price_list_bp.route("/new", methods=["GET", "POST"])
@@ -361,3 +372,133 @@ def quick_create():
 
     display_text = f"{item.name} (${item.price})"
     return jsonify({"id": item.id, "display_text": display_text}), 201
+
+
+@price_list_bp.route("/item/<int:item_id>/link-part", methods=["POST"])
+@login_required
+@roles_accepted("admin", "technician")
+def link_part_route(item_id):
+    """Link an inventory item to a price list item (HTMX endpoint)."""
+    from app.models.inventory import InventoryItem
+
+    item = price_list_service.get_price_list_item(item_id)
+
+    inventory_item_id = request.form.get("inventory_item_id", type=int)
+    quantity = request.form.get("quantity", 1, type=float)
+
+    if not inventory_item_id:
+        flash("Please select an inventory item.", "error")
+        inventory_items = InventoryItem.query.filter_by(is_active=True).order_by(
+            InventoryItem.name
+        ).all()
+        parts = item.linked_parts.all()
+        return render_template(
+            "partials/linked_parts.html",
+            item=item,
+            parts=parts,
+            inventory_items=inventory_items,
+        )
+
+    # Verify inventory item exists
+    inv_item = db.session.get(InventoryItem, inventory_item_id)
+    if inv_item is None:
+        flash("Inventory item not found.", "error")
+        inventory_items = InventoryItem.query.filter_by(is_active=True).order_by(
+            InventoryItem.name
+        ).all()
+        parts = item.linked_parts.all()
+        return render_template(
+            "partials/linked_parts.html",
+            item=item,
+            parts=parts,
+            inventory_items=inventory_items,
+        )
+
+    # Check for duplicate link
+    existing = PriceListItemPart.query.filter_by(
+        price_list_item_id=item_id,
+        inventory_item_id=inventory_item_id,
+    ).first()
+    if existing:
+        flash("This part is already linked. Update the quantity instead.", "warning")
+        inventory_items = InventoryItem.query.filter_by(is_active=True).order_by(
+            InventoryItem.name
+        ).all()
+        parts = item.linked_parts.all()
+        return render_template(
+            "partials/linked_parts.html",
+            item=item,
+            parts=parts,
+            inventory_items=inventory_items,
+        )
+
+    price_list_service.link_part(item_id, inventory_item_id, quantity=quantity)
+
+    try:
+        audit_service.log_action(
+            action="link_part",
+            entity_type="price_list_item",
+            entity_id=item_id,
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+            additional_data=json.dumps({"inventory_item_id": inventory_item_id, "quantity": quantity}),
+        )
+    except Exception:
+        pass
+
+    flash("Part linked successfully.", "success")
+    inventory_items = InventoryItem.query.filter_by(is_active=True).order_by(
+        InventoryItem.name
+    ).all()
+    parts = item.linked_parts.all()
+    return render_template(
+        "partials/linked_parts.html",
+        item=item,
+        parts=parts,
+        inventory_items=inventory_items,
+    )
+
+
+@price_list_bp.route(
+    "/item/<int:item_id>/unlink-part/<int:part_id>", methods=["POST"]
+)
+@login_required
+@roles_accepted("admin", "technician")
+def unlink_part_route(item_id, part_id):
+    """Remove a linked part from a price list item (HTMX endpoint)."""
+    from app.models.inventory import InventoryItem
+
+    item = price_list_service.get_price_list_item(item_id)
+
+    # Verify the part link belongs to the specified price list item (IDOR prevention)
+    link = db.session.get(PriceListItemPart, part_id)
+    if link is None or link.price_list_item_id != item_id:
+        abort(404)
+
+    price_list_service.unlink_part(part_id)
+
+    try:
+        audit_service.log_action(
+            action="unlink_part",
+            entity_type="price_list_item",
+            entity_id=item_id,
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+            additional_data=f'{{"part_link_id": {part_id}}}',
+        )
+    except Exception:
+        pass
+
+    flash("Part unlinked.", "success")
+    inventory_items = InventoryItem.query.filter_by(is_active=True).order_by(
+        InventoryItem.name
+    ).all()
+    parts = item.linked_parts.all()
+    return render_template(
+        "partials/linked_parts.html",
+        item=item,
+        parts=parts,
+        inventory_items=inventory_items,
+    )

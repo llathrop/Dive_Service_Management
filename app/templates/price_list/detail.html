@@ -106,37 +106,7 @@
 
 {# Linked Parts #}
 {% set parts = item.linked_parts.all() %}
-{% if parts %}
-<div class="card mb-4">
-  <div class="card-header">
-    <h5 class="card-title mb-0"><i class="bi bi-link-45deg me-2"></i>Linked Parts</h5>
-  </div>
-  <div class="table-responsive">
-    <table class="table table-hover mb-0">
-      <thead>
-        <tr>
-          <th>Part</th>
-          <th>Quantity</th>
-          <th>Notes</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for part in parts %}
-        <tr>
-          <td>
-            <a href="{{ url_for('inventory.detail', id=part.inventory_item.id) }}">
-              {{ part.inventory_item.name }}
-            </a>
-          </td>
-          <td>{{ part.quantity }}</td>
-          <td>{{ part.notes or '' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
+{% include 'partials/linked_parts.html' %}
 
 {# Internal Notes #}
 {% if item.internal_notes and (current_user.has_role('admin') or current_user.has_role('technician')) %}
