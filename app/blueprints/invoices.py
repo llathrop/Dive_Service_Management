@@ -15,6 +15,7 @@ from flask import (
     Blueprint,
     Response,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -433,3 +434,16 @@ def generate_from_order(order_id):
     except ValueError as exc:
         flash(str(exc), "error")
         return redirect(url_for("orders.detail", id=order_id))
+
+
+@invoices_bp.route(
+    "/from-order/<int:order_id>/preview", methods=["GET"]
+)
+@login_required
+def cost_preview(order_id):
+    """Return a JSON cost preview for generating an invoice from an order."""
+    try:
+        preview = invoice_service.get_order_cost_preview(order_id)
+        return jsonify(preview)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 404

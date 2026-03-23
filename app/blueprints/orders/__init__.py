@@ -157,6 +157,10 @@ KANBAN_STATUS_LABELS = {
 # ======================================================================
 
 
+# Terminal statuses that can be hidden from the list view.
+TERMINAL_STATUSES = {"picked_up", "cancelled"}
+
+
 @orders_bp.route("/")
 @login_required
 def list_orders():
@@ -167,10 +171,14 @@ def list_orders():
     page = request.args.get("page", 1, type=int)
     sort = request.args.get("sort", "date_received")
     order = request.args.get("order", "desc")
+    hide_completed = request.args.get("hide_completed", "true")
 
     # Validate sort field against allowlist
     if sort not in SORTABLE_FIELDS:
         sort = "date_received"
+
+    # Determine which statuses to exclude
+    exclude_statuses = TERMINAL_STATUSES if hide_completed == "true" else None
 
     pagination = order_service.get_orders(
         page=page,
@@ -183,6 +191,7 @@ def list_orders():
         date_to=form.date_to.data,
         sort=sort,
         order=order,
+        exclude_statuses=exclude_statuses,
     )
 
     return render_template(
@@ -191,6 +200,7 @@ def list_orders():
         form=form,
         sort=sort,
         order=order,
+        hide_completed=hide_completed,
     )
 
 
