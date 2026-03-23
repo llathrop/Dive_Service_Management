@@ -24,7 +24,13 @@ security = Security()
 # selectively disabled during testing)
 csrf = CSRFProtect()
 
-# Mail support — placeholder for future password-reset / notification emails.
+# Rate limiting
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+# Mail support — used for email notifications (async delivery via Celery).
 # Flask-Mail is an optional dependency; if not installed we create a small
 # stand-in so that importing this module never fails.
 try:

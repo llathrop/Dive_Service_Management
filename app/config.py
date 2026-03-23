@@ -40,7 +40,7 @@ class Config:
     SECURITY_TOKEN_AUTHENTICATION_HEADER = None  # Session-based auth only
     SECURITY_TRACKABLE = True  # Enable login tracking fields
     SECURITY_CHANGEABLE = True  # Allow password changes
-    SECURITY_RECOVERABLE = False  # Disable password recovery (no email configured yet)
+    SECURITY_RECOVERABLE = False  # Disable password recovery — admin resets passwords via user management
     SECURITY_POST_LOGIN_VIEW = "/dashboard"
     SECURITY_POST_LOGOUT_VIEW = "/login"
     # When None, Flask-Security returns 403 for authenticated users who lack
@@ -73,7 +73,7 @@ class Config:
     # --- Redis ---
     REDIS_URL = os.environ.get("DSM_REDIS_URL", "redis://localhost:6379/0")
 
-    # --- Mail (placeholder for future use) ---
+    # --- Mail (used for email notifications via Celery async delivery) ---
     MAIL_SERVER = os.environ.get("DSM_MAIL_SERVER", "localhost")
     MAIL_PORT = int(os.environ.get("DSM_MAIL_PORT", 25))
     MAIL_USE_TLS = os.environ.get("DSM_MAIL_USE_TLS", "false").lower() == "true"
@@ -93,6 +93,11 @@ class ProductionConfig(Config):
     DEBUG = False
     # In production, SECRET_KEY and SECURITY_PASSWORD_SALT MUST be set via env vars.
     # The defaults in Config are only for development convenience.
+
+    # Secure session cookies
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
 
     @classmethod
     def init_app(cls, app):
