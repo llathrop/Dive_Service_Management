@@ -43,8 +43,15 @@ def _get_mysql_table_stats():
 
 
 def _get_sqlite_table_stats():
-    """Get table stats from SQLite (count each table individually)."""
-    # Get all table names
+    """Get table stats from SQLite (count each table individually).
+
+    Uses an allowlist derived from SQLAlchemy model metadata to avoid
+    dynamic table name interpolation in SQL queries.
+    """
+    # Build allowlist from registered SQLAlchemy models
+    allowed_tables = set(db.metadata.tables.keys())
+
+    # Get all table names from SQLite master
     result = db.session.execute(
         text("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
     )
@@ -52,10 +59,10 @@ def _get_sqlite_table_stats():
 
     stats = []
     for table in tables:
-        if table.startswith("sqlite_") or table == "alembic_version":
+        if table not in allowed_tables:
             continue
         count_result = db.session.execute(
-            text(f'SELECT COUNT(*) FROM "{table}"')  # noqa: S608
+            text(f'SELECT COUNT(*) FROM "{table}"')  # noqa: S608 — table name from allowlist, not user input
         )
         count = count_result.scalar()
         stats.append({"table": table, "rows": count})

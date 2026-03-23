@@ -15,7 +15,7 @@ Typical usage::
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, abort, render_template, send_from_directory
 from flask_login import login_required
 from flask_security import SQLAlchemyUserDatastore
 
@@ -198,6 +198,10 @@ def _register_upload_route(app):
     @login_required
     def uploaded_file(filename):
         upload_folder = app.config.get("UPLOAD_FOLDER", "uploads")
+        # Defense-in-depth: reject path traversal attempts
+        real_path = os.path.realpath(os.path.join(upload_folder, filename))
+        if not real_path.startswith(os.path.realpath(upload_folder)):
+            abort(403)
         response = send_from_directory(upload_folder, filename)
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
