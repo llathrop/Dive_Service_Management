@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.forms.customer import CustomerForm, CustomerSearchForm
-from app.services import audit_service, customer_service
+from app.services import audit_service, customer_service, saved_search_service
 
 customers_bp = Blueprint("customers", __name__, url_prefix="/customers")
 
@@ -27,10 +27,30 @@ SORTABLE_FIELDS = {
 @login_required
 def list_customers():
     """List customers with pagination, search, and filtering."""
-    form = CustomerSearchForm(request.args)
-    page = request.args.get("page", 1, type=int)
-    sort = request.args.get("sort", "last_name")
-    order = request.args.get("order", "asc")
+    # Apply default saved search when no filter params are provided
+    filter_keys = ["q", "customer_type", "sort", "order"]
+    if not any(request.args.get(k) for k in filter_keys):
+        default_search = saved_search_service.get_default_search(
+            user_id=current_user.id, search_type="customer"
+        )
+        if default_search:
+            filters = default_search.filters
+            from werkzeug.datastructures import ImmutableMultiDict
+            args = ImmutableMultiDict(filters)
+            form = CustomerSearchForm(args)
+            page = int(filters.get("page", 1))
+            sort = filters.get("sort", "last_name")
+            order = filters.get("order", "asc")
+        else:
+            form = CustomerSearchForm(request.args)
+            page = request.args.get("page", 1, type=int)
+            sort = request.args.get("sort", "last_name")
+            order = request.args.get("order", "asc")
+    else:
+        form = CustomerSearchForm(request.args)
+        page = request.args.get("page", 1, type=int)
+        sort = request.args.get("sort", "last_name")
+        order = request.args.get("order", "asc")
 
     # Validate sort against allowlist to prevent attribute injection
     if sort not in SORTABLE_FIELDS:
