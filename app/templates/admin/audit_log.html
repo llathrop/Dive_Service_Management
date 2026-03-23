@@ -7,9 +7,14 @@
   <h1 class="h3 mb-0">
     <i class="bi bi-journal-text me-2"></i>Audit Log
   </h1>
-  <a href="{{ url_for('admin.data_management') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Data Management
-  </a>
+  <div>
+    <a href="{{ url_for('admin.audit_log_export', entity_type=filters.entity_type, action=filters.action, user_id=filters.user_id, date_from=filters.date_from, date_to=filters.date_to) }}" class="btn btn-outline-success btn-sm me-2">
+      <i class="bi bi-download me-1"></i>Export CSV
+    </a>
+    <a href="{{ url_for('admin.data_management') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Data Management
+    </a>
+  </div>
 </div>
 
 {# Filter Form #}

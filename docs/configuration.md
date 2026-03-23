@@ -64,9 +64,9 @@ Environment variables are defined in the `.env` file (copied from `.env.example`
 | `DSM_UPLOAD_FOLDER` | `/app/uploads` | Directory for uploaded files inside the container. Mapped to `./uploads` on the host via Docker volume. |
 | `DSM_MAX_CONTENT_LENGTH` | `16777216` (16 MB) | Maximum upload file size in bytes. Requests exceeding this limit receive a 413 error. |
 
-### Mail (Placeholder)
+### Mail
 
-These variables are defined but mail functionality is not yet active:
+Email is fully implemented via `app/services/email_service.py` with Celery async delivery. SMTP settings are read from `SystemConfig` at send-time by default, but can be overridden with these environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|

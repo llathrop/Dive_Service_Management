@@ -199,9 +199,11 @@ Tag ----< Taggable (polymorphic: any entity type + id)
 
 SystemConfig (key-value settings store)
 AuditLog (action tracking)
+Attachment (polymorphic file uploads: any entity type + id)
+SavedSearch (per-user saved search filters)
 ```
 
-### Models (17 total)
+### Models (26 total)
 
 | Model | Table | Mixins | Key Relationships |
 |-------|-------|--------|-------------------|
@@ -229,6 +231,8 @@ AuditLog (action tracking)
 | `NotificationRead` | `notification_reads` | -- | User (FK), Notification (FK) |
 | `SystemConfig` | `system_config` | Timestamp | -- |
 | `AuditLog` | `audit_log` | -- | User (FK) |
+| `Attachment` | `attachments` | Timestamp | Polymorphic (entity_type + entity_id) |
+| `SavedSearch` | `saved_searches` | Timestamp | User (FK) |
 
 ### Model Mixins
 
