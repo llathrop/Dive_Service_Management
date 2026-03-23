@@ -20,7 +20,7 @@ from app.extensions import db
 from app.models.invoice import Invoice, InvoiceLineItem, invoice_orders
 from app.models.payment import Payment
 from app.models.service_order import ServiceOrder
-from app.services import audit_service
+from app.services import audit_service, notification_service
 
 
 # ---------------------------------------------------------------------------
@@ -715,6 +715,10 @@ def record_payment(invoice_id, data, recorded_by=None, ip_address=None, user_age
             user_agent=user_agent,
             additional_data=f'{{"invoice_id": {invoice_id}}}',
         )
+    except Exception:
+        pass
+    try:
+        notification_service.notify_payment_received(invoice, payment)
     except Exception:
         pass
     return payment
