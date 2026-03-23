@@ -42,11 +42,14 @@ python-dotenv==1.0.1
 # WSGI Server
 gunicorn==22.0.0
 
-# Mail (optional, for future notification emails)
+# Mail (email notifications via Celery async delivery)
 Flask-Mail==0.10.0
 
 # Documentation rendering
 Markdown==3.10.2
+
+# Rate Limiting
+Flask-Limiter==4.1.1
 
 # CLI
 click==8.1.7

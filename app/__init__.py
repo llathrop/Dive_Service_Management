@@ -20,7 +20,7 @@ from flask_login import login_required
 from flask_security import SQLAlchemyUserDatastore
 
 from app.config import config_by_name
-from app.extensions import csrf, db, mail, migrate, security
+from app.extensions import csrf, db, limiter, mail, migrate, security
 
 
 def create_app(config_class=None):
@@ -92,6 +92,11 @@ def create_app(config_class=None):
     # ------------------------------------------------------------------
     _register_context_processors(app)
 
+    # ------------------------------------------------------------------
+    # Register security headers
+    # ------------------------------------------------------------------
+    _register_security_headers(app)
+
     return app
 
 
@@ -108,6 +113,14 @@ def _init_extensions(app):
 
     # CSRF protection
     csrf.init_app(app)
+
+    # Rate limiting — use Redis in production, fall back to in-memory
+    redis_url = app.config.get("REDIS_URL")
+    if redis_url and not app.config.get("TESTING"):
+        app.config.setdefault("RATELIMIT_STORAGE_URI", redis_url)
+    else:
+        app.config.setdefault("RATELIMIT_STORAGE_URI", "memory://")
+    limiter.init_app(app)
 
     # Flask-Mail (if available)
     if mail is not None:
@@ -229,6 +242,69 @@ def _resolve_logo_url(app, config_key):
     if os.path.isfile(abs_path):
         return f"/uploads/{rel_path}"
     return None
+
+
+def _apply_rate_limits(app):
+    """Apply rate limits to sensitive endpoints.
+
+    Rate limits are applied post-registration so we can target Flask-Security's
+    login view (which we don't decorate directly) and other endpoints.
+    """
+    # Rate-limit login endpoint (Flask-Security registers this)
+    login_view = app.view_functions.get("security.login")
+    if login_view is not None:
+        app.view_functions["security.login"] = limiter.limit(
+            "10/minute"
+        )(login_view)
+
+    # Rate-limit password reset endpoint (prevents email enumeration)
+    reset_view = app.view_functions.get("security.reset_password")
+    if reset_view is not None:
+        app.view_functions["security.reset_password"] = limiter.limit(
+            "5/minute"
+        )(reset_view)
+    forgot_view = app.view_functions.get("security.forgot_password")
+    if forgot_view is not None:
+        app.view_functions["security.forgot_password"] = limiter.limit(
+            "5/minute"
+        )(forgot_view)
+
+    # Rate-limit API-like search/export endpoints
+    for endpoint_name in ("search.search", "search.autocomplete",
+                          "export.export_csv", "export.export_xlsx"):
+        view = app.view_functions.get(endpoint_name)
+        if view is not None:
+            app.view_functions[endpoint_name] = limiter.limit(
+                "30/minute"
+            )(view)
+
+
+def _register_security_headers(app):
+    """Add security response headers to all responses."""
+
+    @app.after_request
+    def set_security_headers(response):
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "font-src 'self'"
+        )
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # Only set HSTS when not in debug/testing mode
+        if not app.debug and not app.testing:
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+
+        return response
+
+    # Apply rate limits to login and API-like endpoints
+    _apply_rate_limits(app)
 
 
 def _register_cli(app):
