@@ -40,7 +40,8 @@ class Config:
     SECURITY_TOKEN_AUTHENTICATION_HEADER = None  # Session-based auth only
     SECURITY_TRACKABLE = True  # Enable login tracking fields
     SECURITY_CHANGEABLE = True  # Allow password changes
-    SECURITY_RECOVERABLE = False  # Disable password recovery — admin resets passwords via user management
+    SECURITY_RECOVERABLE = True  # Password recovery via email — reset endpoint is rate-limited via flask-limiter
+    SECURITY_RESET_PASSWORD_WITHIN = "1 hour"
     SECURITY_POST_LOGIN_VIEW = "/dashboard"
     SECURITY_POST_LOGOUT_VIEW = "/login"
     # When None, Flask-Security returns 403 for authenticated users who lack

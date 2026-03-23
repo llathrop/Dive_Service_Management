@@ -265,7 +265,7 @@ The general approach for cloud deployment:
 
 When the application starts for the first time, the following happens automatically:
 
-1. **Database migration**: `flask db upgrade` creates all tables from the migration chain (7 migrations total).
+1. **Database migration**: `flask db upgrade` creates all tables from the migration chain (10 migrations total).
 2. **Seed data**: `flask seed-db` creates:
    - 3 roles: admin, technician, viewer
    - 6 price list categories: Drysuit Repairs, Seal Replacement, Zipper Service, Valve Service, Testing & Inspection, General Service
