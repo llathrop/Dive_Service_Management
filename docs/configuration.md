@@ -98,14 +98,20 @@ These environment variables, when set, override the corresponding database-store
 | `DSM_PAGINATION_SIZE` | `display.pagination_size` | Default number of rows per page in list views. |
 | `DSM_PASSWORD_MIN_LENGTH` | `security.password_min_length` | Minimum password length for new accounts. |
 | `DSM_SESSION_LIFETIME_HOURS` | `security.session_lifetime_hours` | Session timeout in hours. |
+| `DSM_MAIL_SERVER` | `email.smtp_server` | SMTP server hostname. |
+| `DSM_MAIL_PORT` | `email.smtp_port` | SMTP server port. |
+| `DSM_MAIL_USE_TLS` | `email.smtp_use_tls` | Use TLS for SMTP connections. |
+| `DSM_MAIL_USERNAME` | `email.smtp_username` | SMTP authentication username. |
+| `DSM_MAIL_PASSWORD` | `email.smtp_password` | SMTP authentication password. |
+| `DSM_MAIL_DEFAULT_SENDER` | `email.from_address` | Sender email address. |
 
 ---
 
 ## Database-Stored Settings
 
-System configuration is stored in the `system_config` table and managed via the Admin > Settings page. Each setting has a key, value, type, category, and description. The seed command creates 29 default entries on first run.
+System configuration is stored in the `system_config` table and managed via the Admin > Settings page. Each setting has a key, value, type, category, and description. The seed command creates 38 default entries on first run.
 
-Settings are resolved in order: ENV variable (if mapped) > database value > default.
+Settings are resolved in order: ENV variable (if mapped) > database value > default. Settings are organized into 8 categories: company, invoice, tax, service, notification, email, display, and security.
 
 ### Company Settings
 
@@ -153,6 +159,19 @@ Settings are resolved in order: ENV variable (if mapped) > database value > defa
 | `notification.retention_days` | `90` | integer | Number of days to keep notifications before they are eligible for cleanup. |
 | `notification.order_due_warning_days` | `2` | integer | Number of days before an order's promised date to generate an "approaching due" notification. |
 
+### Email Settings
+
+| Key | Default | Type | Description |
+|-----|---------|------|-------------|
+| `email.enabled` | `false` | boolean | Master toggle for email notifications. When false, no emails are sent. |
+| `email.smtp_server` | *(empty)* | string | SMTP server hostname. |
+| `email.smtp_port` | `587` | integer | SMTP server port. |
+| `email.smtp_use_tls` | `true` | boolean | Use TLS for SMTP connections. |
+| `email.smtp_username` | *(empty)* | string | SMTP authentication username. Marked as sensitive. |
+| `email.smtp_password` | *(empty)* | string | SMTP authentication password. Marked as sensitive. |
+| `email.from_address` | *(empty)* | string | Sender email address for outgoing notifications. |
+| `email.from_name` | *(empty)* | string | Sender display name for outgoing notifications. |
+
 ### Display Settings
 
 | Key | Default | Type | Description |
@@ -186,8 +205,8 @@ The main Flask application served by Gunicorn.
 | Image | `dsm-web:latest` (built from Dockerfile) |
 | Port | `${DSM_PORT:-8080}` mapped to container port 8080 |
 | Depends on | `db` (healthy), `redis` (healthy) |
-| Volumes | `./uploads:/app/uploads`, `./logs:/app/logs`, `./instance:/app/instance` |
-| Health check | `curl -f http://localhost:8080/health` every 30s |
+| Volumes | `./uploads:/app/uploads`, `./logs:/app/logs`, `./instance:/app/instance`, `./backups:/app/backups` |
+| Health check | `curl -f http://localhost:8080/health/ready` every 30s |
 | Restart | `unless-stopped` |
 | Entrypoint | `docker-entrypoint.sh` -- runs migrations and seeding before starting Gunicorn |
 | Command | `gunicorn --bind 0.0.0.0:8080 --workers 2 --threads 4 --timeout 120 app:create_app()` |
@@ -233,7 +252,7 @@ Celery worker for asynchronous task processing.
 | Command | `celery -A app.celery_app worker --loglevel=info --concurrency=2` |
 | Depends on | `db` (healthy), `redis` (healthy) |
 | Volumes | `./uploads:/app/uploads`, `./logs:/app/logs` |
-| Health check | `celery inspect ping` every 60s |
+| Health check | `celery inspect ping --timeout 10` (grep for OK) every 60s |
 | Restart | `unless-stopped` |
 
 The worker does not run migrations or seeding (the entrypoint script only runs those for Gunicorn). Concurrency is set to 2 (suitable for Pi hardware).
@@ -247,7 +266,7 @@ Celery Beat scheduler for periodic tasks.
 | Image | `dsm-web:latest` (same image as web) |
 | Command | `celery -A app.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule` |
 | Depends on | `redis` (healthy) |
-| Health check | `pgrep -f 'celery.*beat'` every 60s |
+| Health check | Checks `/tmp/celerybeat-schedule` exists and was modified within 3 minutes, every 60s |
 | Restart | `unless-stopped` |
 
 The beat schedule file is stored in `/tmp/` inside the container and does not need to persist across restarts.

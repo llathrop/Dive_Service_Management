@@ -37,13 +37,13 @@ The system runs as a containerized web application deployable on Raspberry Pi (A
 | Gunicorn | 22.x | Production WSGI server |
 | mysqlclient | 2.2.x | MariaDB/MySQL driver (C extension, fastest) |
 | fpdf2 | 2.8.x | PDF generation for invoices, price lists, and reports (lightweight, no system dependencies, fast on ARM64) |
-| WeasyPrint | 67.x | (Optional) Complex HTML-to-PDF rendering — only needed for highly-styled PDF exports; has heavy system dependencies (Pango, Cairo) that are slow to install on ARM64. Omit for lightweight deployments. |
+| WeasyPrint | 67.x | (Optional — not included by default) Complex HTML-to-PDF rendering — evaluated but not adopted. Has heavy system dependencies (Pango, Cairo) that are slow to install on ARM64. The project uses fpdf2 exclusively. System deps are commented out in the Dockerfile for reference. |
 | openpyxl | 3.1.x | XLSX export |
 | python-dotenv | 1.0.x | Environment variable management |
 | Celery | 5.4.x | Background task queue (notifications, report generation, exports) — default for full deployments |
-| Huey | 2.5.x | (Alternative) Lightweight task queue backed by Redis or SQLite — fewer dependencies, lower RAM, suitable for Pi single-host deployments. Code uses a thin wrapper so either backend can be selected via config. |
+| Huey | 2.5.x | (Optional — not included by default) Lightweight task queue — evaluated as alternative to Celery for Pi deployments but not adopted. The project uses Celery exclusively. |
 | Redis | 7.x | Celery/Huey broker and result backend, also used for caching |
-| Marshmallow | 3.22.x | Serialization/deserialization for import/export |
+| Marshmallow | 3.22.x | (Optional — not included by default) Evaluated for import/export serialization but not adopted. The project uses direct CSV/XLSX handling via openpyxl and built-in csv module. |
 | click | 8.x | CLI commands (Flask's native CLI extension) |
 | Pytest | 8.x | Test runner and framework |
 | Pytest-Flask | 1.3.x | Flask test client fixtures and helpers |
@@ -63,7 +63,7 @@ The system runs as a containerized web application deployable on Raspberry Pi (A
 | Bootstrap Icons | 1.11.x | Icon set |
 | Alpine.js | 3.14.x | Minimal JS for client-side interactivity (dropdowns, modals, local state) |
 | Chart.js | 4.4.x | Dashboard and report charts |
-| Tom Select | 2.3.x | Searchable select/combobox (for customer/part pickers) |
+| Tom Select | 2.3.x | (Optional — not included by default) Evaluated for searchable dropdowns but not adopted. The project uses native HTML select elements with HTMX-powered inline creation modals instead. |
 
 No build step required. All frontend dependencies served via CDN or vendored static files.
 

@@ -227,7 +227,7 @@ spec:
 
 ### Cloud SQL Connection
 
-1. Create a Cloud SQL instance with **MariaDB 11**.
+1. Create a Cloud SQL instance with **MySQL 8.0** (GCP Cloud SQL does not offer MariaDB; MySQL 8.0 is compatible with DSM).
 2. Create a database `dsm` and user `dsm`.
 3. Enable the Cloud SQL Auth Proxy or use the built-in Cloud Run connector
    (annotate the service with `run.googleapis.com/cloudsql-instances`).
@@ -321,7 +321,9 @@ the same container image with a different entrypoint command.
 
 ### Azure Database for MariaDB
 
-1. Create an **Azure Database for MariaDB** flexible server.
+> **Note:** Microsoft has retired Azure Database for MariaDB (end of support September 2025). New deployments are no longer possible. Use **Azure Database for MySQL Flexible Server** (version 8.0+) instead, which is compatible with DSM's SQLAlchemy queries.
+
+1. Create an **Azure Database for MySQL Flexible Server**.
 2. Choose a compute tier appropriate for your workload (Burstable B1ms for dev,
    General Purpose D2ds_v4 for production).
 3. Create database `dsm` and user `dsm`.
@@ -329,7 +331,7 @@ the same container image with a different entrypoint command.
 5. Allow connections from the Container Apps subnet.
 6. Set `DSM_DATABASE_URL` to:
    ```
-   mysql+mysqldb://dsm:PASSWORD@your-server.mariadb.database.azure.com:3306/dsm?charset=utf8mb4&ssl=true
+   mysql+mysqldb://dsm:PASSWORD@your-server.mysql.database.azure.com:3306/dsm?charset=utf8mb4&ssl=true
    ```
 
 ### Azure Cache for Redis

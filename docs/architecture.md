@@ -50,6 +50,7 @@ Volumes:
   ./uploads      -> /app/uploads (file attachments)
   ./logs         -> /app/logs (application logs)
   ./instance     -> /app/instance (local config overrides)
+  ./backups      -> /app/backups (pre-migration DB backups)
 ```
 
 **Container roles:**
@@ -287,7 +288,8 @@ Business logic lives in `app/services/`, with one module per domain area:
 | Order | `order_service.py` | Order CRUD, order number generation (SO-YYYY-NNNNN), status transitions with validation, order items, applied services with price list snapshot, parts used with inventory deduction, labor entries, service notes, order summary calculations |
 | Invoice | `invoice_service.py` | Invoice CRUD, invoice number generation (INV-YYYY-NNNNN), status transitions (INVOICE_STATUS_TRANSITIONS), line item management, payment recording with automatic status updates, totals recalculation |
 | Customer | `customer_service.py` | Customer CRUD with individual/business validation |
-| Inventory | `inventory_service.py` | Inventory CRUD, stock adjustments |
+| Item | `item_service.py` | Service item CRUD operations |
+| Inventory | `inventory_service.py` | Inventory CRUD, stock adjustments, low-stock queries |
 | Price List | `price_list_service.py` | Category and item management, linked parts |
 | Search | `search_service.py` | Global search across customers, service items, inventory |
 | Notification | `notification_service.py` | Notification CRUD, broadcast support, per-user read tracking via NotificationRead |
@@ -298,11 +300,14 @@ Business logic lives in `app/services/`, with one module per domain area:
 | Import | `import_service.py` | CSV import for customers/inventory with parse, validate, preview, confirm flow |
 | Tag | `tag_service.py` | Tag CRUD operations |
 | Audit | `audit_service.py` | Audit log recording and querying |
+| Attachment | `attachment_service.py` | File attachment CRUD and upload handling |
+| Email | `email_service.py` | SMTP email delivery with SystemConfig-based configuration |
+| Log | `log_service.py` | Application log file reading for admin log viewer |
+| Saved Search | `saved_search_service.py` | Per-user saved search filters CRUD |
 
 ### When Services Are Used vs Direct Model Access
 
-- **Phase 3+ blueprints** (orders, invoices, reports, notifications, admin, search, export, tools) use the service layer for all business logic.
-- **Phase 2 blueprints** (customers, items, inventory, price_list) access models directly in some routes. This is a known simplification from the initial implementation.
+- **All blueprints** use the service layer for business logic. Phase 2 blueprints (customers, items, inventory, price_list) were refactored to use the service layer in Wave 3a.
 - **Status changes** must always go through service functions (`change_status()` for orders, status transition validation for invoices) to enforce the state machine.
 - **Order summary calculations** and **invoice totals recalculation** are service-layer responsibilities, not model methods.
 
@@ -440,11 +445,11 @@ The `depends_on` directive with `condition: service_healthy` ensures containers 
 
 | Container | Check Method | Interval |
 |-----------|-------------|----------|
-| `web` | `curl -f http://localhost:8080/health` (checks DB connectivity) | 30s |
+| `web` | `curl -f http://localhost:8080/health/ready` (checks DB + Redis connectivity) | 30s |
 | `db` | `healthcheck.sh --connect --innodb_initialized` | 10s |
 | `redis` | `redis-cli ping` | 10s |
-| `worker` | `celery inspect ping` (checks worker responds) | 60s |
-| `beat` | `pgrep -f 'celery.*beat'` (checks process running) | 60s |
+| `worker` | `celery inspect ping --timeout 10` (checks worker responds, grep for OK) | 60s |
+| `beat` | Checks `/tmp/celerybeat-schedule` exists and was modified within 3 minutes | 60s |
 
 ### Volumes
 
@@ -457,6 +462,7 @@ The `depends_on` directive with `condition: service_healthy` ensures containers 
 | `./instance` (bind) | `/app/instance` | Instance-specific config overrides |
 | `./docker/db/init` (bind) | `/docker-entrypoint-initdb.d` | Database initialization scripts |
 | `./docker/db/conf` (bind) | `/etc/mysql/conf.d` | MariaDB configuration overrides |
+| `./backups` (bind) | `/app/backups` | Automatic pre-migration database backups |
 
 ### Networking
 

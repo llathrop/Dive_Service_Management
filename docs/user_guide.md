@@ -511,13 +511,13 @@ The Admin section is accessible only to users with the **admin** role.
 ### System Settings
 
 1. Navigate to **Admin** > **Settings**.
-2. Settings are organized into six tabs:
+2. Settings are organized into seven tabs:
    - **Company** -- Business name, address, phone, email, website, logo
-   - **Invoice** -- Invoice number prefix, next number, default terms, due days, footer text
-   - **Tax** -- Default tax rate (stored as decimal, e.g., 0.0825 = 8.25%), tax label
-   - **Service** -- Order number prefix, next order number, default labor rate, rush fee
-   - **Notification** -- Low stock check frequency, overdue check time, retention days, due date warning
+   - **Service** -- Order number prefix, default labor rate, rush fee
+   - **Invoice & Tax** -- Invoice number prefix, default terms, due days, footer text, tax rate, tax label
    - **Display** -- Date format, currency symbol/code, pagination size
+   - **Notifications** -- Low stock check frequency, overdue check time, retention days, due date warning
+   - **Email** -- Enable/disable email, SMTP server, port, TLS, credentials, sender address and name
    - **Security** -- Minimum password length, lockout attempts/duration, session lifetime
 3. Some settings may show a lock icon and be read-only if they are controlled by environment variables.
 4. Modify settings and click **Save** on each tab.
