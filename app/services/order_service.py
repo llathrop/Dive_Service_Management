@@ -26,7 +26,7 @@ from app.models.price_list import PriceListItem
 from app.models.service_note import ServiceNote
 from app.models.service_order import ServiceOrder
 from app.models.service_order_item import ServiceOrderItem
-from app.services import audit_service
+from app.services import audit_service, notification_service
 
 
 # ---------------------------------------------------------------------------
@@ -401,6 +401,12 @@ def change_status(order_id, new_status, user_id=None, ip_address=None, user_agen
             new_value=new_status,
             ip_address=ip_address,
             user_agent=user_agent,
+        )
+    except Exception:
+        pass
+    try:
+        notification_service.notify_order_status_change(
+            order, current_status, new_status
         )
     except Exception:
         pass

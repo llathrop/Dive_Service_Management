@@ -9,6 +9,7 @@ from sqlalchemy import or_
 
 from app.extensions import db
 from app.models.inventory import InventoryItem
+from app.services import notification_service
 
 
 def get_inventory_items(
@@ -228,6 +229,11 @@ def adjust_stock(item_id, adjustment, reason, adjusted_by=None):
 
     item.quantity_in_stock = new_quantity
     db.session.commit()
+    try:
+        if item.reorder_level is not None and item.quantity_in_stock <= item.reorder_level:
+            notification_service.notify_low_stock(item)
+    except Exception:
+        pass
     return item
 
 
