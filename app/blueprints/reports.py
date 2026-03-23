@@ -2,7 +2,7 @@
 from datetime import date
 
 from flask import Blueprint, render_template, request
-from flask_security import login_required
+from flask_security import login_required, roles_accepted
 
 from app.services import report_service
 
@@ -11,6 +11,7 @@ reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
 
 @reports_bp.route("/")
 @login_required
+@roles_accepted("admin", "technician")
 def hub():
     """Reports hub — card-based layout with all available reports."""
     return render_template("reports/hub.html")
@@ -18,6 +19,7 @@ def hub():
 
 @reports_bp.route("/revenue")
 @login_required
+@roles_accepted("admin", "technician")
 def revenue():
     """Revenue report with breakdown by type and monthly trend."""
     date_from = request.args.get("date_from", type=str)
@@ -31,6 +33,7 @@ def revenue():
 
 @reports_bp.route("/orders")
 @login_required
+@roles_accepted("admin", "technician")
 def orders():
     """Service order statistics."""
     date_from = request.args.get("date_from", type=str)
@@ -43,6 +46,7 @@ def orders():
 
 @reports_bp.route("/inventory")
 @login_required
+@roles_accepted("admin", "technician")
 def inventory():
     """Inventory analysis report."""
     data = report_service.inventory_report()
@@ -51,6 +55,7 @@ def inventory():
 
 @reports_bp.route("/customers")
 @login_required
+@roles_accepted("admin", "technician")
 def customers():
     """Customer statistics."""
     date_from = request.args.get("date_from", type=str)
@@ -63,6 +68,7 @@ def customers():
 
 @reports_bp.route("/aging")
 @login_required
+@roles_accepted("admin", "technician")
 def aging():
     """Accounts receivable aging report."""
     data = report_service.aging_report()

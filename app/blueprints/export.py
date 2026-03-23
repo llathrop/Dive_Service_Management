@@ -6,7 +6,7 @@ loading entire datasets into memory.  XLSX exports remain buffered
 """
 
 from flask import Blueprint, Response, stream_with_context
-from flask_security import login_required
+from flask_security import login_required, roles_accepted
 
 from app.services import export_service
 
@@ -25,6 +25,7 @@ def _streaming_csv_response(entity_type, filename):
 
 @export_bp.route("/customers/<format>")
 @login_required
+@roles_accepted("admin", "technician")
 def export_customers(format):
     """Export customers to CSV or XLSX."""
     if format == "csv":
@@ -41,6 +42,7 @@ def export_customers(format):
 
 @export_bp.route("/inventory/<format>")
 @login_required
+@roles_accepted("admin", "technician")
 def export_inventory(format):
     """Export inventory to CSV or XLSX."""
     if format == "csv":
@@ -57,6 +59,7 @@ def export_inventory(format):
 
 @export_bp.route("/orders/<format>")
 @login_required
+@roles_accepted("admin", "technician")
 def export_orders(format):
     """Export orders to CSV or XLSX."""
     if format == "csv":
@@ -73,6 +76,7 @@ def export_orders(format):
 
 @export_bp.route("/invoices/<format>")
 @login_required
+@roles_accepted("admin", "technician")
 def export_invoices(format):
     """Export invoices to CSV or XLSX."""
     if format == "csv":
