@@ -1,7 +1,7 @@
 """ServiceItem model for tracking customer equipment.
 
 A service item represents a piece of dive equipment that can be brought
-in for service.  Each item optionally belongs to a customer and may have
+in for service.  Each item belongs to a customer and may have
 a one-to-one DrysuitDetails extension for drysuit-specific fields.
 """
 

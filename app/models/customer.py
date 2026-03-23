@@ -4,8 +4,7 @@ Customers are the people or organizations that bring equipment in for
 service.  A customer can be either an individual (first_name + last_name)
 or a business (business_name + optional contact_person).
 
-Includes soft-delete support, audit trail, and polymorphic tagging
-via the TaggableMixin.
+Includes soft-delete support and audit trail.
 """
 
 from sqlalchemy import Index

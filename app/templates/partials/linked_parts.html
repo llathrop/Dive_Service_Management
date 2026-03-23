@@ -1,0 +1,87 @@
+<div id="linked-parts-section">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+{% endwith %}
+
+{% set parts_list = parts|list %}
+{% if parts_list %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-link-45deg me-2"></i>Linked Parts</h5>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Part</th>
+          <th>Quantity</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for part in parts_list %}
+        <tr>
+          <td>
+            <a href="{{ url_for('inventory.detail', id=part.inventory_item.id) }}">
+              {{ part.inventory_item.name }}
+            </a>
+          </td>
+          <td>{{ part.quantity }}</td>
+          <td>{{ part.notes or '' }}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-danger"
+                    hx-post="{{ url_for('price_list.unlink_part_route', item_id=item.id, part_id=part.id) }}"
+                    hx-target="#linked-parts-section"
+                    hx-swap="outerHTML"
+                    hx-confirm="Remove this part link?">
+              Remove
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<p class="text-muted">No parts linked.</p>
+{% endif %}
+
+{% if inventory_items %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Add Part</h5>
+  </div>
+  <div class="card-body">
+    <form hx-post="{{ url_for('price_list.link_part_route', item_id=item.id) }}"
+          hx-target="#linked-parts-section"
+          hx-swap="outerHTML"
+          class="row g-2 align-items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-md-5">
+        <label class="form-label">Inventory Item</label>
+        <select name="inventory_item_id" class="form-select" required>
+          <option value="">-- Select --</option>
+          {% for inv in inventory_items %}
+          <option value="{{ inv.id }}">{{ inv.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Quantity</label>
+        <input type="number" name="quantity" class="form-control" value="1" min="0.01" step="0.01">
+      </div>
+      <div class="col-md-4">
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+</div>
