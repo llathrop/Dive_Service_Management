@@ -22,19 +22,9 @@ from app.models.service_item import ServiceItem
 from app.models.service_order import ServiceOrder
 from app.models.user import Role, User
 from app.services import order_service
+from app.services.order_service import SORTABLE_FIELDS  # noqa: F401
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
-
-# Columns that the list view is allowed to sort by.
-SORTABLE_FIELDS = {
-    "order_number",
-    "status",
-    "priority",
-    "date_received",
-    "date_promised",
-    "estimated_total",
-    "created_at",
-}
 
 
 # ======================================================================

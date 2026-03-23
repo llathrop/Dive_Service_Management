@@ -239,7 +239,7 @@ The general approach for cloud deployment:
 ### GCP (Cloud Run + Cloud SQL + Memorystore)
 
 1. **Container Registry**: Push to Google Artifact Registry.
-2. **Database**: Create a Cloud SQL for MySQL instance (MariaDB is not natively available; MySQL 8.0 is compatible).
+2. **Database**: Create a Cloud SQL for MySQL 8.0 instance (GCP Cloud SQL does not offer MariaDB; MySQL 8.0 is compatible).
 3. **Cache/Broker**: Create a Memorystore for Redis instance.
 4. **Compute**: Deploy to Cloud Run with the container image. Set environment variables.
 5. **Worker/Beat**: Deploy as separate Cloud Run services or use Compute Engine instances.
@@ -247,7 +247,7 @@ The general approach for cloud deployment:
 ### Azure (Container Apps + Azure DB + Azure Cache)
 
 1. **Container Registry**: Push to Azure Container Registry.
-2. **Database**: Create an Azure Database for MariaDB instance.
+2. **Database**: Create an Azure Database for MySQL Flexible Server instance (Azure Database for MariaDB has been retired).
 3. **Cache/Broker**: Create an Azure Cache for Redis instance.
 4. **Compute**: Deploy to Azure Container Apps with environment variables.
 5. **Worker/Beat**: Deploy as separate container app replicas with command overrides.
@@ -269,7 +269,7 @@ When the application starts for the first time, the following happens automatica
 2. **Seed data**: `flask seed-db` creates:
    - 3 roles: admin, technician, viewer
    - 6 price list categories: Drysuit Repairs, Seal Replacement, Zipper Service, Valve Service, Testing & Inspection, General Service
-   - 29 system config entries across 7 categories (company, invoice, tax, service, notification, display, security)
+   - 38 system config entries across 8 categories (company, invoice, tax, service, notification, email, display, security)
    - 3 demo users (development/testing mode only)
 3. **Admin account**: In production mode, no demo users are created. Run `flask create-admin` to create your first admin user:
 

@@ -33,19 +33,9 @@ from app.forms.invoice import (
 )
 from app.models.customer import Customer
 from app.services import invoice_service
+from app.services.invoice_service import SORTABLE_FIELDS  # noqa: F401
 
 invoices_bp = Blueprint("invoices", __name__, url_prefix="/invoices")
-
-# Columns that the list view is allowed to sort by.
-SORTABLE_FIELDS = {
-    "invoice_number",
-    "status",
-    "issue_date",
-    "due_date",
-    "total",
-    "balance_due",
-    "created_at",
-}
 
 
 # ======================================================================
