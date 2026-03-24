@@ -26,6 +26,7 @@ from app.models.system_config import SystemConfig
 from app.models.audit_log import AuditLog
 from app.models.attachment import Attachment
 from app.models.saved_search import SavedSearch
+from app.models.shipment import Shipment
 
 __all__ = [
     "Role",
@@ -56,4 +57,5 @@ __all__ = [
     "AuditLog",
     "Attachment",
     "SavedSearch",
+    "Shipment",
 ]

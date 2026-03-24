@@ -11,7 +11,7 @@ should be voided rather than deleted.
 
 import re
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import case, func, or_
 from sqlalchemy.exc import IntegrityError
@@ -435,6 +435,19 @@ def get_order_cost_preview(order_id):
             })
             subtotal += line_total
 
+    from app.services import shipping_service
+
+    shipping_total = shipping_service.get_order_shipping_total(order.id)
+    if shipping_total > 0:
+        line_items.append({
+            "description": "Shipping",
+            "quantity": "1",
+            "unit_price": str(shipping_total),
+            "total": str(shipping_total),
+            "type": "fee",
+        })
+        subtotal += shipping_total
+
     # Rush fee
     rush_fee = Decimal(str(order.rush_fee)) if order.rush_fee is not None else Decimal("0.00")
     if rush_fee > 0:
@@ -444,6 +457,21 @@ def get_order_cost_preview(order_id):
             "unit_price": str(rush_fee),
             "total": str(rush_fee),
             "type": "fee",
+        })
+
+    discount_percent = Decimal(str(order.discount_percent)) if order.discount_percent is not None else Decimal("0.00")
+    percent_discount = Decimal("0.00")
+    discount_base = subtotal + rush_fee
+    if discount_percent > 0:
+        percent_discount = (
+            discount_base * (discount_percent / Decimal("100"))
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        line_items.append({
+            "description": f"Discount ({discount_percent}%)",
+            "quantity": "1",
+            "unit_price": str(-percent_discount),
+            "total": str(-percent_discount),
+            "type": "discount",
         })
 
     # Discount
@@ -457,11 +485,12 @@ def get_order_cost_preview(order_id):
             "type": "discount",
         })
 
-    grand_total = subtotal + rush_fee - discount_amount
+    grand_total = discount_base - percent_discount - discount_amount
 
     return {
         "subtotal": str(subtotal),
         "line_items": line_items,
+        "shipping": str(shipping_total),
         "rush_fee": str(rush_fee),
         "discount": str(discount_amount),
         "grand_total": str(grand_total),
@@ -579,6 +608,22 @@ def generate_from_order(order_id, created_by=None, ip_address=None, user_agent=N
             db.session.add(line_item)
             sort_order += 1
 
+    from app.services import shipping_service
+
+    shipping_total = shipping_service.get_order_shipping_total(order.id)
+    if shipping_total > 0:
+        line_item = InvoiceLineItem(
+            invoice_id=invoice.id,
+            line_type="fee",
+            description="Shipping",
+            quantity=Decimal("1"),
+            unit_price=shipping_total,
+            line_total=shipping_total,
+            sort_order=sort_order,
+        )
+        db.session.add(line_item)
+        sort_order += 1
+
     # Rush fee as a line item
     rush_fee = Decimal(str(order.rush_fee)) if order.rush_fee is not None else Decimal("0.00")
     if rush_fee > 0:
@@ -589,6 +634,26 @@ def generate_from_order(order_id, created_by=None, ip_address=None, user_agent=N
             quantity=Decimal("1"),
             unit_price=rush_fee,
             line_total=rush_fee,
+            sort_order=sort_order,
+        )
+        db.session.add(line_item)
+        sort_order += 1
+
+    discount_percent = Decimal(str(order.discount_percent)) if order.discount_percent is not None else Decimal("0.00")
+    if discount_percent > 0:
+        discount_base = invoice.line_items.with_entities(
+            func.coalesce(func.sum(InvoiceLineItem.line_total), 0)
+        ).scalar()
+        percent_discount = (
+            Decimal(str(discount_base)) * (discount_percent / Decimal("100"))
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        line_item = InvoiceLineItem(
+            invoice_id=invoice.id,
+            line_type="discount",
+            description=f"Discount ({discount_percent}%)",
+            quantity=Decimal("1"),
+            unit_price=-percent_discount,
+            line_total=-percent_discount,
             sort_order=sort_order,
         )
         db.session.add(line_item)

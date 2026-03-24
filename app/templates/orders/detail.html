@@ -187,6 +187,10 @@
           <dd class="col-5 text-end">${{ "%.2f"|format(summary.parts_total) }}</dd>
           <dt class="col-7">Labor</dt>
           <dd class="col-5 text-end">${{ "%.2f"|format(summary.labor_total) }}</dd>
+          {% if summary.shipping_total > 0 %}
+          <dt class="col-7">Shipping</dt>
+          <dd class="col-5 text-end">${{ "%.2f"|format(summary.shipping_total) }}</dd>
+          {% endif %}
           {% if summary.rush_fee > 0 %}
           <dt class="col-7">Rush Fee</dt>
           <dd class="col-5 text-end">${{ "%.2f"|format(summary.rush_fee) }}</dd>
@@ -328,6 +332,61 @@
           <i class="bi bi-receipt me-1"></i> Generate Invoice
         </button>
       </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{# ===== SHIPPING SECTION ===== #}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0"><i class="bi bi-truck me-2"></i>Shipping</h5>
+    <a href="{{ url_for('orders.shipping', id=order.id) }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-gear me-1"></i> Manage Shipping
+    </a>
+  </div>
+  <div class="card-body">
+    {% set shipment_list = order.shipments.all() %}
+    {% if shipment_list %}
+      <div class="row mb-2">
+        <div class="col-md-4">
+          <span class="text-muted">Shipments:</span>
+          <strong>{{ shipment_list|length }}</strong>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted">Total Shipping Cost:</span>
+          <strong class="text-success">${{ "%.2f"|format(summary.shipping_total) }}</strong>
+        </div>
+      </div>
+      {% for s in shipment_list %}
+      <div class="d-flex justify-content-between align-items-center small border-top py-1">
+        <div>
+          Shipment #{{ s.id }}
+          {% if s.carrier %}<span class="text-muted">via {{ s.carrier }}</span>{% endif %}
+          {% if s.tracking_number %}<span class="text-muted">- {{ s.tracking_number }}</span>{% endif %}
+        </div>
+        <div>
+          {% if s.status == 'pending' %}
+          <span class="badge bg-secondary">Pending</span>
+          {% elif s.status == 'shipped' %}
+          <span class="badge bg-info">Shipped</span>
+          {% elif s.status == 'in_transit' %}
+          <span class="badge bg-primary">In Transit</span>
+          {% elif s.status == 'delivered' %}
+          <span class="badge bg-success">Delivered</span>
+          {% elif s.status == 'cancelled' %}
+          <span class="badge bg-danger">Cancelled</span>
+          {% endif %}
+          <span class="ms-2">${{ "%.2f"|format(s.shipping_cost or 0) }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="text-muted mb-0">
+        <i class="bi bi-info-circle me-1"></i> No shipping configured.
+        <a href="{{ url_for('orders.shipping', id=order.id) }}">Add Shipping</a>
+      </p>
     {% endif %}
   </div>
 </div>

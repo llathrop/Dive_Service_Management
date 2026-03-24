@@ -206,6 +206,8 @@ def _seed_system_config():
         ("display.currency_symbol", "$", "string", "display", "Currency symbol"),
         ("display.currency_code", "USD", "string", "display", "ISO currency code"),
         ("display.pagination_size", "25", "integer", "display", "Default rows per page"),
+        # --- Shipping ---
+        ("shipping.flat_rate_tiers", '[{"max_weight": 5, "rate": "9.99"}, {"max_weight": 15, "rate": "14.99"}, {"max_weight": 30, "rate": "24.99"}, {"max_weight": 9999, "rate": "39.99"}]', "string", "shipping", "Flat-rate shipping tiers as JSON (max_weight in lbs, rate in dollars)"),
         # --- Security ---
         ("security.password_min_length", "8", "integer", "security", "Minimum password length"),
         ("security.lockout_attempts", "5", "integer", "security", "Failed login attempts before lockout"),
