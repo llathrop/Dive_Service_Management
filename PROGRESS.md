@@ -451,7 +451,7 @@
 **Wave 3: Medium Features** (4 parallel agents)
 - [ ] 3A: Batch operations on list views
 - [ ] 3B: Service order templates
-- [ ] 3C: Recurring service reminders
+- [x] 3C: Recurring service reminders
 - [x] 3D: Shipping calculator with pluggable provider framework
 
 **2026-03-24 Wave 3 Recovery Update**
@@ -459,7 +459,10 @@
 - Verified `3D` in the persistent Docker test container (`docker-compose.test-dev.yml`)
 - `tests/test_services/test_shipping.py`: 29 passed
 - `tests/blueprint/test_order_routes.py`: 43 passed
-- `3A`, `3B`, and `3C` remain in review/fix loops after QA/security findings and are not yet merge-ready
+- Completed `3C` recurring reminders after QA/security fixes, including inactive-admin filtering, delivery dedupe tracking, and `last_service_date` updates on completion
+- Verified `3C` on `master` in the persistent Docker test container
+- `tests/test_services/test_reminder_tasks.py` + `tests/unit/models/test_notification.py` + `tests/unit/services/test_order_service.py`: passed
+- `3A` and `3B` remain in review/fix loops and are not yet merged
 
 **Wave 4: Customer Portal** (4 parallel agents)
 - [ ] 4A: PortalUser model + auth system (separate from Flask-Security)
