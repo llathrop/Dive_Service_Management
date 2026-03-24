@@ -28,6 +28,7 @@ from app.models.audit_log import AuditLog
 from app.models.attachment import Attachment
 from app.models.saved_search import SavedSearch
 from app.models.shipment import Shipment
+from app.models.service_order_template import ServiceOrderTemplate
 
 __all__ = [
     "Role",
@@ -60,4 +61,5 @@ __all__ = [
     "Attachment",
     "SavedSearch",
     "Shipment",
+    "ServiceOrderTemplate",
 ]

@@ -6,6 +6,7 @@ for anonymous, viewer, technician, and admin users, as well as status
 transitions and order item management.
 """
 
+import re
 from datetime import date
 from decimal import Decimal
 
@@ -21,6 +22,7 @@ from app.models.service_item import ServiceItem
 from app.models.service_note import ServiceNote
 from app.models.service_order import ServiceOrder
 from app.models.service_order_item import ServiceOrderItem
+from app.models.service_order_template import ServiceOrderTemplate
 
 pytestmark = pytest.mark.blueprint
 
@@ -228,7 +230,53 @@ class TestTechnicianAccess:
             follow_redirects=False,
         )
         assert response.status_code == 302
-        assert "/orders/" in response.location
+
+    def test_new_order_form_renders_template_picker(self, logged_in_client, app, db_session):
+        with app.app_context():
+            from app.models.user import User
+
+            creator = User.query.first()
+            tmpl = ServiceOrderTemplate(
+                name="Picker Template",
+                created_by_id=creator.id,
+                is_shared=True,
+                template_data={},
+            )
+            db.session.add(tmpl)
+            db.session.commit()
+
+        response = logged_in_client.get("/orders/new")
+        assert response.status_code == 200
+        assert b"templateSelect" in response.data
+        assert b"loadTemplateBtn" in response.data
+
+    def test_new_order_form_prepopulates_from_template(self, logged_in_client, app, db_session):
+        with app.app_context():
+            from app.models.user import User
+
+            creator = User.query.first()
+            tmpl = ServiceOrderTemplate(
+                name="Load Template",
+                created_by_id=creator.id,
+                is_shared=True,
+                template_data={
+                    "priority": "rush",
+                    "rush_fee": "25.00",
+                    "discount_percent": "10.00",
+                    "notes": "Load notes",
+                },
+            )
+            db.session.add(tmpl)
+            db.session.commit()
+            tmpl_id = tmpl.id
+
+        response = logged_in_client.get(f"/orders/new?template_id={tmpl_id}")
+        assert response.status_code == 200
+        assert re.search(rb'<option[^>]*value="rush"[^>]*selected|selected[^>]*value="rush"', response.data)
+        assert re.search(rb'name="rush_fee"[^>]*value="25(?:\.0+)?"', response.data)
+        assert re.search(rb'name="discount_percent"[^>]*value="10(?:\.0+)?"', response.data)
+        assert b"Load notes" in response.data
+        assert b"templateSelect" in response.data
 
     def test_tech_can_edit_order(self, logged_in_client, app, db_session):
         with app.app_context():

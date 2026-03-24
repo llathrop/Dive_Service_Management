@@ -20,6 +20,30 @@
 
 {{ render_form_errors(form) }}
 
+{% if not is_edit and order_templates is defined and order_templates %}
+<div class="card mb-4 border-info">
+  <div class="card-body py-2">
+    <div class="d-flex align-items-center gap-3">
+      <label class="form-label mb-0 fw-semibold text-nowrap">
+        <i class="bi bi-clipboard-plus"></i> Load from Template:
+      </label>
+      <select class="form-select form-select-sm" id="templateSelect" style="max-width: 300px;">
+        <option value="">-- Select Template --</option>
+        {% for tmpl in order_templates %}
+        <option value="{{ tmpl.id }}" {% if selected_template_id == tmpl.id %}selected{% endif %}>{{ tmpl.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-info" id="loadTemplateBtn" disabled>
+        Load
+      </button>
+      <a href="{{ url_for('orders.list_templates') }}" class="btn btn-sm btn-outline-secondary ms-auto">
+        Manage Templates
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <form method="POST"
       action="{{ url_for('orders.edit', id=order.id) if is_edit else url_for('orders.create') }}">
   {{ form.hidden_tag() }}
@@ -191,61 +215,87 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Toggle individual/business fields
   var typeSelect = document.getElementById('qc_customer_type');
   var individualFields = document.getElementById('qc_individual_fields');
   var businessFields = document.getElementById('qc_business_fields');
 
-  typeSelect.addEventListener('change', function() {
-    if (this.value === 'business') {
-      individualFields.classList.add('d-none');
-      businessFields.classList.remove('d-none');
-    } else {
-      individualFields.classList.remove('d-none');
-      businessFields.classList.add('d-none');
-    }
-  });
-
-  // Submit quick create form
-  document.getElementById('quickCreateSubmit').addEventListener('click', function() {
-    var form = document.getElementById('quickCreateCustomerForm');
-    var formData = new FormData(form);
-    var alertEl = document.getElementById('quickCreateAlert');
-
-    // Add CSRF token from the main form
-    var csrfToken = document.querySelector('input[name="csrf_token"]');
-    if (csrfToken) {
-      formData.append('csrf_token', csrfToken.value);
-    }
-
-    fetch('{{ url_for("orders.quick_create_customer") }}', {
-      method: 'POST',
-      body: formData
-    })
-    .then(function(response) { return response.json().then(function(data) { return {status: response.status, body: data}; }); })
-    .then(function(result) {
-      if (result.status === 201) {
-        // Add new option to the customer select and select it
-        var select = document.getElementById('customer_id');
-        var option = new Option(result.body.display_name, result.body.id, true, true);
-        select.add(option);
-
-        // Close modal and reset form
-        var modal = bootstrap.Modal.getInstance(document.getElementById('quickCreateCustomerModal'));
-        modal.hide();
-        form.reset();
-        alertEl.classList.add('d-none');
+  if (typeSelect && individualFields && businessFields) {
+    typeSelect.addEventListener('change', function() {
+      if (this.value === 'business') {
+        individualFields.classList.add('d-none');
+        businessFields.classList.remove('d-none');
       } else {
-        alertEl.textContent = result.body.error || 'An error occurred.';
+        individualFields.classList.remove('d-none');
+        businessFields.classList.add('d-none');
+      }
+    });
+  }
+
+  var quickCreateSubmit = document.getElementById('quickCreateSubmit');
+  if (quickCreateSubmit) {
+    quickCreateSubmit.addEventListener('click', function() {
+      var form = document.getElementById('quickCreateCustomerForm');
+      var formData = new FormData(form);
+      var alertEl = document.getElementById('quickCreateAlert');
+
+      var csrfToken = document.querySelector('input[name="csrf_token"]');
+      if (csrfToken) {
+        formData.append('csrf_token', csrfToken.value);
+      }
+
+      fetch('{{ url_for("orders.quick_create_customer") }}', {
+        method: 'POST',
+        body: formData
+      })
+      .then(function(response) {
+        return response.json().then(function(data) {
+          return {status: response.status, body: data};
+        });
+      })
+      .then(function(result) {
+        if (result.status === 201) {
+          var select = document.getElementById('customer_id');
+          var option = new Option(result.body.display_name, result.body.id, true, true);
+          select.add(option);
+
+          var modal = bootstrap.Modal.getInstance(document.getElementById('quickCreateCustomerModal'));
+          modal.hide();
+          form.reset();
+          alertEl.classList.add('d-none');
+        } else {
+          alertEl.textContent = result.body.error || 'An error occurred.';
+          alertEl.classList.remove('d-none', 'alert-success');
+          alertEl.classList.add('alert-danger');
+        }
+      })
+      .catch(function() {
+        alertEl.textContent = 'An unexpected error occurred.';
         alertEl.classList.remove('d-none', 'alert-success');
         alertEl.classList.add('alert-danger');
-      }
-    })
-    .catch(function() {
-      alertEl.textContent = 'An unexpected error occurred.';
-      alertEl.classList.remove('d-none', 'alert-success');
-      alertEl.classList.add('alert-danger');
+      });
     });
+  }
+
+  var tmplSelect = document.getElementById('templateSelect');
+  var loadBtn = document.getElementById('loadTemplateBtn');
+  if (!tmplSelect || !loadBtn) {
+    return;
+  }
+
+  loadBtn.disabled = !tmplSelect.value;
+
+  tmplSelect.addEventListener('change', function() {
+    loadBtn.disabled = !this.value;
+  });
+
+  loadBtn.addEventListener('click', function() {
+    var tmplId = tmplSelect.value;
+    if (!tmplId) {
+      return;
+    }
+    var url = new URL(window.location.href);
+    url.searchParams.set('template_id', tmplId);
+    window.location.assign(url.toString());
   });
 });
 </script>

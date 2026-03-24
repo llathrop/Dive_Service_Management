@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Order Templates - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('orders.list_orders') }}">Orders</a></li>
+    <li class="breadcrumb-item active">Templates</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Order Templates</h1>
+  <a href="{{ url_for('orders.create_template') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> New Template
+  </a>
+</div>
+
+{% if templates %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+  {% for tmpl in templates %}
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h5 class="card-title mb-0">
+            <a href="{{ url_for('orders.template_detail', id=tmpl.id) }}" class="text-decoration-none">
+              {{ tmpl.name }}
+            </a>
+          </h5>
+          {% if tmpl.is_shared %}
+          <span class="badge bg-info">Shared</span>
+          {% else %}
+          <span class="badge bg-secondary">Private</span>
+          {% endif %}
+        </div>
+        {% if tmpl.description %}
+        <p class="card-text text-muted small">{{ tmpl.description|truncate(100) }}</p>
+        {% endif %}
+        <div class="text-muted small">
+          <i class="bi bi-person"></i> {{ tmpl.created_by.display_name if tmpl.created_by else 'Unknown' }}
+        </div>
+        {% set td = tmpl.template_data or {} %}
+        {% if td.get('priority') %}
+        <span class="badge bg-warning text-dark mt-1">{{ td['priority']|title }}</span>
+        {% endif %}
+        {% if td.get('services') %}
+        <span class="badge bg-primary mt-1">{{ td['services']|length }} service(s)</span>
+        {% endif %}
+        {% if td.get('parts') %}
+        <span class="badge bg-success mt-1">{{ td['parts']|length }} part(s)</span>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent">
+        <div class="d-flex gap-2">
+          {% if tmpl.created_by_id == current_user.id %}
+          <a href="{{ url_for('orders.edit_template', id=tmpl.id) }}"
+             class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil"></i> Edit
+          </a>
+          <form method="POST" action="{{ url_for('orders.delete_template', id=tmpl.id) }}"
+                onsubmit="return confirm('Delete this template?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-trash"></i> Delete
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="bi bi-clipboard-plus display-4 text-muted"></i>
+  <p class="text-muted mt-3">No templates yet. Create one to save common service configurations.</p>
+  <a href="{{ url_for('orders.create_template') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Create Template
+  </a>
+</div>
+{% endif %}
+{% endblock %}

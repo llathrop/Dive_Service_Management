@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Template' if is_edit else 'New Template' }} - Dive Service Management{% endblock %}
+
+{% block content %}
+{% set td = template.template_data if template else {} %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('orders.list_orders') }}">Orders</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('orders.list_templates') }}">Templates</a></li>
+    {% if is_edit %}
+    <li class="breadcrumb-item"><a href="{{ url_for('orders.template_detail', id=template.id) }}">{{ template.name }}</a></li>
+    <li class="breadcrumb-item active">Edit</li>
+    {% else %}
+    <li class="breadcrumb-item active">New Template</li>
+    {% endif %}
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">{{ 'Edit Template: ' ~ template.name if is_edit else 'New Order Template' }}</h1>
+
+<form method="POST"
+      action="{{ url_for('orders.edit_template', id=template.id) if is_edit else url_for('orders.create_template') }}"
+      x-data="templateForm()">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  {# Basic Info #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Template Details</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-8">
+          <div class="mb-3">
+            <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="name" name="name"
+                   value="{{ form_data.get('name', '') or (template.name if is_edit and template else '') }}"
+                   required>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="mb-3 form-check mt-4 pt-2">
+            <input type="checkbox" class="form-check-input" id="is_shared" name="is_shared"
+                   {% if form_data.get('is_shared') == 'on' or (is_edit and template and template.is_shared) %}checked{% endif %}>
+            <label class="form-check-label" for="is_shared">Share with all users</label>
+          </div>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="2">{{ form_data.get('description', '') or (template.description if is_edit and template else '') }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  {# Order Settings #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="card-title mb-0">Order Settings</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          <div class="mb-3">
+            <label for="priority" class="form-label">Priority</label>
+            <select class="form-select" id="priority" name="priority">
+              {% set current_priority = form_data.get('priority', '') or (td.get('priority', '') if is_edit else '') %}
+              <option value="">-- Default --</option>
+              <option value="low" {% if current_priority == 'low' %}selected{% endif %}>Low</option>
+              <option value="normal" {% if current_priority == 'normal' %}selected{% endif %}>Normal</option>
+              <option value="high" {% if current_priority == 'high' %}selected{% endif %}>High</option>
+              <option value="rush" {% if current_priority == 'rush' %}selected{% endif %}>Rush</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="mb-3">
+            <label for="rush_fee" class="form-label">Rush Fee ($)</label>
+            <input type="number" class="form-control" id="rush_fee" name="rush_fee"
+                   step="0.01" min="0" placeholder="0.00"
+                   value="{{ form_data.get('rush_fee', '') or (td.get('rush_fee', '') if is_edit else '') }}">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="mb-3">
+            <label for="discount_percent" class="form-label">Discount %</label>
+            <input type="number" class="form-control" id="discount_percent" name="discount_percent"
+                   step="0.01" min="0" max="100" placeholder="0"
+                   value="{{ form_data.get('discount_percent', '') or (td.get('discount_percent', '') if is_edit else '') }}">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="mb-3">
+            <label for="estimated_labor_hours" class="form-label">Est. Labor Hours</label>
+            <input type="number" class="form-control" id="estimated_labor_hours" name="estimated_labor_hours"
+                   step="0.5" min="0" placeholder="0.0"
+                   value="{{ form_data.get('estimated_labor_hours', '') or (td.get('estimated_labor_hours', '') if is_edit else '') }}">
+          </div>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label for="notes" class="form-label">Default Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="2"
+                  placeholder="Notes to pre-populate on the order">{{ form_data.get('notes', '') or (td.get('notes', '') if is_edit else '') }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  {# Services #}
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="card-title mb-0">Services</h5>
+      <button type="button" class="btn btn-sm btn-outline-primary" @click="addService()">
+        <i class="bi bi-plus-lg"></i> Add Service
+      </button>
+    </div>
+    <div class="card-body">
+      <template x-for="(svc, index) in services" :key="index">
+        <div class="row mb-2 align-items-end">
+          <div class="col-md-5">
+            <label class="form-label" x-show="index === 0">Service</label>
+            <select class="form-select" :name="'service_pli_id[]'" x-model="svc.pli_id">
+              <option value="">-- Select Service --</option>
+              {% for pi in price_items %}
+              <option value="{{ pi.id }}">{{ pi.name }} (${{ pi.price }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label" x-show="index === 0">Qty</label>
+            <input type="number" class="form-control" :name="'service_qty[]'"
+                   x-model="svc.qty" min="1" value="1">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" x-show="index === 0">Override Price</label>
+            <input type="number" class="form-control" :name="'service_price[]'"
+                   x-model="svc.price" step="0.01" min="0" placeholder="Default">
+          </div>
+          <div class="col-md-2">
+            <button type="button" class="btn btn-outline-danger btn-sm" @click="removeService(index)">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      </template>
+      <p class="text-muted mb-0" x-show="services.length === 0">No services added. Click "Add Service" to include services in this template.</p>
+    </div>
+  </div>
+
+  {# Parts #}
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="card-title mb-0">Parts</h5>
+      <button type="button" class="btn btn-sm btn-outline-primary" @click="addPart()">
+        <i class="bi bi-plus-lg"></i> Add Part
+      </button>
+    </div>
+    <div class="card-body">
+      <template x-for="(part, index) in parts" :key="index">
+        <div class="row mb-2 align-items-end">
+          <div class="col-md-6">
+            <label class="form-label" x-show="index === 0">Inventory Item</label>
+            <select class="form-select" :name="'part_inv_id[]'" x-model="part.inv_id">
+              <option value="">-- Select Part --</option>
+              {% for ii in inv_items %}
+              <option value="{{ ii.id }}">{{ ii.name }}{% if ii.sku %} (SKU: {{ ii.sku }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" x-show="index === 0">Qty</label>
+            <input type="number" class="form-control" :name="'part_qty[]'"
+                   x-model="part.qty" min="1" value="1">
+          </div>
+          <div class="col-md-3">
+            <button type="button" class="btn btn-outline-danger btn-sm" @click="removePart(index)">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      </template>
+      <p class="text-muted mb-0" x-show="parts.length === 0">No parts added. Click "Add Part" to include parts in this template.</p>
+    </div>
+  </div>
+
+  {# Submit #}
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      {{ 'Update Template' if is_edit else 'Create Template' }}
+    </button>
+    <a href="{{ url_for('orders.template_detail', id=template.id) if is_edit and template else url_for('orders.list_templates') }}"
+       class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+
+<script>
+function templateForm() {
+  {% if is_edit and template %}
+  var initialServices = {{ td.get('services', [])|tojson }}.map(function(s) {
+    return {pli_id: String(s.price_list_item_id || ''), qty: s.quantity || 1, price: s.override_price || ''};
+  });
+  var initialParts = {{ td.get('parts', [])|tojson }}.map(function(p) {
+    return {inv_id: String(p.inventory_item_id || ''), qty: p.quantity || 1};
+  });
+  {% else %}
+  var initialServices = [];
+  var initialParts = [];
+  {% endif %}
+
+  return {
+    services: initialServices,
+    parts: initialParts,
+    addService() {
+      this.services.push({pli_id: '', qty: 1, price: ''});
+    },
+    removeService(index) {
+      this.services.splice(index, 1);
+    },
+    addPart() {
+      this.parts.push({inv_id: '', qty: 1});
+    },
+    removePart(index) {
+      this.parts.splice(index, 1);
+    }
+  };
+}
+</script>
+{% endblock %}
