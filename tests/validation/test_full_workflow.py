@@ -213,11 +213,14 @@ class TestFullServiceWorkflow:
             assert summary["parts_total"] > 0
             assert summary["labor_total"] > 0
 
-            # ── 15. Generate invoice from order ─────────────────
-            invoice = invoice_service.generate_from_order(
-                order_id, created_by=tech.id
-            )
-            assert invoice is not None
+            # ── 15. Verify auto-generated invoice from order ─────
+            # Wave 2 wired auto-invoice generation into change_status()
+            # when transitioning to "completed", so the invoice already
+            # exists — retrieve it instead of creating a duplicate.
+            invoice = Invoice.query.filter(
+                Invoice.orders.any(ServiceOrder.id == order_id)
+            ).first()
+            assert invoice is not None, "Auto-generated invoice not found"
             assert invoice.invoice_number.startswith("INV-")
             assert invoice.customer_id == customer.id
             assert invoice.status == "draft"
