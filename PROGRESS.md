@@ -449,7 +449,7 @@
 - [x] Validation fixes for auto-generated invoices and notification wiring
 
 **Wave 3: Medium Features** (4 parallel agents)
-- [ ] 3A: Batch operations on list views
+- [x] 3A: Batch operations on list views
 - [ ] 3B: Service order templates
 - [x] 3C: Recurring service reminders
 - [x] 3D: Shipping calculator with pluggable provider framework
@@ -462,7 +462,10 @@
 - Completed `3C` recurring reminders after QA/security fixes, including inactive-admin filtering, delivery dedupe tracking, and `last_service_date` updates on completion
 - Verified `3C` on `master` in the persistent Docker test container
 - `tests/test_services/test_reminder_tasks.py` + `tests/unit/models/test_notification.py` + `tests/unit/services/test_order_service.py`: passed
-- `3A` and `3B` remain in review/fix loops and are not yet merged
+- Completed `3A` batch operations after QA/security fixes for non-admin list rendering, reachable UI actions, and audit-log consistency
+- Verified `3A` on `master` in the persistent Docker test container
+- `tests/test_blueprints/test_batch_operations.py` + `tests/blueprint/test_customer_routes.py` + `tests/blueprint/test_inventory_routes.py`: passed
+- `3B` remains in the review/fix loop and is the last unmerged Wave 3 lane
 
 **Wave 4: Customer Portal** (4 parallel agents)
 - [ ] 4A: PortalUser model + auth system (separate from Flask-Security)
