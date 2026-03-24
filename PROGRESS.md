@@ -426,3 +426,41 @@
 
 **GitHub Issues**: #44 — closed
 **Tests**: 1458 total, all passing
+
+### Sprint 2026-03-22B (Wave 1-2 Complete, Wave 3 In Progress)
+
+**Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Wave 1 and Wave 2 are landed locally; Wave 3 remains active.
+
+**Wave 1: P1 Fixes + Quick-Win Features** (Complete)
+- [x] Security headers, secure session cookies, and rate limiting added
+- [x] Export and report routes restricted to `admin`/`technician`
+- [x] CSRF tokens added to admin import forms
+- [x] Notification triggers wired into order, inventory, and invoice services
+- [x] Audit log CSV export added; password recovery enabled; stale docs corrected
+- [x] Stale docstrings fixed and part-linking UI added to price list items
+
+**Wave 2: P2/P3 Fixes + Medium Features** (Complete)
+- [x] Redis auth, localhost binding, path traversal guard, backup audit logging, and table allowlist hardening
+- [x] Customer, inventory, and price list edit routes now go through service-layer update functions; password policy comes from `SystemConfig`
+- [x] Dead code removed, duplicate tests deduplicated, and pytest markers added
+- [x] Hide completed orders toggle, order-to-invoice workflow, and auto `last_service_date`
+- [x] Stale docs fixed, `SORTABLE_FIELDS` deduplicated, and security settings verified
+- [x] Saved search defaults, dashboard customization, CSRF on dashboard fetch, and corrupted JSON guard
+- [x] Validation fixes for auto-generated invoices and notification wiring
+
+**Wave 3: Medium Features** (4 parallel agents)
+- [ ] 3A: Batch operations on list views
+- [ ] 3B: Service order templates
+- [ ] 3C: Recurring service reminders
+- [ ] 3D: Shipping calculator with pluggable provider framework
+
+**Wave 4: Customer Portal** (4 parallel agents)
+- [ ] 4A: PortalUser model + auth system (separate from Flask-Security)
+- [ ] 4B: Portal dashboard + order tracking
+- [ ] 4C: Portal invoice view + payment provider framework
+- [ ] 4D: Portal equipment view + admin invite management + email notifications
+
+**Wave 5: Final Polish** (3 agents)
+- [ ] 5A: Capture missing screenshots
+- [ ] 5B: Sprint documentation finalization
+- [ ] 5C: Integration smoke tests
