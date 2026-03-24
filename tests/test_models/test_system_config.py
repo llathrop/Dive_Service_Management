@@ -7,6 +7,8 @@ import pytest
 from app.models.system_config import SystemConfig, VALID_CONFIG_TYPES, VALID_CATEGORIES
 from tests.factories import SystemConfigFactory
 
+pytestmark = pytest.mark.unit
+
 
 class TestSystemConfigModel:
     """Unit tests for the SystemConfig model."""

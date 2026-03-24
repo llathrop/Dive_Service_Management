@@ -9,6 +9,8 @@ from app.models.attachment import Attachment
 from app.services import attachment_service
 from tests.factories import AttachmentFactory, UserFactory
 
+pytestmark = pytest.mark.unit
+
 
 def _make_file(filename="test.jpg", content=b"\xff\xd8\xff\xe0" + b"\x00" * 100,
                content_type="image/jpeg"):

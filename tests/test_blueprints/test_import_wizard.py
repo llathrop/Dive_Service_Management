@@ -5,6 +5,8 @@ import base64
 
 import pytest
 
+pytestmark = pytest.mark.blueprint
+
 
 CUSTOMER_CSV = (
     "Type,First Name,Last Name,Business Name,Email\n"

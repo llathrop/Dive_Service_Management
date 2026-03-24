@@ -4,6 +4,8 @@ import pytest
 
 from tests.factories import ServiceItemFactory
 
+pytestmark = pytest.mark.blueprint
+
 
 ITEMS_LIST_URL = "/items/"
 

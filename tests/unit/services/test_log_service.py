@@ -4,6 +4,8 @@ import os
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 
 class TestGetAvailableLogs:
     """Tests for get_available_logs()."""

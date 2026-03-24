@@ -9,6 +9,8 @@ from tests.factories import (
     ServiceOrderFactory,
 )
 
+pytestmark = pytest.mark.blueprint
+
 
 QUICK_CREATE_URL = "/items/quick-create"
 

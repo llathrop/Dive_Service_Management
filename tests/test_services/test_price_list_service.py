@@ -8,6 +8,8 @@ from werkzeug.exceptions import NotFound
 from app.services import price_list_service
 from tests.factories import PriceListCategoryFactory, PriceListItemFactory
 
+pytestmark = pytest.mark.unit
+
 
 class TestGetCategories:
     """Tests for price_list_service.get_categories()."""

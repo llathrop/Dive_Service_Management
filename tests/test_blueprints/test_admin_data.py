@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.blueprint
+
 
 class TestDataManagementPage:
     """Tests for GET /admin/data."""

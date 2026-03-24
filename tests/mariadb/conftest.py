@@ -6,12 +6,12 @@ instead of SQLite in-memory.
 """
 
 import pytest
-from flask_security import hash_password
 from sqlalchemy import text
 
 from app import create_app
 from app.config import MariaDBTestingConfig
 from app.extensions import db as _db
+from tests._fixtures import make_auth_user_fixture, make_client_fixture, make_db_session_fixture
 
 
 # ---------------------------------------------------------------------------
@@ -89,39 +89,6 @@ def app(mariadb_available):
         _db.drop_all()
 
 
-@pytest.fixture()
-def db_session(app):
-    """Provide a database session for the test.
-
-    Yields db.session within the app context, and rolls back after the
-    test for cleanup.
-    """
-    with app.app_context():
-        yield _db.session
-        _db.session.rollback()
-
-
-@pytest.fixture()
-def client(app):
-    """Provide a Flask test client."""
-    return app.test_client()
-
-
-@pytest.fixture()
-def auth_user(app, db_session):
-    """Create and return a user with the 'technician' role."""
-    with app.app_context():
-        user_datastore = app.extensions["security"].datastore
-        tech_role = user_datastore.find_or_create_role(
-            name="technician", description="Create/edit data, manage orders"
-        )
-        user = user_datastore.create_user(
-            username="techuser",
-            email="tech@example.com",
-            password=hash_password("password"),
-            first_name="Tech",
-            last_name="User",
-        )
-        user_datastore.add_role_to_user(user, tech_role)
-        db_session.commit()
-        return user
+db_session = make_db_session_fixture()
+client = make_client_fixture()
+auth_user = make_auth_user_fixture()

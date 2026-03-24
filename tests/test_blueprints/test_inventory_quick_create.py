@@ -11,6 +11,8 @@ from tests.factories import (
     ServiceOrderItemFactory,
 )
 
+pytestmark = pytest.mark.blueprint
+
 
 QUICK_CREATE_URL = "/inventory/quick-create"
 

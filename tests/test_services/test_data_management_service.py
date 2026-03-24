@@ -4,6 +4,8 @@ import pytest
 
 from app.services import data_management_service
 
+pytestmark = pytest.mark.unit
+
 
 class TestGetTableStats:
     """Tests for get_table_stats()."""

@@ -17,6 +17,8 @@ from tests.factories import (
     PriceListItemFactory,
 )
 
+pytestmark = pytest.mark.unit
+
 
 def _set_session(db_session):
     """Point all factories at the current test session."""

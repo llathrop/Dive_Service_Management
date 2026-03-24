@@ -4,6 +4,8 @@ import pytest
 
 from tests.factories import AuditLogFactory, UserFactory
 
+pytestmark = pytest.mark.blueprint
+
 
 class TestAuditLogPage:
     """Tests for GET /admin/audit-log."""

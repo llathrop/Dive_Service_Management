@@ -20,7 +20,6 @@ from app.forms.order import ServiceOrderForm, OrderSearchForm
 from app.forms.parts_used import PartUsedForm
 from app.forms.price_list import PriceListCategoryForm, PriceListItemForm
 from app.forms.invoice import InvoiceForm, InvoiceSearchForm, InvoiceLineItemForm, PaymentForm
-from app.forms.search import GlobalSearchForm
 from app.forms.service_order_item import ServiceOrderItemForm
 
 __all__ = [
@@ -29,7 +28,6 @@ __all__ = [
     "CustomerForm",
     "CustomerSearchForm",
     "DrysuitDetailsForm",
-    "GlobalSearchForm",
     "InvoiceForm",
     "InvoiceSearchForm",
     "InvoiceLineItemForm",

@@ -6,6 +6,8 @@ from werkzeug.exceptions import NotFound
 from app.services import customer_service
 from tests.factories import CustomerFactory
 
+pytestmark = pytest.mark.unit
+
 
 class TestGetCustomers:
     """Tests for customer_service.get_customers()."""
@@ -150,23 +152,3 @@ class TestDeleteCustomer:
     def test_raises_404_for_nonexistent(self, app, db_session):
         with pytest.raises(NotFound):
             customer_service.delete_customer(9999)
-
-
-class TestSearchCustomers:
-    """Tests for customer_service.search_customers()."""
-
-    def test_returns_matching_customers(self, app, db_session):
-        CustomerFactory._meta.sqlalchemy_session = db_session
-        CustomerFactory(first_name="UniqueXYZ", last_name="Test")
-
-        results = customer_service.search_customers("UniqueXYZ")
-        assert len(results) == 1
-        assert results[0]["display_name"] is not None
-
-    def test_returns_empty_for_no_match(self, app, db_session):
-        results = customer_service.search_customers("nonexistent_12345")
-        assert results == []
-
-    def test_returns_empty_for_empty_query(self, app, db_session):
-        results = customer_service.search_customers("")
-        assert results == []

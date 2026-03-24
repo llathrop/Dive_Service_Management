@@ -4,6 +4,8 @@ import io
 
 import pytest
 
+pytestmark = pytest.mark.blueprint
+
 
 CUSTOMER_CSV = (
     "Type,First Name,Last Name,Business Name,Contact Person,Email,Phone,"

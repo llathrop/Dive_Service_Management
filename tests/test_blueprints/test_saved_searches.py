@@ -7,6 +7,8 @@ import pytest
 from app.extensions import db
 from app.models.saved_search import SavedSearch
 
+pytestmark = pytest.mark.blueprint
+
 
 class TestListSaved:
     """Tests for GET /search/saved."""

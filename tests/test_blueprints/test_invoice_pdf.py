@@ -14,6 +14,8 @@ from tests.factories import (
     PriceListItemFactory,
 )
 
+pytestmark = pytest.mark.blueprint
+
 
 def _set_session(db_session):
     """Point all factories at the current test session."""

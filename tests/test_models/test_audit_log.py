@@ -5,6 +5,8 @@ import pytest
 from app.models.audit_log import AuditLog
 from tests.factories import AuditLogFactory, UserFactory
 
+pytestmark = pytest.mark.unit
+
 
 class TestAuditLogModel:
     """Unit tests for the AuditLog model."""

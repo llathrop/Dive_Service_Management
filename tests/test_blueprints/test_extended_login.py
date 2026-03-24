@@ -3,6 +3,8 @@
 import pytest
 from flask_security import hash_password
 
+pytestmark = pytest.mark.blueprint
+
 
 @pytest.fixture()
 def _user(app, db_session):

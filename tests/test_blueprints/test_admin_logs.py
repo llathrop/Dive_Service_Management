@@ -4,6 +4,8 @@ import os
 
 import pytest
 
+pytestmark = pytest.mark.blueprint
+
 
 class TestLogsPage:
     """Tests for GET /admin/logs."""
