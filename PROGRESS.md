@@ -427,7 +427,7 @@
 **GitHub Issues**: #44 — closed
 **Tests**: 1458 total, all passing
 
-### Sprint 2026-03-22B (Wave 1-2 Complete, Wave 3 In Progress)
+### Sprint 2026-03-22B (Wave 1-3 Complete, Wave 4 Pending)
 
 **Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Wave 1 and Wave 2 are landed and pushed on `master`; Wave 3 remains active.
 
@@ -450,7 +450,7 @@
 
 **Wave 3: Medium Features** (4 parallel agents)
 - [x] 3A: Batch operations on list views
-- [ ] 3B: Service order templates
+- [x] 3B: Service order templates
 - [x] 3C: Recurring service reminders
 - [x] 3D: Shipping calculator with pluggable provider framework
 
@@ -465,7 +465,11 @@
 - Completed `3A` batch operations after QA/security fixes for non-admin list rendering, reachable UI actions, and audit-log consistency
 - Verified `3A` on `master` in the persistent Docker test container
 - `tests/test_blueprints/test_batch_operations.py` + `tests/blueprint/test_customer_routes.py` + `tests/blueprint/test_inventory_routes.py`: passed
-- `3B` remains in the review/fix loop and is the last unmerged Wave 3 lane
+- Completed `3B` service order templates after QA/security fixes for owner-only writes, safe form parsing, create-order prefill behavior, and shared-template UI visibility
+- Verified `3B` on `master` in the persistent Docker test container
+- `tests/test_blueprints/test_order_templates.py` + `tests/blueprint/test_order_routes.py`: passed
+- Post-wave regression gate passed in the persistent Docker test container
+- `pytest tests/ -q --tb=short`: passed
 
 **Wave 4: Customer Portal** (4 parallel agents)
 - [ ] 4A: PortalUser model + auth system (separate from Flask-Security)
