@@ -110,6 +110,7 @@ def create_item(data, drysuit_data=None, created_by=None):
         model=data.get("model"),
         year_manufactured=data.get("year_manufactured"),
         notes=data.get("notes"),
+        service_interval_days=data.get("service_interval_days"),
         customer_id=data.get("customer_id") or None,
         created_by=created_by,
     )
@@ -155,6 +156,7 @@ def update_item(item_id, data, drysuit_data=None):
         "model",
         "year_manufactured",
         "notes",
+        "service_interval_days",
         "customer_id",
     ):
         if field in data:

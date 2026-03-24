@@ -337,7 +337,7 @@ def _get_admin_user_ids():
     admin_role = Role.query.filter_by(name="admin").first()
     if admin_role is None:
         return []
-    return [u.id for u in admin_role.users.all()]
+    return [u.id for u in admin_role.users.filter(User.active == True).all()]  # noqa: E712
 
 
 def notify_low_stock(inventory_item):

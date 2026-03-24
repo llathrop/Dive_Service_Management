@@ -26,6 +26,7 @@ VALID_NOTIFICATION_TYPES = [
     "order_assigned",
     "serviceability_change",
     "payment_received",
+    "service_reminder",
     "system",
 ]
 

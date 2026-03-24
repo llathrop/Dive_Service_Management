@@ -372,6 +372,18 @@ class TestChangeStatus:
         assert success is True
         assert result_order.date_completed == date.today()
 
+    def test_change_status_sets_last_service_date_on_items(self, app, db_session):
+        """Completing an order updates the linked service item's last service date."""
+        order = _make_order(db_session, status="in_progress")
+        service_item = _make_service_item(db_session)
+        _make_order_item(db_session, order=order, service_item=service_item)
+
+        result_order, success = order_service.change_status(order.id, "completed")
+
+        assert success is True
+        assert result_order.date_completed == date.today()
+        assert service_item.last_service_date == date.today()
+
     def test_change_status_sets_pickup_date(self, app, db_session):
         """Transitioning to 'picked_up' sets date_picked_up."""
         order = _make_order(db_session, status="ready_for_pickup")
