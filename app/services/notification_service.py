@@ -66,9 +66,15 @@ def _queue_email(notification):
 
     For targeted notifications, emails the specific user.
     For broadcasts, emails all active users.
+    Skips queueing entirely when TESTING is active (no Celery broker).
     Never raises — failures are logged and swallowed.
     """
     try:
+        from flask import current_app
+
+        if current_app.config.get("TESTING"):
+            return
+
         from app.tasks.email_tasks import send_notification_email_task
 
         if notification.user_id:
