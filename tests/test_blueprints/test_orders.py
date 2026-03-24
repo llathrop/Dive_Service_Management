@@ -4,6 +4,8 @@ import pytest
 
 from app.models.customer import Customer
 
+pytestmark = pytest.mark.blueprint
+
 
 QUICK_CREATE_URL = "/orders/quick-create-customer"
 

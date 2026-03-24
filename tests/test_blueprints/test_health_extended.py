@@ -9,6 +9,8 @@ from unittest.mock import patch, MagicMock
 
 from sqlalchemy.exc import OperationalError
 
+pytestmark = pytest.mark.blueprint
+
 
 class TestHealthEndpoint:
     """Tests for the existing /health endpoint."""

@@ -490,3 +490,14 @@ class TestStatusTransitionRoutes:
         with app.app_context():
             updated = db.session.get(Invoice, inv_id)
             assert updated.status == "sent"
+
+
+class TestInvoiceCustomerDropdown:
+    """Verify the invoice create form includes the Create New Customer option."""
+
+    def test_invoice_form_has_create_new_customer_option(self, admin_client):
+        """The customer dropdown on invoice create has '+ Create New Customer'."""
+        resp = admin_client.get("/invoices/new")
+        assert resp.status_code == 200
+        html = resp.data.decode()
+        assert "Create New Customer" in html

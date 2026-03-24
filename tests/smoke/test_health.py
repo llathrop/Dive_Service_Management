@@ -5,6 +5,8 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
+pytestmark = pytest.mark.smoke
+
 
 @pytest.mark.smoke
 class TestHealthEndpoint:

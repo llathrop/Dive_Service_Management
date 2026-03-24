@@ -8,6 +8,8 @@ from app.models.system_config import SystemConfig
 from app.services import config_service
 from tests.factories import SystemConfigFactory
 
+pytestmark = pytest.mark.unit
+
 
 class TestGetConfig:
     """Tests for get_config()."""

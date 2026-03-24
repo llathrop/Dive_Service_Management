@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from app.models.attachment import Attachment
 from tests.factories import AttachmentFactory, UserFactory
 
+pytestmark = pytest.mark.unit
+
 
 class TestAttachmentModel:
     """Test Attachment model creation and properties."""

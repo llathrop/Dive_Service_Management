@@ -256,7 +256,6 @@ def quick_create():
 
     # Validate customer_id exists if provided
     if customer_id:
-        from app.models.customer import Customer
         if not Customer.query.get(customer_id):
             return jsonify({"error": "Customer not found."}), 400
 

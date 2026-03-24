@@ -4,6 +4,8 @@ import pytest
 
 from tests.factories import CustomerFactory, ServiceOrderFactory
 
+pytestmark = pytest.mark.blueprint
+
 
 KANBAN_URL = "/orders/kanban"
 

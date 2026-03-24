@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.blueprint
+
 
 class TestDocsIndex:
     """Tests for GET /docs."""

@@ -7,6 +7,8 @@ from app.models.customer import Customer
 from app.models.inventory import InventoryItem
 from app.services import import_service
 
+pytestmark = pytest.mark.unit
+
 
 CUSTOMER_CSV = (
     "Type,First Name,Last Name,Business Name,Contact Person,Email,Phone,"

@@ -26,6 +26,8 @@ from tests.factories import (
     UserFactory,
 )
 
+pytestmark = pytest.mark.unit
+
 
 def _set_session(db_session, *factories):
     for f in factories:

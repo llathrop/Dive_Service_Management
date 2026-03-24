@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 
 class TestGetSmtpConfig:
     """Tests for _get_smtp_config()."""

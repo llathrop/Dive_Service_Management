@@ -8,6 +8,8 @@ from app.models.audit_log import AuditLog
 from app.services import audit_service
 from tests.factories import AuditLogFactory, UserFactory
 
+pytestmark = pytest.mark.unit
+
 
 class TestLogAction:
     """Tests for audit_service.log_action()."""

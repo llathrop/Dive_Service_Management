@@ -5,6 +5,8 @@ import pytest
 from app.extensions import db
 from app.models.system_config import SystemConfig
 
+pytestmark = pytest.mark.blueprint
+
 
 def _seed_email_config(app):
     """Seed the email config keys for testing."""

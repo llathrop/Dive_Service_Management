@@ -6,6 +6,8 @@ from werkzeug.exceptions import NotFound
 from app.services import item_service
 from tests.factories import BaseFactory, CustomerFactory, ServiceItemFactory
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.fixture(autouse=True)
 def _bind_factories(db_session):

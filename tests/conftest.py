@@ -10,6 +10,12 @@ from flask_security import hash_password
 from app import create_app
 from app.config import TestingConfig
 from app.extensions import db as _db
+from tests._fixtures import (
+    _login_client,
+    make_auth_user_fixture,
+    make_client_fixture,
+    make_db_session_fixture,
+)
 
 
 @pytest.fixture()
@@ -27,48 +33,15 @@ def app():
         _db.drop_all()
 
 
-@pytest.fixture()
-def db_session(app):
-    """Provide a database session for the test.
-
-    Yields db.session within the app context, and rolls back
-    after the test for cleanup.
-    """
-    with app.app_context():
-        yield _db.session
-        _db.session.rollback()
-
-
-@pytest.fixture()
-def client(app):
-    """Provide a Flask test client."""
-    return app.test_client()
+db_session = make_db_session_fixture()
+client = make_client_fixture()
+auth_user = make_auth_user_fixture()
 
 
 @pytest.fixture()
 def runner(app):
     """Provide a Flask CLI test runner."""
     return app.test_cli_runner()
-
-
-@pytest.fixture()
-def auth_user(app, db_session):
-    """Create and return a user with the 'technician' role."""
-    with app.app_context():
-        user_datastore = app.extensions["security"].datastore
-        tech_role = user_datastore.find_or_create_role(
-            name="technician", description="Create/edit data, manage orders"
-        )
-        user = user_datastore.create_user(
-            username="techuser",
-            email="tech@example.com",
-            password=hash_password("password"),
-            first_name="Tech",
-            last_name="User",
-        )
-        user_datastore.add_role_to_user(user, tech_role)
-        db_session.commit()
-        return user
 
 
 @pytest.fixture()
@@ -89,29 +62,6 @@ def admin_user(app, db_session):
         user_datastore.add_role_to_user(user, admin_role)
         db_session.commit()
         return user
-
-
-def _login_client(app, email, password):
-    """Create a test client and log in, verifying authentication succeeded.
-
-    Raises AssertionError if the login POST does not result in a
-    successful redirect to /dashboard (which proves the session is
-    authenticated).
-    """
-    client = app.test_client()
-    response = client.post(
-        "/login",
-        data={"email": email, "password": password},
-        follow_redirects=False,
-    )
-    # Flask-Security redirects to SECURITY_POST_LOGIN_VIEW (/dashboard) on success
-    assert response.status_code == 302, (
-        f"Login for {email} failed: expected 302, got {response.status_code}"
-    )
-    assert "/dashboard" in response.location, (
-        f"Login for {email} did not redirect to dashboard: {response.location}"
-    )
-    return client
 
 
 @pytest.fixture()

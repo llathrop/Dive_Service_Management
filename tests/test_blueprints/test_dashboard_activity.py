@@ -4,6 +4,8 @@ import pytest
 
 from tests.factories import AuditLogFactory, UserFactory
 
+pytestmark = pytest.mark.blueprint
+
 
 class TestDashboardActivityFeed:
     """Tests for the activity feed on GET /dashboard/."""

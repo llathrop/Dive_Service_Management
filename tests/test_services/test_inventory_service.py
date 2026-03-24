@@ -8,6 +8,8 @@ from werkzeug.exceptions import NotFound
 from app.services import inventory_service
 from tests.factories import InventoryItemFactory
 
+pytestmark = pytest.mark.unit
+
 
 class TestGetInventoryItems:
     """Tests for inventory_service.get_inventory_items()."""

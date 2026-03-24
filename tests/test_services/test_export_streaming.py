@@ -13,6 +13,8 @@ from tests.factories import (
     ServiceOrderFactory,
 )
 
+pytestmark = pytest.mark.unit
+
 
 def _set_sessions(db_session):
     """Set the SQLAlchemy session on all factories used in these tests."""

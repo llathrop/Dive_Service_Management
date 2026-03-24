@@ -6,6 +6,8 @@ from app.cli.seed import _seed_system_config
 from app.models.system_config import SystemConfig
 from app.services import config_service
 
+pytestmark = pytest.mark.blueprint
+
 
 class TestSettingsPage:
     """Tests for GET /admin/settings."""

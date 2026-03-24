@@ -11,6 +11,8 @@ from flask import Flask
 from app.config import DevelopmentConfig, ProductionConfig, TestingConfig
 from app.models.user import User
 
+pytestmark = pytest.mark.unit
+
 
 class TestProductionConfigSecrets:
     """ProductionConfig.init_app must reject insecure default secrets."""
