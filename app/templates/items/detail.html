@@ -89,6 +89,24 @@
           <dt class="col-sm-5">Last Service</dt>
           <dd class="col-sm-7">{{ item.last_service_date.strftime('%Y-%m-%d') }}</dd>
           {% endif %}
+          {% if item.service_interval_days %}
+          <dt class="col-sm-5">Service Interval</dt>
+          <dd class="col-sm-7">{{ item.service_interval_days }} days</dd>
+          <dt class="col-sm-5">Next Service Due</dt>
+          <dd class="col-sm-7">
+            {% if next_service_due %}
+              {% if service_overdue %}
+              <span class="text-danger fw-bold">{{ next_service_due.strftime('%Y-%m-%d') }} (overdue)</span>
+              {% elif service_due_soon %}
+              <span class="text-warning fw-bold">{{ next_service_due.strftime('%Y-%m-%d') }} (due soon)</span>
+              {% else %}
+              {{ next_service_due.strftime('%Y-%m-%d') }}
+              {% endif %}
+            {% else %}
+              <span class="text-muted">No service recorded yet</span>
+            {% endif %}
+          </dd>
+          {% endif %}
         </dl>
       </div>
     </div>

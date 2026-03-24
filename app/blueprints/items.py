@@ -6,6 +6,8 @@ detail fields via the DrysuitDetails model.  All routes require
 authentication.  Write operations require the 'admin' or 'technician' role.
 """
 
+from datetime import date, timedelta
+
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
@@ -95,7 +97,27 @@ def detail(id):
     """Display a service item detail page."""
     item = item_service.get_item(id)
     service_history = item_service.get_service_history(id)
-    return render_template("items/detail.html", item=item, service_history=service_history)
+
+    # Compute next service due date for display
+    next_service_due = None
+    service_overdue = False
+    service_due_soon = False
+    if item.service_interval_days and item.last_service_date:
+        next_service_due = item.last_service_date + timedelta(days=item.service_interval_days)
+        today = date.today()
+        if next_service_due <= today:
+            service_overdue = True
+        elif next_service_due <= today + timedelta(days=30):
+            service_due_soon = True
+
+    return render_template(
+        "items/detail.html",
+        item=item,
+        service_history=service_history,
+        next_service_due=next_service_due,
+        service_overdue=service_overdue,
+        service_due_soon=service_due_soon,
+    )
 
 
 @items_bp.route("/new", methods=["GET", "POST"])
@@ -125,6 +147,7 @@ def create():
             "model": form.model.data,
             "year_manufactured": form.year_manufactured.data,
             "notes": form.notes.data,
+            "service_interval_days": form.service_interval_days.data,
             "customer_id": form.customer_id.data,
         }
         drysuit_data = _extract_drysuit_data(drysuit_form)
@@ -184,6 +207,7 @@ def edit(id):
             "model": form.model.data,
             "year_manufactured": form.year_manufactured.data,
             "notes": form.notes.data,
+            "service_interval_days": form.service_interval_days.data,
             "customer_id": form.customer_id.data,
         }
         drysuit_data = _extract_drysuit_data(drysuit_form)

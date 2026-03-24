@@ -392,12 +392,9 @@ def change_status(order_id, new_status, user_id=None, ip_address=None, user_agen
     # Set milestone dates
     if new_status == "completed":
         order.date_completed = date.today()
-
-        # Update last_service_date on all associated service items
-        for soi in order.order_items.all():
-            if soi.service_item:
-                soi.service_item.last_service_date = date.today()
-
+        for order_item in order.order_items.all():
+            if order_item.service_item:
+                order_item.service_item.last_service_date = order.date_completed
     elif new_status == "picked_up":
         order.date_picked_up = date.today()
 

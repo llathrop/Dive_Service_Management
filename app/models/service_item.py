@@ -39,6 +39,7 @@ class ServiceItem(TimestampMixin, SoftDeleteMixin, AuditMixin, db.Model):
 
     # --- Service history ---
     last_service_date = db.Column(db.Date, nullable=True)
+    service_interval_days = db.Column(db.Integer, nullable=True)
 
     # --- Customer relationship ---
     customer_id = db.Column(

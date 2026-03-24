@@ -68,6 +68,12 @@
           {{ render_field(form.model, placeholder='Model name') }}
         </div>
       </div>
+      <div class="row">
+        <div class="col-md-4">
+          {{ render_field(form.service_interval_days, placeholder='e.g. 365') }}
+          <small class="form-text text-muted">How often this equipment should be serviced (in days). Common values: 365 (annual), 180 (semi-annual). Leave blank for no automatic reminders.</small>
+        </div>
+      </div>
       {{ render_field(form.serviceability_notes, placeholder='Serviceability notes...') }}
       {{ render_field(form.notes, placeholder='General notes...') }}
     </div>

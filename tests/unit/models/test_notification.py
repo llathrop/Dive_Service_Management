@@ -90,6 +90,7 @@ class TestNotificationConstants:
             "order_assigned",
             "serviceability_change",
             "payment_received",
+            "service_reminder",
             "system",
         ]
         assert VALID_NOTIFICATION_TYPES == expected

@@ -68,6 +68,10 @@ class ServiceItemForm(FlaskForm):
         validators=[Optional(), NumberRange(min=1900, max=2100)],
     )
     notes = TextAreaField("Notes", validators=[Optional()])
+    service_interval_days = IntegerField(
+        "Service Interval (days)",
+        validators=[Optional(), NumberRange(min=1, max=9999)],
+    )
     customer_id = SelectField(
         "Customer",
         coerce=int,
