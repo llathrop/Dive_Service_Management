@@ -31,16 +31,22 @@ def list_items():
     # Apply default saved search when no filter params are provided
     filter_keys = ["q", "sort", "order"]
     if not any(request.args.get(k) for k in filter_keys):
-        default_search = saved_search_service.get_default_search(
-            user_id=current_user.id, search_type="item"
-        )
-        if default_search:
-            filters = default_search.filters
-            page = int(filters.get("page", 1))
-            q = filters.get("q", "")
-            sort = filters.get("sort", "name")
-            order = filters.get("order", "asc")
-        else:
+        try:
+            default_search = saved_search_service.get_default_search(
+                user_id=current_user.id, search_type="item"
+            )
+            if default_search:
+                filters = default_search.filters
+                page = int(filters.get("page", 1))
+                q = filters.get("q", "")
+                sort = filters.get("sort", "name")
+                order = filters.get("order", "asc")
+            else:
+                page = request.args.get("page", 1, type=int)
+                q = request.args.get("q", "")
+                sort = request.args.get("sort", "name")
+                order = request.args.get("order", "asc")
+        except Exception:
             page = request.args.get("page", 1, type=int)
             q = request.args.get("q", "")
             sort = request.args.get("sort", "name")
