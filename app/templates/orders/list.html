@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from 'macros/forms.html' import render_field, render_select, render_submit %}
 {% from 'macros/pagination.html' import render_pagination %}
-{% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
+{% from 'macros/tables.html' import sortable_header, empty_state, record_count, batch_select_all, batch_checkbox %}
 {% from 'macros/status_badges.html' import order_status_badge, priority_badge %}
 {% from 'macros/saved_searches.html' import saved_search_controls %}
 
@@ -94,11 +94,19 @@
 
 {# Orders table #}
 {% if orders.items %}
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+<div x-data="batchOps()">
+  <form method="POST" action="{{ url_for('orders.batch') }}" id="batch-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endif %}
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover mb-0">
       <thead>
         <tr>
+          {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+          {{ batch_select_all() }}
+          {% endif %}
           {{ sortable_header('order_number', 'Order #', sort, order) }}
           {{ sortable_header('customer_id', 'Customer', sort, order) }}
           {{ sortable_header('status', 'Status', sort, order) }}
@@ -113,6 +121,9 @@
       <tbody>
         {% for so in orders.items %}
         <tr>
+          {% if current_user.has_role('admin') or current_user.has_role('technician') %}
+          {{ batch_checkbox(so.id) }}
+          {% endif %}
           <td>
             <a href="{{ url_for('orders.detail', id=so.id) }}">
               {{ so.order_number }}
@@ -166,6 +177,47 @@
   </div>
 </div>
 
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+{# Batch action bar #}
+<div class="card mt-3 border-primary" x-show="selectedCount > 0" x-cloak
+     style="position: sticky; bottom: 0; z-index: 100;">
+  <div class="card-body d-flex align-items-center gap-3 py-2">
+    <span class="fw-bold text-primary" x-text="selectedCount + ' order(s) selected'"></span>
+    <select name="action" class="form-select form-select-sm" style="width: auto;" x-model="action">
+      <option value="">-- Choose Action --</option>
+      <option value="change_status">Change Status</option>
+      <option value="assign_tech">Assign Technician</option>
+      <option value="cancel">Cancel Orders</option>
+    </select>
+    <select name="target_status" class="form-select form-select-sm" style="width: auto;"
+            x-show="action === 'change_status'" x-cloak x-ref="targetStatus" x-model="targetStatus">
+      <option value="">-- Target Status --</option>
+      <option value="intake">Intake</option>
+      <option value="assessment">Assessment</option>
+      <option value="awaiting_approval">Awaiting Approval</option>
+      <option value="in_progress">In Progress</option>
+      <option value="awaiting_parts">Awaiting Parts</option>
+      <option value="completed">Completed</option>
+      <option value="ready_for_pickup">Ready for Pickup</option>
+      <option value="picked_up">Picked Up</option>
+    </select>
+    <select name="tech_id" class="form-select form-select-sm" style="width: auto;"
+            x-show="action === 'assign_tech'" x-cloak x-model="techId">
+      <option value="">-- Select Tech --</option>
+      {% for tech_id, tech_name in tech_choices %}
+      <option value="{{ tech_id }}">{{ tech_name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary"
+            :disabled="!action || (action === 'change_status' && !targetStatus) || (action === 'assign_tech' && !techId)">
+      <i class="bi bi-check2-all me-1"></i> Apply
+    </button>
+  </div>
+</div>
+  </form>
+</div>
+{% endif %}
+
 {{ render_pagination(orders) }}
 {% else %}
 {% if current_user.has_role('admin') or current_user.has_role('technician') %}
@@ -173,5 +225,37 @@
 {% else %}
 {{ empty_state('No service orders found.', 'bi-clipboard-x') }}
 {% endif %}
+{% endif %}
+
+{% if current_user.has_role('admin') or current_user.has_role('technician') %}
+<script>
+function batchOps() {
+  return {
+    selectedCount: 0,
+    action: '',
+    targetStatus: '',
+    techId: '',
+    init() {
+      this.$nextTick(() => {
+        const selectAll = document.getElementById('batch-select-all');
+        if (selectAll) {
+          selectAll.addEventListener('change', (e) => {
+            document.querySelectorAll('.batch-select').forEach(cb => {
+              cb.checked = e.target.checked;
+            });
+            this.updateCount();
+          });
+        }
+        document.querySelectorAll('.batch-select').forEach(cb => {
+          cb.addEventListener('change', () => this.updateCount());
+        });
+      });
+    },
+    updateCount() {
+      this.selectedCount = document.querySelectorAll('.batch-select:checked').length;
+    }
+  };
+}
+</script>
 {% endif %}
 {% endblock %}

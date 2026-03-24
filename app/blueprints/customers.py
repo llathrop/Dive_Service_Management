@@ -208,6 +208,59 @@ def edit(id):
     )
 
 
+@customers_bp.route("/batch", methods=["POST"])
+@login_required
+@roles_accepted("admin")
+def batch():
+    """Apply a batch action to multiple customers."""
+    selected_ids = request.form.getlist("selected_ids", type=int)
+    action = request.form.get("action", "").strip()
+
+    if not selected_ids:
+        flash("No customers selected.", "warning")
+        return redirect(url_for("customers.list_customers"))
+
+    valid_actions = {"deactivate"}
+    if action not in valid_actions:
+        flash("Invalid batch action.", "error")
+        return redirect(url_for("customers.list_customers"))
+
+    success_count = 0
+    error_count = 0
+
+    for cid in selected_ids:
+        try:
+            customer = customer_service.get_customer(cid)
+            old_deleted = customer.is_deleted
+            customer.soft_delete()
+            db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="delete",
+                    entity_type="customer",
+                    entity_id=customer.id,
+                    user_id=current_user.id,
+                    field_name="is_deleted",
+                    old_value=str(old_deleted),
+                    new_value=str(customer.is_deleted),
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
+            success_count += 1
+        except Exception:
+            db.session.rollback()
+            error_count += 1
+
+    if success_count:
+        flash(f"Batch {action}: {success_count} customer(s) updated.", "success")
+    if error_count:
+        flash(f"Batch {action}: {error_count} customer(s) could not be updated.", "warning")
+
+    return redirect(url_for("customers.list_customers"))
+
+
 @customers_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
 @roles_accepted("admin")

@@ -244,6 +244,62 @@ def edit(id):
     )
 
 
+@inventory_bp.route("/batch", methods=["POST"])
+@login_required
+@roles_accepted("admin")
+def batch():
+    """Apply a batch action to multiple inventory items."""
+    selected_ids = request.form.getlist("selected_ids", type=int)
+    action = request.form.get("action", "").strip()
+
+    if not selected_ids:
+        flash("No inventory items selected.", "warning")
+        return redirect(url_for("inventory.list_items"))
+
+    valid_actions = {"deactivate", "activate"}
+    if action not in valid_actions:
+        flash("Invalid batch action.", "error")
+        return redirect(url_for("inventory.list_items"))
+
+    success_count = 0
+    error_count = 0
+
+    for iid in selected_ids:
+        try:
+            item = inventory_service.get_inventory_item(iid)
+            old_is_active = item.is_active
+            if action == "deactivate":
+                item.is_active = False
+            elif action == "activate":
+                item.is_active = True
+            db.session.commit()
+            try:
+                audit_service.log_action(
+                    action="update",
+                    entity_type="inventory_item",
+                    entity_id=item.id,
+                    user_id=current_user.id,
+                    field_name="is_active",
+                    old_value=str(old_is_active),
+                    new_value=str(item.is_active),
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+            except Exception:
+                pass
+            success_count += 1
+        except Exception:
+            db.session.rollback()
+            error_count += 1
+
+    if success_count:
+        flash(f"Batch {action}: {success_count} item(s) updated.", "success")
+    if error_count:
+        flash(f"Batch {action}: {error_count} item(s) could not be updated.", "warning")
+
+    return redirect(url_for("inventory.list_items"))
+
+
 @inventory_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
 @roles_accepted("admin")

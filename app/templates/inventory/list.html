@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from 'macros/forms.html' import render_field, render_select, render_checkbox %}
 {% from 'macros/pagination.html' import render_pagination %}
-{% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
+{% from 'macros/tables.html' import sortable_header, empty_state, record_count, batch_select_all, batch_checkbox %}
 {% from 'macros/status_badges.html' import stock_level_badge %}
 {% from 'macros/saved_searches.html' import saved_search_controls %}
 
@@ -63,11 +63,19 @@
 </div>
 
 {% if items %}
+{% if current_user.has_role('admin') %}
+<div x-data="batchOps()">
+  <form method="POST" action="{{ url_for('inventory.batch') }}" id="batch-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endif %}
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover mb-0">
       <thead>
         <tr>
+          {% if current_user.has_role('admin') %}
+          {{ batch_select_all() }}
+          {% endif %}
           {{ sortable_header('name', 'Name', sort, order) }}
           {{ sortable_header('sku', 'SKU', sort, order) }}
           {{ sortable_header('category', 'Category', sort, order) }}
@@ -80,6 +88,9 @@
       <tbody>
         {% for item in items %}
         <tr>
+          {% if current_user.has_role('admin') %}
+          {{ batch_checkbox(item.id) }}
+          {% endif %}
           <td>
             <a href="{{ url_for('inventory.detail', id=item.id) }}">{{ item.name }}</a>
           </td>
@@ -124,6 +135,24 @@
   </div>
 </div>
 
+{# Batch action bar #}
+<div class="card mt-3 border-primary" x-show="selectedCount > 0" x-cloak
+     style="position: sticky; bottom: 0; z-index: 100;">
+  <div class="card-body d-flex align-items-center gap-3 py-2">
+    <span class="fw-bold text-primary" x-text="selectedCount + ' item(s) selected'"></span>
+    <select name="action" class="form-select form-select-sm" style="width: auto;" x-model="action">
+      <option value="">-- Choose Action --</option>
+      <option value="deactivate">Deactivate</option>
+      <option value="activate">Activate</option>
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary" :disabled="!action">
+      <i class="bi bi-check2-all me-1"></i> Apply
+    </button>
+  </div>
+</div>
+  </form>
+</div>
+
 {{ render_pagination(pagination) }}
 {% else %}
 {% if current_user.has_role('admin') or current_user.has_role('technician') %}
@@ -131,5 +160,35 @@
 {% else %}
 {{ empty_state('No inventory items found.', 'bi-box-seam') }}
 {% endif %}
+{% endif %}
+
+{% if current_user.has_role('admin') %}
+<script>
+function batchOps() {
+  return {
+    selectedCount: 0,
+    action: '',
+    init() {
+      this.$nextTick(() => {
+        const selectAll = document.getElementById('batch-select-all');
+        if (selectAll) {
+          selectAll.addEventListener('change', (e) => {
+            document.querySelectorAll('.batch-select').forEach(cb => {
+              cb.checked = e.target.checked;
+            });
+            this.updateCount();
+          });
+        }
+        document.querySelectorAll('.batch-select').forEach(cb => {
+          cb.addEventListener('change', () => this.updateCount());
+        });
+      });
+    },
+    updateCount() {
+      this.selectedCount = document.querySelectorAll('.batch-select:checked').length;
+    }
+  };
+}
+</script>
 {% endif %}
 {% endblock %}

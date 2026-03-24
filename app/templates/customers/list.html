@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from 'macros/forms.html' import render_field, render_select, render_submit %}
 {% from 'macros/pagination.html' import render_pagination %}
-{% from 'macros/tables.html' import sortable_header, empty_state, record_count %}
+{% from 'macros/tables.html' import sortable_header, empty_state, record_count, batch_select_all, batch_checkbox %}
 {% from 'macros/saved_searches.html' import saved_search_controls %}
 
 {% block title %}Customers - Dive Service Management{% endblock %}
@@ -49,11 +49,19 @@
 
 {# Customer table #}
 {% if customers %}
+{% if current_user.has_role('admin') %}
+<div x-data="batchOps()">
+  <form method="POST" action="{{ url_for('customers.batch') }}" id="batch-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endif %}
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover mb-0">
       <thead>
         <tr>
+          {% if current_user.has_role('admin') %}
+          {{ batch_select_all() }}
+          {% endif %}
           {{ sortable_header('last_name', 'Name', sort, order) }}
           {{ sortable_header('phone_primary', 'Phone', sort, order) }}
           {{ sortable_header('email', 'Email', sort, order) }}
@@ -64,6 +72,9 @@
       <tbody>
         {% for customer in customers %}
         <tr>
+          {% if current_user.has_role('admin') %}
+          {{ batch_checkbox(customer.id) }}
+          {% endif %}
           <td>
             <a href="{{ url_for('customers.detail', id=customer.id) }}">
               {{ customer.display_name }}
@@ -97,6 +108,25 @@
   </div>
 </div>
 
+{% if current_user.has_role('admin') %}
+{# Batch action bar #}
+<div class="card mt-3 border-primary" x-show="selectedCount > 0" x-cloak
+     style="position: sticky; bottom: 0; z-index: 100;">
+  <div class="card-body d-flex align-items-center gap-3 py-2">
+    <span class="fw-bold text-primary" x-text="selectedCount + ' customer(s) selected'"></span>
+    <select name="action" class="form-select form-select-sm" style="width: auto;" x-model="action">
+      <option value="">-- Choose Action --</option>
+      <option value="deactivate">Deactivate</option>
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary" :disabled="!action">
+      <i class="bi bi-check2-all me-1"></i> Apply
+    </button>
+  </div>
+</div>
+  </form>
+</div>
+{% endif %}
+
 {{ render_pagination(pagination) }}
 {% else %}
 {% if current_user.has_role('admin') or current_user.has_role('technician') %}
@@ -104,5 +134,35 @@
 {% else %}
 {{ empty_state('No customers found.', 'bi-people') }}
 {% endif %}
+{% endif %}
+
+{% if current_user.has_role('admin') %}
+<script>
+function batchOps() {
+  return {
+    selectedCount: 0,
+    action: '',
+    init() {
+      this.$nextTick(() => {
+        const selectAll = document.getElementById('batch-select-all');
+        if (selectAll) {
+          selectAll.addEventListener('change', (e) => {
+            document.querySelectorAll('.batch-select').forEach(cb => {
+              cb.checked = e.target.checked;
+            });
+            this.updateCount();
+          });
+        }
+        document.querySelectorAll('.batch-select').forEach(cb => {
+          cb.addEventListener('change', () => this.updateCount());
+        });
+      });
+    },
+    updateCount() {
+      this.selectedCount = document.querySelectorAll('.batch-select:checked').length;
+    }
+  };
+}
+</script>
 {% endif %}
 {% endblock %}
