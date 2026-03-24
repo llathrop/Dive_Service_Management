@@ -214,7 +214,14 @@ def create_order(data, created_by=None, ip_address=None, user_agent=None):
     return order
 
 
-def update_order(order_id, data, user_id=None, ip_address=None, user_agent=None):
+def update_order(
+    order_id,
+    data,
+    user_id=None,
+    ip_address=None,
+    user_agent=None,
+    commit=True,
+):
     """Update an existing service order from a data dict.
 
     Args:
@@ -261,18 +268,19 @@ def update_order(order_id, data, user_id=None, ip_address=None, user_agent=None)
         if data["priority"] in valid_priorities:
             order.priority = data["priority"]
 
-    db.session.commit()
-    try:
-        audit_service.log_action(
-            action="update",
-            entity_type="service_order",
-            entity_id=order.id,
-            user_id=user_id,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-    except Exception:
-        pass
+    if commit:
+        db.session.commit()
+        try:
+            audit_service.log_action(
+                action="update",
+                entity_type="service_order",
+                entity_id=order.id,
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
     return order
 
 
@@ -549,7 +557,7 @@ def get_order_item(order_item_id):
 # Applied Services
 # =========================================================================
 
-def add_applied_service(order_item_id, data, added_by=None):
+def add_applied_service(order_item_id, data, added_by=None, commit=True):
     """Add an applied service to a service order item.
 
     If a price_list_item_id is provided, snapshots the name, description,
@@ -633,16 +641,17 @@ def add_applied_service(order_item_id, data, added_by=None):
                     is_auto_deducted=True,
                 )
 
-    db.session.commit()
-    try:
-        audit_service.log_action(
-            action="create",
-            entity_type="applied_service",
-            entity_id=applied.id,
-            user_id=added_by,
-        )
-    except Exception:
-        pass
+    if commit:
+        db.session.commit()
+        try:
+            audit_service.log_action(
+                action="create",
+                entity_type="applied_service",
+                entity_id=applied.id,
+                user_id=added_by,
+            )
+        except Exception:
+            pass
     return applied
 
 
@@ -701,6 +710,7 @@ def add_part_used(
     added_by=None,
     applied_service_id=None,
     is_auto_deducted=False,
+    commit=True,
 ):
     """Record a part used on a service order item.
 
@@ -764,7 +774,7 @@ def add_part_used(
 
     # Only commit if this is a standalone call (not nested inside
     # add_applied_service which manages its own commit).
-    if not is_auto_deducted:
+    if commit and not is_auto_deducted:
         db.session.commit()
         try:
             audit_service.log_action(

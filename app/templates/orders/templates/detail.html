@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Template: {{ template.name }} - Dive Service Management{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('orders.list_orders') }}">Orders</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('orders.list_templates') }}">Templates</a></li>
+    <li class="breadcrumb-item active">{{ template.name }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">{{ template.name }}</h1>
+  <div class="d-flex gap-2">
+    {% if template.created_by_id == current_user.id %}
+    <a href="{{ url_for('orders.edit_template', id=template.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-pencil"></i> Edit
+    </a>
+    <form method="POST" action="{{ url_for('orders.delete_template', id=template.id) }}"
+          onsubmit="return confirm('Delete this template?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-outline-danger">
+        <i class="bi bi-trash"></i> Delete
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{# General Info #}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">General Information</h5>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <dl>
+          <dt>Name</dt>
+          <dd>{{ template.name }}</dd>
+          <dt>Description</dt>
+          <dd>{{ template.description or 'No description' }}</dd>
+          <dt>Created By</dt>
+          <dd>{{ template.created_by.display_name if template.created_by else 'Unknown' }}</dd>
+        </dl>
+      </div>
+      <div class="col-md-6">
+        <dl>
+          <dt>Visibility</dt>
+          <dd>
+            {% if template.is_shared %}
+            <span class="badge bg-info">Shared</span>
+            {% else %}
+            <span class="badge bg-secondary">Private</span>
+            {% endif %}
+          </dd>
+          <dt>Created</dt>
+          <dd>{{ template.created_at.strftime('%Y-%m-%d %H:%M') if template.created_at else 'N/A' }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% set td = template.template_data or {} %}
+
+{# Order Settings #}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Order Settings</h5>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-3">
+        <dt>Priority</dt>
+        <dd>{{ (td.get('priority') or 'Not set')|title }}</dd>
+      </div>
+      <div class="col-md-3">
+        <dt>Rush Fee</dt>
+        <dd>{{ '$' ~ td.get('rush_fee', '0.00') }}</dd>
+      </div>
+      <div class="col-md-3">
+        <dt>Discount %</dt>
+        <dd>{{ td.get('discount_percent', '0') }}%</dd>
+      </div>
+      <div class="col-md-3">
+        <dt>Est. Labor Hours</dt>
+        <dd>{{ td.get('estimated_labor_hours', 'Not set') }}</dd>
+      </div>
+    </div>
+    {% if td.get('notes') %}
+    <div class="mt-3">
+      <dt>Notes</dt>
+      <dd>{{ td['notes'] }}</dd>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# Services #}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Services ({{ services_display|length }})</h5>
+  </div>
+  <div class="card-body">
+    {% if services_display %}
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Quantity</th>
+          <th>Override Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for svc in services_display %}
+        <tr>
+          <td>{{ svc.name }}</td>
+          <td>{{ svc.quantity }}</td>
+          <td>{{ '$' ~ svc.override_price if svc.override_price else 'Default' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted mb-0">No services configured.</p>
+    {% endif %}
+  </div>
+</div>
+
+{# Parts #}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Parts ({{ parts_display|length }})</h5>
+  </div>
+  <div class="card-body">
+    {% if parts_display %}
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>Part</th>
+          <th>Quantity</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for part in parts_display %}
+        <tr>
+          <td>{{ part.name }}</td>
+          <td>{{ part.quantity }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted mb-0">No parts configured.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

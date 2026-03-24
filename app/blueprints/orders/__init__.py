@@ -4,6 +4,8 @@ Submodules (items, services, parts, labor, notes, status) are imported
 at the bottom of this file to register their routes on ``orders_bp``.
 """
 
+from decimal import Decimal
+
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
@@ -24,6 +26,7 @@ from app.models.service_order import ServiceOrder
 from app.models.user import Role, User
 from app.services import order_service
 from app.services.order_service import SORTABLE_FIELDS  # noqa: F401
+from app.services import template_service
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
 
@@ -62,6 +65,20 @@ def _populate_order_form_choices(form):
         (c.id, c.display_name) for c in customers
     ]
     form.assigned_tech_id.choices = [("", "-- Select --")] + _get_tech_choices()
+
+
+def _apply_template_defaults_to_order_form(form, template):
+    """Pre-populate order form fields from a template's defaults."""
+    td = template.template_data or {}
+
+    if td.get("priority"):
+        form.priority.data = td["priority"]
+    if td.get("rush_fee") is not None:
+        form.rush_fee.data = Decimal(str(td["rush_fee"]))
+    if td.get("discount_percent") is not None:
+        form.discount_percent.data = Decimal(str(td["discount_percent"]))
+    if td.get("notes"):
+        form.description.data = td["notes"]
 
 
 def _populate_search_form_choices(form):
@@ -291,7 +308,22 @@ def create():
             db.session.rollback()
             flash("A service order with that number already exists.", "error")
 
-    return render_template("orders/form.html", form=form, is_edit=False)
+    order_templates = template_service.get_templates(
+        user_id=current_user.id, include_shared=True,
+    )
+    selected_template_id = request.args.get("template_id", type=int)
+    if selected_template_id:
+        template = template_service.get_template(
+            selected_template_id,
+            user_id=current_user.id,
+        )
+        _apply_template_defaults_to_order_form(form, template)
+
+    return render_template(
+        "orders/form.html", form=form, is_edit=False,
+        order_templates=order_templates,
+        selected_template_id=selected_template_id,
+    )
 
 
 @orders_bp.route("/<int:id>/edit", methods=["GET", "POST"])
@@ -450,4 +482,4 @@ def batch():
 
 
 # Import submodules to register their routes on orders_bp
-from app.blueprints.orders import items, services, parts, labor, notes, status, shipping  # noqa: E402, F401
+from app.blueprints.orders import items, services, parts, labor, notes, status, shipping, templates  # noqa: E402, F401
