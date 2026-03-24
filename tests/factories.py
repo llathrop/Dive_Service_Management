@@ -534,3 +534,23 @@ class AttachmentFactory(BaseFactory):
     mime_type = "image/jpeg"
     description = None
     uploaded_by = None
+
+
+# ---------------------------------------------------------------------------
+# Shipment factory
+# ---------------------------------------------------------------------------
+
+from app.models.shipment import Shipment
+
+
+class ShipmentFactory(BaseFactory):
+    """Factory for the Shipment model."""
+
+    class Meta:
+        model = Shipment
+
+    order = SubFactory(ServiceOrderFactory)
+    weight_lbs = factory.LazyFunction(lambda: Decimal("10.00"))
+    shipping_method = "flat_rate"
+    shipping_cost = factory.LazyFunction(lambda: Decimal("14.99"))
+    status = "pending"

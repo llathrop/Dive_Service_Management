@@ -12,6 +12,9 @@ from app.extensions import db
 from app.models.audit_log import AuditLog
 
 
+AUDIT_USER_AGENT_MAX_LENGTH = 500
+
+
 def log_action(
     action,
     entity_type,
@@ -55,6 +58,9 @@ def log_action(
     AuditLog
         The newly created audit log entry.
     """
+    if user_agent:
+        user_agent = user_agent[:AUDIT_USER_AGENT_MAX_LENGTH]
+
     entry = AuditLog(
         action=action,
         entity_type=entity_type,

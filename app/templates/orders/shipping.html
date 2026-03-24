@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% from 'macros/forms.html' import render_field, render_submit %}
+
+{% block title %}Shipping - {{ order.order_number }} - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{{ url_for('orders.list_orders') }}">Orders</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('orders.detail', id=order.id) }}">{{ order.order_number }}</a></li>
+        <li class="breadcrumb-item active">Shipping</li>
+      </ol>
+    </nav>
+    <h1 class="h3 mb-0">Shipping Management</h1>
+  </div>
+  <a href="{{ url_for('orders.detail', id=order.id) }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Back to Order
+  </a>
+</div>
+
+{# ===== SHIPPING SUMMARY ===== #}
+{% if shipments %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-box-seam me-2"></i>Shipping Summary</h5>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4">
+        <p class="mb-1"><strong>Total Shipments:</strong> {{ shipments|length }}</p>
+      </div>
+      <div class="col-md-4">
+        <p class="mb-1"><strong>Total Shipping Cost:</strong>
+          <span class="fw-bold text-success">${{ "%.2f"|format(shipping_total) }}</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ===== ADD SHIPMENT FORM ===== #}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-plus-circle me-2"></i>Add Shipment</h5>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('orders.create_shipment', id=order.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label for="weight_lbs" class="form-label">Weight (lbs) <span class="text-danger">*</span></label>
+          <input type="number" step="0.01" min="0.01" class="form-control" id="weight_lbs"
+                 name="weight_lbs" required
+                 hx-get="{{ url_for('orders.shipping_estimate', id=order.id) }}"
+                 hx-trigger="keyup changed delay:500ms"
+                 hx-include="[name='length_in'], [name='width_in'], [name='height_in'], [name='shipping_method']"
+                 hx-target="#cost-estimate">
+        </div>
+        <div class="col-md-3">
+          <label for="length_in" class="form-label">Length (in)</label>
+          <input type="number" step="0.01" min="0" class="form-control" id="length_in" name="length_in">
+        </div>
+        <div class="col-md-3">
+          <label for="width_in" class="form-label">Width (in)</label>
+          <input type="number" step="0.01" min="0" class="form-control" id="width_in" name="width_in">
+        </div>
+        <div class="col-md-3">
+          <label for="height_in" class="form-label">Height (in)</label>
+          <input type="number" step="0.01" min="0" class="form-control" id="height_in" name="height_in">
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label for="shipping_method" class="form-label">Shipping Method</label>
+          <select class="form-select" id="shipping_method" name="shipping_method">
+            {% for m in methods %}
+            <option value="{{ m.code }}">{{ m.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="carrier" class="form-label">Carrier</label>
+          <input type="text" class="form-control" id="carrier" name="carrier"
+                 placeholder="e.g. UPS, FedEx, USPS">
+        </div>
+        <div class="col-md-3">
+          <label for="tracking_number" class="form-label">Tracking Number</label>
+          <input type="text" class="form-control" id="tracking_number" name="tracking_number">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Estimated Cost</label>
+          <div id="cost-estimate" class="form-control-plaintext">
+            <span class="text-muted">Enter weight to estimate cost</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-12">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="2"
+                    placeholder="Optional shipping notes..."></textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-1"></i> Create Shipment
+      </button>
+    </form>
+  </div>
+</div>
+
+{# ===== EXISTING SHIPMENTS ===== #}
+{% if shipments %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0"><i class="bi bi-truck me-2"></i>Shipments ({{ shipments|length }})</h5>
+  </div>
+  <div class="card-body">
+    {% for shipment in shipments %}
+    <div class="border rounded p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <h6 class="mb-1">
+            Shipment #{{ shipment.id }}
+            {% if shipment.status == 'pending' %}
+            <span class="badge bg-secondary ms-2">Pending</span>
+            {% elif shipment.status == 'shipped' %}
+            <span class="badge bg-info ms-2">Shipped</span>
+            {% elif shipment.status == 'in_transit' %}
+            <span class="badge bg-primary ms-2">In Transit</span>
+            {% elif shipment.status == 'delivered' %}
+            <span class="badge bg-success ms-2">Delivered</span>
+            {% elif shipment.status == 'cancelled' %}
+            <span class="badge bg-danger ms-2">Cancelled</span>
+            {% endif %}
+          </h6>
+          <p class="text-muted small mb-0">
+            Created {{ shipment.created_at.strftime('%m/%d/%Y %I:%M %p') if shipment.created_at else 'N/A' }}
+          </p>
+        </div>
+        <div class="text-end">
+          <span class="h5 text-success">${{ "%.2f"|format(shipment.shipping_cost or 0) }}</span>
+        </div>
+      </div>
+
+      <div class="row small mb-2">
+        <div class="col-md-3">
+          <strong>Weight:</strong> {{ shipment.weight_lbs }} lbs
+        </div>
+        {% if shipment.length_in and shipment.width_in and shipment.height_in %}
+        <div class="col-md-3">
+          <strong>Dimensions:</strong>
+          {{ shipment.length_in }}" x {{ shipment.width_in }}" x {{ shipment.height_in }}"
+        </div>
+        {% endif %}
+        {% if shipment.carrier %}
+        <div class="col-md-3">
+          <strong>Carrier:</strong> {{ shipment.carrier }}
+        </div>
+        {% endif %}
+        {% if shipment.tracking_number %}
+        <div class="col-md-3">
+          <strong>Tracking:</strong> {{ shipment.tracking_number }}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if shipment.notes %}
+      <p class="small mb-2"><strong>Notes:</strong> {{ shipment.notes }}</p>
+      {% endif %}
+
+      {# Update form #}
+      <div class="border-top pt-2 mt-2">
+        <form method="POST" action="{{ url_for('orders.update_shipment', id=order.id, shipment_id=shipment.id) }}" class="row g-2 align-items-end">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="col-md-3">
+            <label class="form-label small">Tracking Number</label>
+            <input type="text" class="form-control form-control-sm" name="tracking_number"
+                   value="{{ shipment.tracking_number or '' }}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Carrier</label>
+            <input type="text" class="form-control form-control-sm" name="carrier"
+                   value="{{ shipment.carrier or '' }}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Status</label>
+            <select class="form-select form-select-sm" name="status">
+              <option value="pending" {{ 'selected' if shipment.status == 'pending' }}>Pending</option>
+              <option value="shipped" {{ 'selected' if shipment.status == 'shipped' }}>Shipped</option>
+              <option value="in_transit" {{ 'selected' if shipment.status == 'in_transit' }}>In Transit</option>
+              <option value="delivered" {{ 'selected' if shipment.status == 'delivered' }}>Delivered</option>
+              <option value="cancelled" {{ 'selected' if shipment.status == 'cancelled' }}>Cancelled</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Notes</label>
+            <input type="text" class="form-control form-control-sm" name="notes"
+                   value="{{ shipment.notes or '' }}">
+          </div>
+          <div class="col-md-2 d-flex gap-1">
+            <button type="submit" class="btn btn-sm btn-outline-primary" title="Update">
+              <i class="bi bi-check-lg"></i> Update
+            </button>
+            <button type="submit"
+                    class="btn btn-sm btn-outline-danger"
+                    title="Delete"
+                    formaction="{{ url_for('orders.delete_shipment', id=order.id, shipment_id=shipment.id) }}"
+                    formmethod="POST"
+                    onclick="return confirm('Delete this shipment?');">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-4">
+  <i class="bi bi-box-seam" style="font-size: 2rem;"></i>
+  <p class="mt-2">No shipments configured for this order yet.</p>
+</div>
+{% endif %}
+{% endblock %}

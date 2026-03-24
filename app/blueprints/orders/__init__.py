@@ -350,4 +350,4 @@ def delete(id):
 
 
 # Import submodules to register their routes on orders_bp
-from app.blueprints.orders import items, services, parts, labor, notes, status  # noqa: E402, F401
+from app.blueprints.orders import items, services, parts, labor, notes, status, shipping  # noqa: E402, F401

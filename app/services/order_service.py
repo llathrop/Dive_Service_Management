@@ -11,7 +11,7 @@ All queries exclude soft-deleted records by default.
 
 import re
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from flask import abort
 from sqlalchemy import func, or_
@@ -958,6 +958,7 @@ def get_order_summary(order_id):
     applied_services_total = Decimal("0.00")
     parts_total = Decimal("0.00")
     labor_total = Decimal("0.00")
+    shipping_total = Decimal("0.00")
 
     for order_item in order.order_items.all():
         # Sum applied services
@@ -980,9 +981,15 @@ def get_order_summary(order_id):
     discount_percent = Decimal(str(order.discount_percent)) if order.discount_percent is not None else Decimal("0.00")
 
     subtotal = applied_services_total + parts_total + labor_total + rush_fee
+    from app.services import shipping_service
+
+    shipping_total = shipping_service.get_order_shipping_total(order.id)
+    subtotal += shipping_total
 
     # Calculate total discount
-    percent_discount = subtotal * (discount_percent / Decimal("100"))
+    percent_discount = (
+        subtotal * (discount_percent / Decimal("100"))
+    ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     discount_total = percent_discount + discount_amount
 
     estimated_total = subtotal - discount_total
@@ -991,6 +998,7 @@ def get_order_summary(order_id):
         "applied_services_total": applied_services_total,
         "parts_total": parts_total,
         "labor_total": labor_total,
+        "shipping_total": shipping_total,
         "rush_fee": rush_fee,
         "discount_amount": discount_amount,
         "discount_percent": discount_percent,
