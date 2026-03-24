@@ -9,6 +9,7 @@ from flask_security import current_user, login_required, roles_accepted
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
+from app.models.audit_log import AuditLog
 from app.forms.applied_service import AppliedServiceForm
 from app.forms.labor import LaborEntryForm
 from app.forms.note import ServiceNoteForm
@@ -191,6 +192,7 @@ def list_orders():
         sort=sort,
         order=order,
         hide_completed=hide_completed,
+        tech_choices=_get_tech_choices(),
     )
 
 
@@ -346,6 +348,104 @@ def delete(id):
         user_agent=request.user_agent.string,
     )
     flash("Service order deleted.", "success")
+    return redirect(url_for("orders.list_orders"))
+
+
+@orders_bp.route("/batch", methods=["POST"])
+@login_required
+@roles_accepted("admin", "technician")
+def batch():
+    """Apply a batch action to multiple service orders."""
+    from app.services import audit_service
+
+    selected_ids = request.form.getlist("selected_ids", type=int)
+    action = request.form.get("action", "").strip()
+
+    if not selected_ids:
+        flash("No orders selected.", "warning")
+        return redirect(url_for("orders.list_orders"))
+
+    valid_actions = {"change_status", "assign_tech", "cancel"}
+    if action not in valid_actions:
+        flash("Invalid batch action.", "error")
+        return redirect(url_for("orders.list_orders"))
+
+    success_count = 0
+    error_count = 0
+
+    if action == "change_status":
+        target_status = request.form.get("target_status", "").strip()
+        if not target_status:
+            flash("No target status specified.", "error")
+            return redirect(url_for("orders.list_orders"))
+        for oid in selected_ids:
+            try:
+                _order, ok = order_service.change_status(
+                    oid, target_status, current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+                if ok:
+                    success_count += 1
+                else:
+                    error_count += 1
+            except Exception:
+                error_count += 1
+
+    elif action == "assign_tech":
+        tech_id = request.form.get("tech_id", type=int)
+        if not tech_id:
+            flash("No technician specified.", "error")
+            return redirect(url_for("orders.list_orders"))
+        valid_tech_ids = {choice_id for choice_id, _ in _get_tech_choices()}
+        if tech_id not in valid_tech_ids:
+            flash("Invalid technician specified.", "error")
+            return redirect(url_for("orders.list_orders"))
+
+        try:
+            for oid in selected_ids:
+                order = order_service.get_order(oid)
+                old_tech_id = order.assigned_tech_id
+                order.assigned_tech_id = tech_id
+                db.session.add(
+                    AuditLog(
+                        action="update",
+                        entity_type="service_order",
+                        entity_id=order.id,
+                        user_id=current_user.id,
+                        field_name="assigned_tech_id",
+                        old_value=None if old_tech_id is None else str(old_tech_id),
+                        new_value=str(tech_id),
+                        ip_address=request.remote_addr,
+                        user_agent=request.user_agent.string,
+                    )
+                )
+            db.session.commit()
+            success_count = len(selected_ids)
+        except Exception:
+            db.session.rollback()
+            error_count = len(selected_ids)
+
+    elif action == "cancel":
+        for oid in selected_ids:
+            try:
+                _order, ok = order_service.change_status(
+                    oid, "cancelled", current_user.id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string,
+                )
+                if ok:
+                    success_count += 1
+                else:
+                    error_count += 1
+            except Exception:
+                error_count += 1
+
+    if success_count:
+        flash(f"Batch {action}: {success_count} order(s) updated.", "success")
+    if error_count:
+        flash(f"Batch {action}: {error_count} order(s) could not be updated.", "warning")
+
     return redirect(url_for("orders.list_orders"))
 
 

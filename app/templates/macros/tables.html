@@ -46,3 +46,15 @@
   {{ caller() }}
 </div>
 {% endmacro %}
+
+{% macro batch_select_all() %}
+<th class="batch-cell" style="width: 40px;">
+  <input type="checkbox" class="form-check-input" id="batch-select-all">
+</th>
+{% endmacro %}
+
+{% macro batch_checkbox(item_id) %}
+<td class="batch-cell">
+  <input type="checkbox" class="form-check-input batch-select" value="{{ item_id }}" name="selected_ids">
+</td>
+{% endmacro %}
