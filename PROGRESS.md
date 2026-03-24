@@ -429,7 +429,7 @@
 
 ### Sprint 2026-03-22B (Wave 1-2 Complete, Wave 3 In Progress)
 
-**Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Wave 1 and Wave 2 are landed locally; Wave 3 remains active.
+**Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Wave 1 and Wave 2 are landed and pushed on `master`; Wave 3 remains active.
 
 **Wave 1: P1 Fixes + Quick-Win Features** (Complete)
 - [x] Security headers, secure session cookies, and rate limiting added
@@ -452,7 +452,14 @@
 - [ ] 3A: Batch operations on list views
 - [ ] 3B: Service order templates
 - [ ] 3C: Recurring service reminders
-- [ ] 3D: Shipping calculator with pluggable provider framework
+- [x] 3D: Shipping calculator with pluggable provider framework
+
+**2026-03-24 Wave 3 Recovery Update**
+- Recovered interrupted `3D` shipping work into dedicated worktree `.claude/worktrees/agent-wave3d-shipping`, completed lead review plus QA/security fixes, then cherry-picked onto `master`
+- Verified `3D` in the persistent Docker test container (`docker-compose.test-dev.yml`)
+- `tests/test_services/test_shipping.py`: 29 passed
+- `tests/blueprint/test_order_routes.py`: 43 passed
+- `3A`, `3B`, and `3C` remain in review/fix loops after QA/security findings and are not yet merge-ready
 
 **Wave 4: Customer Portal** (4 parallel agents)
 - [ ] 4A: PortalUser model + auth system (separate from Flask-Security)
