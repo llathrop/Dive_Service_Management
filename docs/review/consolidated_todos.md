@@ -3,7 +3,7 @@
 Prioritized findings from 4 parallel audits: code, documentation, test suite, and security.
 Use this as input for planning the next sprint.
 
-Remote backlog intake note: GitHub open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) adds a follow-on shipping-provider expansion (real-time carrier integrations) that is not part of the original four audits. It should be planned separately from the remaining audit items below.
+Remote backlog intake note: GitHub issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) was the shipping-provider follow-on lane; it has now been completed and merged via [PR #59](https://github.com/llathrop/Dive_Service_Management/pull/59).
 
 ---
 
@@ -94,7 +94,7 @@ Remote backlog intake note: GitHub open issue [#46](https://github.com/llathrop/
 
 ## Feature Proposals (Discussion — Not Prioritized)
 
-Status note: items 1, 3, 4, 5, 6, 7, 8, 9, and 10 below have already been implemented across Sprint `2026-03-22B` Waves 1-4. The primary remaining proposal in this section is the real-time carrier shipping expansion (`11`), which is tracked separately as remote issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46).
+Status note: items 1, 3, 4, 5, 6, 7, 8, 9, 10, and 11 below have already been implemented across Sprint `2026-03-22B` Waves 1-4 plus the post-Wave-4 shipping follow-on.
 
 1. **Wire notification triggers** — 3-6 lines of glue to call existing notify functions from inventory/order/invoice services. Immediate value.
 2. **Part linking UI** — Modal on price list detail to associate inventory parts. Enables auto-deduction.
@@ -106,7 +106,7 @@ Status note: items 1, 3, 4, 5, 6, 7, 8, 9, and 10 below have already been implem
 8. **Auto-populate last_service_date** — Set when order transitions to "completed".
 9. **Audit log export** — CSV/XLSX export for compliance.
 10. **Password recovery via email** — Enable Flask-Security's recovery flow (email now works).
-11. **Real-time carrier shipping framework** — Tracked separately as GitHub issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46); extends the current flat-rate/pluggable shipping base with carrier APIs.
+11. **Real-time carrier shipping framework** — Completed via [PR #59](https://github.com/llathrop/Dive_Service_Management/pull/59); extends the current flat-rate/pluggable shipping base with a multi-provider registry, standalone calculator, destination-aware quotes, and shipment metadata.
 
 ---
 

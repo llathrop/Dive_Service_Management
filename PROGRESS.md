@@ -512,11 +512,18 @@
 - Verified the portal equipment/invite slice in the persistent Docker test container with `tests/unit/services/test_portal_service.py` + `tests/blueprint/test_portal_equipment.py` + `tests/blueprint/test_customer_portal_invites.py` + `tests/blueprint/test_portal_auth.py` + `tests/blueprint/test_portal.py` + `tests/blueprint/test_portal_invoices.py` + `tests/test_utils/test_pdf.py`
 
 **2026-03-25 Wave 5 Kickoff**
-- Pulled remote GitHub backlog before the final wave: open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) is the only open issue and remains a follow-on expansion of the shipping framework unless reprioritized into a later sprint
+- Pulled remote GitHub backlog before the final wave: issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) was the only open issue and was promoted into the active pre-Wave-5 closure lane
 - Confirmed all Wave 4 feature lanes were shipped via remote PRs: [#48](https://github.com/llathrop/Dive_Service_Management/pull/48), [#50](https://github.com/llathrop/Dive_Service_Management/pull/50), [#52](https://github.com/llathrop/Dive_Service_Management/pull/52), and [#51](https://github.com/llathrop/Dive_Service_Management/pull/51)
-- Confirmed the only remaining open PR on GitHub is unrelated portal/gallery work [#45](https://github.com/llathrop/Dive_Service_Management/pull/45)
+- Confirmed the only remaining open PR on GitHub at kickoff was unrelated portal/gallery work [#45](https://github.com/llathrop/Dive_Service_Management/pull/45); it was closed as stale before final-wave execution resumed
 - Started final-wave planning/doc reconciliation on a dedicated docs branch so `PROGRESS.md`, `README.plan`, and shared memory all reflect the post-Wave-4 state
 - Merged follow-up [PR #56](https://github.com/llathrop/Dive_Service_Management/pull/56) after QA flagged that the new equipment portal surface was not discoverable from the shared nav or order detail view
+
+**2026-03-25 Shipping Backlog Closure**
+- Completed the follow-on shipping carrier expansion from remote issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) in a dedicated worktree/branch, reviewed it with QA and security agents, and merged it via [PR #59](https://github.com/llathrop/Dive_Service_Management/pull/59)
+- Expanded the shipping framework to support provider registry selection (USPS, UPS, FedEx, DHL, Local Pickup, Flat Rate), destination-aware quotes, enabled-provider enforcement, and a standalone tools calculator
+- Verified the shipping expansion in the persistent Docker test container with `tests/test_services/test_shipping.py` + `tests/blueprint/test_tools_routes.py`
+- Synced `master` to `origin/master` after the merge; remote GitHub backlog is now clear with zero open issues and zero open PRs
+- Cleaned merged feature branches and stale worktree directories so Wave 5 can start from a single clean `master` worktree
 
 **Wave 5: Final Polish** (3 agents)
 - [ ] 5A: Capture missing screenshots
