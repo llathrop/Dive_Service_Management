@@ -50,7 +50,8 @@ COPY . .
 
 # Create non-root user
 RUN useradd -m -r -s /bin/bash dsm \
-    && mkdir -p /ms-playwright \
+    && mkdir -p /app/instance /ms-playwright \
+    && chmod 0777 /app/instance \
     && chown -R dsm:dsm /app /ms-playwright
 
 USER dsm

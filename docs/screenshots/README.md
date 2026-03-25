@@ -23,4 +23,6 @@ docker compose -f docker-compose.uat.yml run --rm uat \
 ```
 
 The runner writes directly into this directory, so re-running the command
-overwrites the tracked PNGs with a fresh snapshot.
+overwrites the tracked PNGs with a fresh snapshot. If your host user is not
+UID/GID `1000:1000`, set `DSM_UAT_UID` and `DSM_UAT_GID` when invoking
+`docker compose` so the generated files stay writable on the host.
