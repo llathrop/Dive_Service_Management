@@ -214,6 +214,7 @@ def test_get_customer_portal_media_filters_nonmatching_orders(app, db_session):
     assert direct_media == []
     assert len(service_media) == 1
     assert service_media[0]["order"].id == completed_order.id
+<<<<<<< HEAD
     assert [att.id for att in service_media[0]["attachments"]] == [
         completed_attachment.id
     ]
@@ -229,6 +230,15 @@ def test_get_customer_portal_media_filters_nonmatching_orders(app, db_session):
 
 
 def test_get_portal_attachment_rejects_direct_item_attachments(app, db_session):
+=======
+    assert [att.id for att in service_media[0]["attachments"]] == [completed_attachment.id]
+    assert hidden_attachment.id not in [att.id for group in service_media for att in group["attachments"]]
+    assert other_attachment.id not in [att.id for group in service_media for att in group["attachments"]]
+    assert direct_attachment.id not in [att.id for group in service_media for att in group["attachments"]]
+
+
+def test_get_portal_attachment_rejects_cross_customer_attachment(app, db_session):
+>>>>>>> ad9356b (Harden portal equipment media exposure)
     """Raw service-item attachments must not be served through the portal."""
     customer = CustomerFactory()
     item = ServiceItemFactory(customer=customer)

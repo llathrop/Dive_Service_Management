@@ -229,8 +229,15 @@ def get_customer_portal_media(customer_id, item_id):
     until there is explicit customer-safe metadata to distinguish them.
     """
     item = get_customer_portal_item(customer_id, item_id)
+<<<<<<< HEAD
     _, order_groups = attachment_service.get_unified_attachments(item.id)
 
+=======
+    direct, order_groups = attachment_service.get_unified_attachments(item.id)
+
+    # Conservative default: do not expose raw service-item attachments in the portal.
+    safe_direct = []
+>>>>>>> ad9356b (Harden portal equipment media exposure)
     safe_groups = []
     for group in order_groups:
         order = group["order"]
