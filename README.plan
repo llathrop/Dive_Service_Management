@@ -161,7 +161,7 @@ As of 2026-03-25:
 
 - Waves 1-4 of Sprint `2026-03-22B` are complete and pushed on `master`
 - The remote shipping follow-on was completed and merged via [PR #59](https://github.com/llathrop/Dive_Service_Management/pull/59)
-- The current execution stage is **Wave 5: Final Polish**
+- Sprint `2026-03-22B` is complete on `master`
 - There is no remaining open remote backlog right now: issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) is closed and stale PR [#45](https://github.com/llathrop/Dive_Service_Management/pull/45) was closed without merge
 - Every new feature, fix, or docs lane now requires an isolated worktree, a remote feature branch, and a GitHub PR before merge to `master`
 - Recent Wave 3 recovery / Wave 4 kickoff direct pushes on `master` are a historical exception and are not cleanly backfillable into real review PRs without rewriting published history
@@ -173,9 +173,9 @@ As of 2026-03-25:
 - **4C: Portal invoice view + payment provider framework**: Customer-facing invoice access plus pluggable payment integration groundwork
 - **4D: Portal equipment view + invite/email flow**: Equipment history, invite activation, and customer notifications
 
-### Wave 5: Final Polish (active)
+### Wave 5: Final Polish (complete)
 
-- Capture missing screenshots (completed in Wave 5A)
-- Finalize sprint documentation
-- Run integration smoke tests (`make test-gate`)
-- Execute each Wave 5 lane from its own worktree/branch/PR with QA/security review before merge
+- Capture missing screenshots (completed in Wave 5A / [PR #62](https://github.com/llathrop/Dive_Service_Management/pull/62))
+- Finalize sprint documentation (completed in Wave 5B / [PR #64](https://github.com/llathrop/Dive_Service_Management/pull/64))
+- Run integration smoke tests (`make test-gate`, completed in Wave 5C / [PR #63](https://github.com/llathrop/Dive_Service_Management/pull/63))
+- Execute each Wave 5 lane from its own worktree/branch/PR with QA/security review before merge (completed)

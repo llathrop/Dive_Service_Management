@@ -427,9 +427,9 @@
 **GitHub Issues**: #44 — closed
 **Tests**: 1458 total, all passing
 
-### Sprint 2026-03-22B (Wave 1-4 Complete, Wave 5 In Progress)
+### Sprint 2026-03-22B (Complete)
 
-**Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Waves 1-4 are landed and pushed on `master`; Wave 5 is now the active execution stage.
+**Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Waves 1-5 are landed and pushed on `master`.
 
 **Wave 1: P1 Fixes + Quick-Win Features** (Complete)
 - [x] Security headers, secure session cookies, and rate limiting added
@@ -527,8 +527,15 @@
 
 **Wave 5: Final Polish** (3 agents)
 - [x] 5A: Capture missing screenshots
-- [ ] 5B: Sprint documentation finalization
+- [x] 5B: Sprint documentation finalization
 - [x] 5C: Integration smoke tests
+
+**2026-03-25 Wave 5 Completion**
+- Merged Wave 5A via [PR #62](https://github.com/llathrop/Dive_Service_Management/pull/62), adding the reproducible docs screenshot capture lane plus tracked `customer_detail.png` and `item_detail_service_history.png` assets
+- Merged Wave 5C via [PR #63](https://github.com/llathrop/Dive_Service_Management/pull/63), adding the Dockerized final smoke gate and authenticated core-route smoke coverage
+- Merged Wave 5B via [PR #64](https://github.com/llathrop/Dive_Service_Management/pull/64), reconciling architecture, configuration, installation, user-guide, and review-tracker docs with the shipped application
+- Final post-merge gate passed on `master` via `./scripts/final_wave_gate.sh`
+- Sprint `2026-03-22B` is complete; the repo is ready for the next planning cycle from a clean, fully merged `master`
 
 **5C completion note**
 - Added an authenticated smoke route lane for the core internal surfaces and a single Dockerized handoff gate via `make test-gate`
