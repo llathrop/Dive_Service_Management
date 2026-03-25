@@ -111,6 +111,10 @@ test: ## Run full test suite in Docker container
 test-smoke: ## Run smoke tests only in Docker
 	$(COMPOSE_TEST) run --rm test python -m pytest tests/smoke/ -x -v
 
+.PHONY: test-gate
+test-gate: ## Run the final-wave smoke + integration gate in Docker
+	./scripts/final_wave_gate.sh
+
 .PHONY: test-unit
 test-unit: ## Run unit tests only in Docker, stop on first failure
 	$(COMPOSE_TEST) run --rm test python -m pytest tests/unit/ -x --tb=short -v
