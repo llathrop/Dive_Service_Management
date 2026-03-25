@@ -15,6 +15,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test
+    cpus: "${DSM_TEST_DOCKER_CPUS:-4}"
+    mem_limit: "${DSM_TEST_DOCKER_MEMORY:-6144m}"
+    pids_limit: "${DSM_TEST_DOCKER_PIDS_LIMIT:-512}"
     environment:
       - DSM_ENV=testing
       - DSM_SECRET_KEY=test-secret-key-not-for-production

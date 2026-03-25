@@ -427,28 +427,34 @@ DSM provides two Docker-based approaches for running tests. Both use SQLite in-m
 
 The persistent test runner stays running and mounts your source code as volumes. Code changes are reflected instantly with no rebuild needed.
 
+Resource caps for the Docker test container live in `docker/test-resources.env`.
+By default, `./scripts/configure_test_resources.sh` writes half the detected host CPUs and one quarter of host RAM, capped at `6144m`.
+Refresh them from the current machine before long test sessions:
+
 ```bash
+./scripts/configure_test_resources.sh
+
 # Build and start the persistent test container
-docker compose -f docker-compose.test-dev.yml build
-docker compose -f docker-compose.test-dev.yml up -d
+docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml build
+docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml up -d
 
 # Run the full test suite
-docker compose -f docker-compose.test-dev.yml exec test pytest
+docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml exec test pytest
 
 # Run specific tests
-docker compose -f docker-compose.test-dev.yml exec test pytest tests/unit/ -v
-docker compose -f docker-compose.test-dev.yml exec test pytest -k "test_customer"
-docker compose -f docker-compose.test-dev.yml exec test pytest --cov=app
+docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml exec test pytest tests/unit/ -v
+docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml exec test pytest -k "test_customer"
+docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml exec test pytest --cov=app
 
 # Stop the container when done
-docker compose -f docker-compose.test-dev.yml down
+docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml down
 ```
 
 Rebuild the container only when Python dependencies change:
 
 ```bash
-docker compose -f docker-compose.test-dev.yml build test
-docker compose -f docker-compose.test-dev.yml up -d
+docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml build test
+docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml up -d
 ```
 
 ### Run-Once Test Container
@@ -456,9 +462,9 @@ docker compose -f docker-compose.test-dev.yml up -d
 The run-once approach builds a fresh container each time. This is useful for CI or one-off test runs.
 
 ```bash
-docker compose -f docker-compose.test.yml build
-docker compose -f docker-compose.test.yml run --rm test
-docker compose -f docker-compose.test.yml run --rm test pytest tests/ -v --cov=app
+docker compose --env-file docker/test-resources.env -f docker-compose.test.yml build
+docker compose --env-file docker/test-resources.env -f docker-compose.test.yml run --rm test
+docker compose --env-file docker/test-resources.env -f docker-compose.test.yml run --rm test pytest tests/ -v --cov=app
 ```
 
 ### Local Testing (Without Docker)

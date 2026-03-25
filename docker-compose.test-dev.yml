@@ -22,6 +22,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test-dev
+    cpus: "${DSM_TEST_DOCKER_CPUS:-4}"
+    mem_limit: "${DSM_TEST_DOCKER_MEMORY:-6144m}"
+    pids_limit: "${DSM_TEST_DOCKER_PIDS_LIMIT:-512}"
     volumes:
       - ./app:/app/app
       - ./tests:/app/tests
