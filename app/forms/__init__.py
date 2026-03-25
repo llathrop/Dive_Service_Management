@@ -12,7 +12,7 @@ Convenience imports are provided so that views can do::
 from app.forms.applied_service import AppliedServiceForm
 from app.forms.auth import ExtendedLoginForm
 from app.forms.customer import CustomerForm, CustomerSearchForm
-from app.forms.portal import PortalActivationForm, PortalLoginForm
+from app.forms.portal import PortalActivationForm, PortalInviteForm, PortalLoginForm
 from app.forms.inventory import InventoryItemForm, InventorySearchForm, StockAdjustmentForm
 from app.forms.item import DrysuitDetailsForm, ServiceItemForm
 from app.forms.labor import LaborEntryForm
@@ -27,6 +27,7 @@ __all__ = [
     "AppliedServiceForm",
     "ExtendedLoginForm",
     "PortalActivationForm",
+    "PortalInviteForm",
     "PortalLoginForm",
     "CustomerForm",
     "CustomerSearchForm",

@@ -11,7 +11,15 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.forms.customer import CustomerForm, CustomerSearchForm
-from app.services import audit_service, customer_service, saved_search_service
+from app.forms.portal import PortalInviteForm
+from app.models.portal_user import PortalUser
+from app.services import (
+    audit_service,
+    customer_service,
+    email_service,
+    portal_service,
+    saved_search_service,
+)
 
 customers_bp = Blueprint("customers", __name__, url_prefix="/customers")
 
@@ -88,11 +96,19 @@ def detail(id):
     customer = customer_service.get_customer(id)
     open_orders = customer_service.get_customer_orders(id, active_only=True)
     completed_orders = customer_service.get_customer_orders(id, active_only=False)
+    portal_users = customer.portal_users.order_by(PortalUser.created_at.desc()).all()
+    portal_invites = portal_service.get_customer_portal_invites(id)
+    portal_invite_form = PortalInviteForm()
+    if customer.email and not portal_invite_form.email.data:
+        portal_invite_form.email.data = customer.email
     return render_template(
         "customers/detail.html",
         customer=customer,
         open_orders=open_orders,
         completed_orders=completed_orders,
+        portal_users=portal_users,
+        portal_invites=portal_invites,
+        portal_invite_form=portal_invite_form,
     )
 
 
@@ -206,6 +222,57 @@ def edit(id):
     return render_template(
         "customers/form.html", form=form, customer=customer, is_edit=True
     )
+
+
+@customers_bp.route("/<int:id>/portal-invite", methods=["POST"])
+@login_required
+@roles_accepted("admin")
+def send_portal_invite(id):
+    """Issue a portal invite for the customer from the detail page."""
+    customer = customer_service.get_customer(id)
+    form = PortalInviteForm()
+    if not form.validate_on_submit():
+        flash("Please provide a valid invite email address.", "error")
+        return redirect(url_for("customers.detail", id=id))
+
+    invite_email = form.email.data.strip() if form.email.data else ""
+    try:
+        token, raw_token = portal_service.create_portal_invite(
+            customer.id,
+            email=invite_email or customer.email,
+        )
+    except ValueError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("customers.detail", id=id))
+
+    invite_url = url_for("portal.activate", token=raw_token, _external=True)
+    html_body = render_template(
+        "email/portal_invite.html",
+        customer=customer,
+        invite_url=invite_url,
+        token=token,
+        inviter=current_user,
+    )
+    text_body = (
+        f"Hello {customer.display_name},\n\n"
+        f"Your customer portal invite is ready:\n{invite_url}\n\n"
+        f"This link expires at {token.expires_at:%Y-%m-%d %H:%M UTC}.\n"
+    )
+    email_sent = email_service.send_email(
+        token.email,
+        f"Your portal invite for {customer.display_name}",
+        html_body,
+        text_body,
+    )
+
+    if email_sent:
+        flash("Portal invite sent.", "success")
+    else:
+        flash(
+            "Portal invite created, but email delivery is not currently configured.",
+            "warning",
+        )
+    return redirect(url_for("customers.detail", id=id))
 
 
 @customers_bp.route("/batch", methods=["POST"])

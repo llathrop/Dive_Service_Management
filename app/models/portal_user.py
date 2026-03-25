@@ -138,7 +138,10 @@ class PortalAccessToken(TimestampMixin, db.Model):
     expires_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
     used_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
-    customer = db.relationship("Customer")
+    customer = db.relationship(
+        "Customer",
+        backref=db.backref("portal_access_tokens", lazy="dynamic"),
+    )
     portal_user = db.relationship("PortalUser", back_populates="access_tokens")
 
     @validates("email")

@@ -5,6 +5,7 @@ Flask-Security user system. Portal users are tracked in separate tables
 and stored in a separate session key.
 """
 
+import os
 from datetime import datetime
 from io import BytesIO
 from functools import wraps
@@ -30,8 +31,7 @@ from app.models.portal_user import (
     PortalAccessToken,
     PortalUser,
 )
-from app.services import portal_service
-from app.services import portal_invoice_service
+from app.services import attachment_service, portal_invoice_service, portal_service
 
 portal_bp = Blueprint("portal", __name__, url_prefix="/portal")
 
@@ -107,6 +107,13 @@ def _login_portal_user(user, remember=False):
     user.login_count = (user.login_count or 0) + 1
 
 
+def _get_portal_customer():
+    customer = portal_current_user.customer
+    if customer is None:
+        abort(404)
+    return customer
+
+
 @portal_bp.app_context_processor
 def inject_portal_user():
     return {"portal_current_user": portal_current_user}
@@ -169,6 +176,58 @@ def order_detail(order_id):
         order_id,
     )
     return render_template("portal/order_detail.html", **order_data)
+
+
+@portal_bp.route("/equipment")
+@portal_login_required
+def equipment():
+    customer = _get_portal_customer()
+    items = portal_service.get_customer_portal_items(customer.id)
+    return render_template(
+        "portal/equipment_list.html",
+        customer=customer,
+        equipment_items=items,
+    )
+
+
+@portal_bp.route("/equipment/<int:item_id>")
+@portal_login_required
+def equipment_detail(item_id):
+    customer = _get_portal_customer()
+    item, history = portal_service.get_customer_portal_history(customer.id, item_id)
+    direct_media, service_media = portal_service.get_customer_portal_media(
+        customer.id, item.id
+    )
+    next_service_due = portal_service.get_next_service_due(item)
+    return render_template(
+        "portal/equipment_detail.html",
+        customer=customer,
+        item=item,
+        history=history,
+        direct_media=direct_media,
+        service_media=service_media,
+        next_service_due=next_service_due,
+    )
+
+
+@portal_bp.route("/equipment/<int:item_id>/media/<int:attachment_id>")
+@portal_login_required
+def equipment_media(item_id, attachment_id):
+    customer = _get_portal_customer()
+    attachment = portal_service.get_portal_attachment(
+        customer.id,
+        item_id,
+        attachment_id,
+    )
+    abs_path = attachment_service.get_attachment_path(attachment)
+    if not os.path.exists(abs_path):
+        abort(404)
+    return send_file(
+        abs_path,
+        mimetype=attachment.mime_type,
+        as_attachment=False,
+        download_name=attachment.filename,
+    )
 
 
 @portal_bp.route("/invoices")
