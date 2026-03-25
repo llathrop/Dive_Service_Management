@@ -58,6 +58,8 @@ def test_dashboard_shows_only_customer_orders(app, db_session, client):
     customer = CustomerFactory(first_name="Portal", last_name="Owner")
     other_customer = CustomerFactory(first_name="Other", last_name="Owner")
     _create_portal_user(db_session, customer)
+    visible_item = ServiceItemFactory(customer=customer, name="Visible Item")
+    leaked_item = ServiceItemFactory(customer=other_customer, name="Do Not Leak")
 
     own_order = ServiceOrderFactory(
         customer=customer,
@@ -65,6 +67,8 @@ def test_dashboard_shows_only_customer_orders(app, db_session, client):
         date_received=date(2026, 3, 3),
         description="Own order",
     )
+    ServiceOrderItemFactory(order=own_order, service_item=visible_item)
+    ServiceOrderItemFactory(order=own_order, service_item=leaked_item)
     other_order = ServiceOrderFactory(
         customer=other_customer,
         status="intake",
@@ -80,6 +84,8 @@ def test_dashboard_shows_only_customer_orders(app, db_session, client):
     html = response.data.decode()
     assert own_order.order_number in html
     assert other_order.order_number not in html
+    assert "Visible Item" in html
+    assert "Do Not Leak" not in html
 
 
 def test_order_detail_shows_safe_tracking_and_hides_internal_notes(app, db_session, client):
