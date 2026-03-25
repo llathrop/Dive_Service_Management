@@ -429,7 +429,7 @@
 
 ### Sprint 2026-03-22B (Wave 1-3 Complete, Wave 4 Pending)
 
-**Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Wave 1 and Wave 2 are landed and pushed on `master`; Wave 3 remains active.
+**Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Waves 1-3 are landed and pushed on `master`; Wave 4 is the next execution stage.
 
 **Wave 1: P1 Fixes + Quick-Win Features** (Complete)
 - [x] Security headers, secure session cookies, and rate limiting added
