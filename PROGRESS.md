@@ -485,6 +485,7 @@
   - 4B order/dashboard integration discovery
   - 4C invoice/payment integration discovery
   - 4D equipment/invite/email integration discovery
+- 4C invoice/payment implementation is now active in `.claude/worktrees/agent-wave4c-portal-invoices` on `feature/customer-portal-invoices`; it will ship as its own remote branch and PR before merge
 - Pulled remote GitHub backlog into planning: open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) extends the Wave 3 shipping foundation into real-time carrier integrations and is tracked as a follow-on after Wave 4 unless portal/invoice work forces earlier extraction
 - Process correction: every new feature, fix, or docs lane now requires an isolated worktree, a remote feature branch, and a GitHub PR before merge to `master`
 - Historical exception: the Wave 3 recovery and Wave 4 kickoff commits on `master` (`3bfd7ae` through `a6db2de`) were pushed without PRs and cannot be turned into true reviewable PRs retroactively without rewriting published history

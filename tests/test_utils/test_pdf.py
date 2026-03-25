@@ -368,3 +368,35 @@ class TestPriceListPDFGeneration:
         text = _extract_pdf_text(pdf_bytes)
         assert "Regulators" in text
         assert "Drysuits" in text
+
+
+class TestPortalInvoicePDFGeneration:
+    """Tests for generate_portal_invoice_pdf()."""
+
+    def test_portal_pdf_hides_internal_notes(self, app, db_session):
+        _set_session(db_session)
+        customer = CustomerFactory(first_name="Portal", last_name="PDF")
+        invoice = InvoiceFactory(
+            customer=customer,
+            invoice_number="INV-2026-00444",
+        )
+        InvoiceLineItemFactory(
+            invoice=invoice,
+            line_type="labor",
+            description="Technician Name: Internal only",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("100.00"),
+            line_total=Decimal("100.00"),
+        )
+        invoice.notes = "Do not expose this note"
+        invoice.customer_notes = "Customer-facing note should still be omitted here"
+        db_session.commit()
+
+        from app.utils.pdf import generate_portal_invoice_pdf
+
+        pdf_bytes = generate_portal_invoice_pdf(invoice)
+        text = _extract_pdf_text(pdf_bytes)
+        assert "INV-2026-00444" in text
+        assert "Technician Name" not in text
+        assert "Do not expose this note" not in text
+        assert "Customer-facing note should still be omitted here" not in text
