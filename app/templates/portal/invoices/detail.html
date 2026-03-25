@@ -1,0 +1,152 @@
+{% extends "portal/base.html" %}
+
+{% block title %}{{ invoice.invoice_number }} - {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="portal-card rounded-4 p-4 p-lg-5 mb-4">
+  <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+    <div>
+      <div class="portal-caption text-muted mb-2">Invoice detail</div>
+      <h1 class="h2 mb-2">{{ invoice.invoice_number }}</h1>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="badge text-bg-secondary">{{ invoice.display_status }}</span>
+        {% if invoice.is_overdue %}
+        <span class="badge text-bg-danger">Overdue</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-light" href="{{ url_for('portal.invoices') }}">
+        <i class="bi bi-arrow-left me-1"></i> All invoices
+      </a>
+      <a class="btn btn-primary" href="{{ url_for('portal.invoice_pdf', invoice_id=invoice.id) }}">
+        <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-4">
+    <div class="portal-card rounded-4 p-4 h-100">
+      <div class="portal-caption text-muted mb-2">Billing</div>
+      <dl class="row mb-0">
+        <dt class="col-6 text-muted">Customer</dt>
+        <dd class="col-6">{{ invoice.customer.display_name }}</dd>
+        <dt class="col-6 text-muted">Issued</dt>
+        <dd class="col-6">{{ invoice.issue_date.strftime('%b %d, %Y') if invoice.issue_date else 'N/A' }}</dd>
+        <dt class="col-6 text-muted">Due</dt>
+        <dd class="col-6">{{ invoice.due_date.strftime('%b %d, %Y') if invoice.due_date else 'N/A' }}</dd>
+        <dt class="col-6 text-muted">Total</dt>
+        <dd class="col-6 fw-semibold">${{ "%.2f"|format(invoice.total or 0) }}</dd>
+        <dt class="col-6 text-muted">Balance Due</dt>
+        <dd class="col-6 fw-semibold {{ 'text-danger' if invoice.balance_due and invoice.balance_due > 0 else '' }}">
+          ${{ "%.2f"|format(invoice.balance_due or 0) }}
+        </dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="portal-card rounded-4 p-4 h-100">
+      <div class="portal-caption text-muted mb-2">Payment provider</div>
+      <h2 class="h5 mb-3">{{ payment_context.provider_name }}</h2>
+      <p class="text-muted mb-3">{{ payment_context.instructions }}</p>
+      {% if payment_context.supports_checkout and payment_context.checkout_url %}
+      <a class="btn btn-primary mb-3" href="{{ payment_context.checkout_url }}">
+        <i class="bi bi-credit-card me-1"></i> Pay now
+      </a>
+      {% endif %}
+      <dl class="row mb-0 small">
+        <dt class="col-6 text-muted">Amount due</dt>
+        <dd class="col-6">${{ "%.2f"|format(payment_context.amount_due or 0) }}</dd>
+        <dt class="col-6 text-muted">Checkout</dt>
+        <dd class="col-6">{{ 'Enabled' if payment_context.supports_checkout else 'Not yet available' }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="portal-card rounded-4 p-4 h-100">
+      <div class="portal-caption text-muted mb-2">Payment summary</div>
+      <dl class="row mb-0">
+        <dt class="col-6 text-muted">Amount paid</dt>
+        <dd class="col-6">${{ "%.2f"|format(payments_summary.amount_paid or 0) }}</dd>
+        <dt class="col-6 text-muted">Subtotal</dt>
+        <dd class="col-6">${{ "%.2f"|format(invoice.subtotal or 0) }}</dd>
+        <dt class="col-6 text-muted">Tax</dt>
+        <dd class="col-6">${{ "%.2f"|format(invoice.tax_amount or 0) }}</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<div class="portal-card rounded-4 p-4 p-lg-5 mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h5 mb-0">Line Items</h2>
+  </div>
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th class="text-center">Qty</th>
+          <th class="text-end">Unit</th>
+          <th class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in line_items %}
+        <tr>
+          <td>
+            <div class="fw-semibold">{{ item.description }}</div>
+            <div class="small text-muted text-uppercase">{{ item.line_type }}</div>
+          </td>
+          <td class="text-center">{{ item.quantity }}</td>
+          <td class="text-end">${{ "%.2f"|format(item.unit_price or 0) }}</td>
+          <td class="text-end fw-semibold">${{ "%.2f"|format(item.line_total or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="portal-card rounded-4 p-4 p-lg-5 h-100">
+      <div class="portal-caption text-muted mb-2">Status history</div>
+      {% if status_history %}
+      <div class="d-grid gap-3">
+        {% for entry in status_history %}
+        <div class="border rounded-3 p-3 bg-white bg-opacity-50">
+          <div class="d-flex justify-content-between gap-3">
+            <strong>{{ entry.new_value.replace('_', ' ').title() if entry.new_value else 'Updated' }}</strong>
+            <span class="small text-muted">{{ entry.created_at.strftime('%b %d, %Y %I:%M %p') if entry.created_at else '' }}</span>
+          </div>
+          {% if entry.old_value or entry.field_name %}
+          <div class="small text-muted mt-1">
+            {{ entry.field_name or 'status' }}:
+            {{ entry.old_value or 'unknown' }} → {{ entry.new_value or 'unknown' }}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No status changes have been recorded yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="portal-card rounded-4 p-4 p-lg-5 h-100">
+      <div class="portal-caption text-muted mb-2">Notes</div>
+      <p class="text-muted mb-0">
+        Internal service notes, diagnosis details, technician assignments, and external
+        integration metadata are intentionally hidden from the customer portal.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
