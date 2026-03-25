@@ -1,33 +1,121 @@
 {% extends "portal/base.html" %}
+{% from "macros/status_badges.html" import order_status_badge %}
 
 {% block title %}Portal Dashboard - {{ company_name }}{% endblock %}
 
 {% block content %}
 <div class="row g-4">
-  <div class="col-lg-7">
-    <div class="portal-card rounded-4 p-4 p-lg-5">
+  <div class="col-12 col-xl-4">
+    <div class="portal-card rounded-4 p-4 p-lg-5 h-100">
       <div class="portal-caption text-muted mb-2">Portal dashboard</div>
       <h1 class="h2 mb-3">Welcome, {{ portal_current_user.display_name }}</h1>
-      <p class="text-muted mb-0">
-        This is the portal foundation. Customer-specific orders, invoices, and equipment
-        views will land here in the next wave.
+      <p class="text-muted mb-4">
+        Track active orders, review recent service history, and open a detailed
+        tracking view for each order.
       </p>
+      <dl class="row mb-0">
+        <dt class="col-6 text-muted">Active orders</dt>
+        <dd class="col-6">{{ dashboard.active_count }}</dd>
+        <dt class="col-6 text-muted">Recent orders</dt>
+        <dd class="col-6">{{ dashboard.recent_count }}</dd>
+        <dt class="col-6 text-muted">Customer</dt>
+        <dd class="col-6">{{ portal_current_user.customer.display_name }}</dd>
+      </dl>
     </div>
   </div>
 
-  <div class="col-lg-5">
-    <div class="portal-card rounded-4 p-4 p-lg-5 h-100">
-      <h2 class="h5 mb-3">Account</h2>
-      <dl class="row mb-0">
-        <dt class="col-5 text-muted">Email</dt>
-        <dd class="col-7">{{ portal_current_user.email }}</dd>
-        <dt class="col-5 text-muted">Customer</dt>
-        <dd class="col-7">{{ portal_current_user.customer.display_name }}</dd>
-        <dt class="col-5 text-muted">Status</dt>
-        <dd class="col-7">
-          <span class="badge text-bg-success">Active</span>
-        </dd>
-      </dl>
+  <div class="col-12 col-xl-8">
+    <div class="portal-card rounded-4 p-4 p-lg-5 mb-4">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <div class="portal-caption text-muted">Active work</div>
+          <h2 class="h4 mb-0">Open orders</h2>
+        </div>
+      </div>
+
+      {% if dashboard.active_orders %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Status</th>
+              <th>Received</th>
+              <th>Items</th>
+              <th class="text-end">Estimate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for order in dashboard.active_orders %}
+            <tr>
+              <td>
+                <a href="{{ url_for('portal.order_detail', order_id=order.id) }}" class="fw-semibold text-decoration-none">
+                  {{ order.order_number }}
+                </a>
+                <div class="small text-muted">
+                  {% if order.item_names %}
+                    {{ order.item_names|join(', ') }}
+                  {% else %}
+                    No item names available
+                  {% endif %}
+                </div>
+              </td>
+              <td>{{ order_status_badge(order.status) }}</td>
+              <td class="text-nowrap">
+                {{ order.date_received.strftime('%b %d, %Y') if order.date_received else '' }}
+              </td>
+              <td>{{ order.item_count }}</td>
+              <td class="text-end text-nowrap">
+                {{ "${:,.2f}".format(order.estimated_total or 0) }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No active orders are currently in progress.</p>
+      {% endif %}
+    </div>
+
+    <div class="portal-card rounded-4 p-4 p-lg-5">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <div class="portal-caption text-muted">History</div>
+          <h2 class="h4 mb-0">Recent orders</h2>
+        </div>
+      </div>
+
+      {% if dashboard.recent_orders %}
+      <div class="row g-3">
+        {% for order in dashboard.recent_orders %}
+        <div class="col-12 col-md-6">
+          <div class="border rounded-4 p-3 h-100 bg-white">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <a href="{{ url_for('portal.order_detail', order_id=order.id) }}" class="fw-semibold text-decoration-none">
+                  {{ order.order_number }}
+                </a>
+                <div class="small text-muted">
+                  {{ order.date_received.strftime('%b %d, %Y') if order.date_received else '' }}
+                </div>
+              </div>
+              {{ order_status_badge(order.status) }}
+            </div>
+            <div class="small text-muted mt-3">
+              {% if order.item_names %}
+                {{ order.item_names|join(', ') }}
+              {% else %}
+                No item names available
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No recent orders found for this account.</p>
+      {% endif %}
     </div>
   </div>
 </div>

@@ -1,0 +1,153 @@
+{% extends "portal/base.html" %}
+{% from "macros/status_badges.html" import order_status_badge %}
+
+{% block title %}{{ order.order_number }} - {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+    <div class="portal-card rounded-4 p-4 p-lg-5 mb-4">
+      <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+        <div>
+          <div class="portal-caption text-muted">Work order</div>
+          <h1 class="h2 mb-2">{{ order.order_number }}</h1>
+          <p class="text-muted mb-0">
+            {{ order.description or "No public description has been recorded yet." }}
+          </p>
+        </div>
+        <div class="text-end">
+          {{ order_status_badge(order.status) }}
+          <div class="small text-muted mt-2">
+            {{ order.date_received.strftime('%b %d, %Y') if order.date_received else '' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-sm-4">
+          <div class="border rounded-4 p-3 h-100 bg-white">
+            <div class="small text-muted">Promised</div>
+            <div class="fw-semibold">
+              {{ order.date_promised.strftime('%b %d, %Y') if order.date_promised else 'Not set' }}
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="border rounded-4 p-3 h-100 bg-white">
+            <div class="small text-muted">Estimated total</div>
+            <div class="fw-semibold">
+              {{ "${:,.2f}".format(summary.estimated_total or 0) }}
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="border rounded-4 p-3 h-100 bg-white">
+            <div class="small text-muted">Status</div>
+            <div class="fw-semibold">{{ order.display_status }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="portal-card rounded-4 p-4 p-lg-5 mb-4">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <div class="portal-caption text-muted">Equipment</div>
+          <h2 class="h4 mb-0">Items on this order</h2>
+        </div>
+      </div>
+
+      {% if items %}
+      <div class="row g-3">
+        {% for item in items %}
+        <div class="col-12">
+          <div class="border rounded-4 p-3 bg-white">
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+              <div>
+                <h3 class="h5 mb-1">{{ item.name }}</h3>
+                <div class="small text-muted">
+                  {% if item.brand %}{{ item.brand }}{% endif %}
+                  {% if item.brand and item.model %} · {% endif %}
+                  {% if item.model %}{{ item.model }}{% endif %}
+                  {% if item.serial_number %} · SN {{ item.serial_number }}{% endif %}
+                </div>
+              </div>
+              <span class="badge bg-secondary">{{ item.display_status }}</span>
+            </div>
+
+            <div class="row g-3 small">
+              <div class="col-md-4">
+                <div class="text-muted">Category</div>
+                <div>{{ item.item_category or 'Not set' }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="text-muted">Serviceability</div>
+                <div>{{ item.serviceability_display }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="text-muted">Last serviced</div>
+                <div>{{ item.last_service_date.strftime('%b %d, %Y') if item.last_service_date else 'No record' }}</div>
+              </div>
+            </div>
+
+            {% if item.condition_at_receipt %}
+            <div class="mt-3">
+              <div class="small text-muted mb-1">Condition at receipt</div>
+              <div>{{ item.condition_at_receipt }}</div>
+            </div>
+            {% endif %}
+
+            {% if item.work_description %}
+            <div class="mt-3">
+              <div class="small text-muted mb-1">Requested work</div>
+              <div>{{ item.work_description }}</div>
+            </div>
+            {% endif %}
+
+            {% if item.notes %}
+            <div class="mt-3">
+              <div class="small text-muted mb-2">Customer updates</div>
+              <ul class="list-unstyled mb-0">
+                {% for note in item.notes %}
+                <li class="border-start border-3 border-info ps-3 py-1 mb-2">
+                  <div>{{ note.note_text }}</div>
+                  <div class="small text-muted">
+                    {{ note.created_at.strftime('%b %d, %Y %H:%M') if note.created_at else '' }}
+                  </div>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No equipment items have been linked to this order yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="portal-card rounded-4 p-4 p-lg-5 mb-4">
+      <div class="portal-caption text-muted mb-2">Timeline</div>
+      <h2 class="h4 mb-3">Status history</h2>
+      {% include "portal/_status_timeline.html" %}
+    </div>
+
+    <div class="portal-card rounded-4 p-4 p-lg-5">
+      <div class="portal-caption text-muted mb-2">Summary</div>
+      <h2 class="h4 mb-3">Order totals</h2>
+      <dl class="row mb-0">
+        <dt class="col-6 text-muted">Subtotal</dt>
+        <dd class="col-6 text-end">{{ "${:,.2f}".format(summary.subtotal or 0) }}</dd>
+        <dt class="col-6 text-muted">Discount</dt>
+        <dd class="col-6 text-end">{{ "${:,.2f}".format(summary.discount_total or 0) }}</dd>
+        <dt class="col-6 text-muted">Estimated</dt>
+        <dd class="col-6 text-end fw-semibold">{{ "${:,.2f}".format(summary.estimated_total or 0) }}</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

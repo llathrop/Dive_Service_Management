@@ -28,6 +28,7 @@ from app.models.portal_user import (
     PortalAccessToken,
     PortalUser,
 )
+from app.services import portal_service
 
 portal_bp = Blueprint("portal", __name__, url_prefix="/portal")
 
@@ -148,7 +149,23 @@ def logout():
 @portal_bp.route("/dashboard")
 @portal_login_required
 def dashboard():
-    return render_template("portal/dashboard.html")
+    dashboard_data = portal_service.get_customer_dashboard(
+        portal_current_user.customer.id
+    )
+    return render_template(
+        "portal/dashboard.html",
+        dashboard=dashboard_data,
+    )
+
+
+@portal_bp.route("/orders/<int:order_id>")
+@portal_login_required
+def order_detail(order_id):
+    order_data = portal_service.get_customer_order_detail(
+        portal_current_user.customer.id,
+        order_id,
+    )
+    return render_template("portal/order_detail.html", **order_data)
 
 
 @portal_bp.route("/activate/<token>", methods=["GET", "POST"])
