@@ -196,6 +196,14 @@ def test_get_customer_portal_media_filters_nonmatching_orders(app, db_session):
         attachable_id=completed_order_item.id,
         filename="completed.jpg",
     )
+    completed_pdf = AttachmentFactory(
+        attachable_type="service_order_item",
+        attachable_id=completed_order_item.id,
+        filename="completed.pdf",
+        stored_filename="completed.pdf",
+        file_path="attachments/service_order_item/2026/03/completed.pdf",
+        mime_type="application/pdf",
+    )
 
     open_order = ServiceOrderFactory(customer=customer, status="in_progress")
     open_order_item = ServiceOrderItemFactory(order=open_order, service_item=item)
@@ -226,6 +234,9 @@ def test_get_customer_portal_media_filters_nonmatching_orders(app, db_session):
     assert [att.id for att in service_media[0]["attachments"]] == [
         completed_attachment.id
     ]
+    assert completed_pdf.id not in [
+        att.id for group in service_media for att in group["attachments"]
+    ]
     assert hidden_attachment.id not in [
         att.id for group in service_media for att in group["attachments"]
     ]
@@ -252,4 +263,27 @@ def test_get_portal_attachment_rejects_direct_item_attachments(app, db_session):
             customer.id,
             item.id,
             direct_attachment.id,
+        )
+
+
+def test_get_portal_attachment_rejects_non_image_order_attachments(app, db_session):
+    """Portal media routes must not expose non-image order attachments."""
+    customer = CustomerFactory()
+    item = ServiceItemFactory(customer=customer)
+    order = ServiceOrderFactory(customer=customer, status="completed")
+    order_item = ServiceOrderItemFactory(order=order, service_item=item)
+    pdf_attachment = AttachmentFactory(
+        attachable_type="service_order_item",
+        attachable_id=order_item.id,
+        filename="service-report.pdf",
+        stored_filename="service-report.pdf",
+        file_path="attachments/service_order_item/2026/03/service-report.pdf",
+        mime_type="application/pdf",
+    )
+
+    with pytest.raises(NotFound):
+        portal_service.get_portal_attachment(
+            customer.id,
+            item.id,
+            pdf_attachment.id,
         )

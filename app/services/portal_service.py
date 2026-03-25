@@ -243,7 +243,19 @@ def get_customer_portal_media(customer_id, item_id):
             continue
         if order.status not in PORTAL_MEDIA_ORDER_STATUSES:
             continue
-        safe_groups.append(group)
+        safe_attachments = [
+            attachment
+            for attachment in group["attachments"]
+            if _is_portal_visible_attachment(attachment)
+        ]
+        if not safe_attachments:
+            continue
+        safe_groups.append(
+            {
+                **group,
+                "attachments": safe_attachments,
+            }
+        )
 
     return [], safe_groups
 
@@ -270,6 +282,8 @@ def get_portal_attachment(customer_id, item_id, attachment_id):
             or order_item.order.customer_id != customer_id
             or order_item.order.status not in PORTAL_MEDIA_ORDER_STATUSES
         ):
+            abort(404)
+        if not _is_portal_visible_attachment(attachment):
             abort(404)
         return attachment
 
@@ -311,3 +325,8 @@ def get_next_service_due(item):
     from datetime import timedelta as _timedelta
 
     return item.last_service_date + _timedelta(days=item.service_interval_days)
+
+
+def _is_portal_visible_attachment(attachment):
+    """Return True when an attachment is safe for the portal media surface."""
+    return attachment is not None and attachment.is_image

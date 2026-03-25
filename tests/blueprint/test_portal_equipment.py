@@ -79,6 +79,14 @@ def test_portal_equipment_detail_shows_history_and_safe_media(client, db_session
         attachable_id=completed_order_item.id,
         filename="service.jpg",
     )
+    AttachmentFactory(
+        attachable_type="service_order_item",
+        attachable_id=completed_order_item.id,
+        filename="service-report.pdf",
+        stored_filename="service-report.pdf",
+        file_path="attachments/service_order_item/2026/03/service-report.pdf",
+        mime_type="application/pdf",
+    )
     open_order = ServiceOrderFactory(customer=customer, status="in_progress")
     open_order_item = ServiceOrderItemFactory(order=open_order, service_item=item)
     AttachmentFactory(
@@ -97,6 +105,7 @@ def test_portal_equipment_detail_shows_history_and_safe_media(client, db_session
     assert "Replace neck seal" in html
     assert "direct.jpg" not in html
     assert "service.jpg" in html
+    assert "service-report.pdf" not in html
     assert "hidden.jpg" not in html
 
 
@@ -114,6 +123,33 @@ def test_portal_equipment_media_route_blocks_other_customers(client, db_session)
     _login_portal(client)
     response = client.get(
         f"/portal/equipment/{item.id}/media/{direct_attachment.id}",
+        follow_redirects=False,
+    )
+    assert response.status_code == 404
+
+
+def test_portal_equipment_media_route_blocks_non_image_files(client, db_session):
+    """Portal equipment media routes must not expose non-image attachments."""
+    customer = CustomerFactory(first_name="Portal", last_name="Media")
+    item = ServiceItemFactory(customer=customer, name="Owned Item")
+    completed_order = ServiceOrderFactory(customer=customer, status="completed")
+    completed_order_item = ServiceOrderItemFactory(
+        order=completed_order,
+        service_item=item,
+    )
+    pdf_attachment = AttachmentFactory(
+        attachable_type="service_order_item",
+        attachable_id=completed_order_item.id,
+        filename="service-report.pdf",
+        stored_filename="service-report.pdf",
+        file_path="attachments/service_order_item/2026/03/service-report.pdf",
+        mime_type="application/pdf",
+    )
+    _create_portal_user(db_session, customer)
+
+    _login_portal(client)
+    response = client.get(
+        f"/portal/equipment/{item.id}/media/{pdf_attachment.id}",
         follow_redirects=False,
     )
     assert response.status_code == 404
