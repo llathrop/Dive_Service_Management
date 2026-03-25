@@ -526,7 +526,7 @@
 - Cleaned merged feature branches and stale worktree directories so Wave 5 can start from a single clean `master` worktree
 
 **Wave 5: Final Polish** (3 agents)
-- [ ] 5A: Capture missing screenshots
+- [x] 5A: Capture missing screenshots
 - [ ] 5B: Sprint documentation finalization
 - [x] 5C: Integration smoke tests
 

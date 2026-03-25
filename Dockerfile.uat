@@ -42,6 +42,7 @@ RUN pip install --no-cache-dir -r requirements-dev.txt \
     && pip install --no-cache-dir pytest-playwright==0.6.2 playwright==1.49.1
 
 # Install Playwright browsers (Chromium only for speed/size)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN playwright install chromium
 
 # Copy application code and tests
@@ -49,7 +50,8 @@ COPY . .
 
 # Create non-root user
 RUN useradd -m -r -s /bin/bash dsm \
-    && chown -R dsm:dsm /app
+    && mkdir -p /ms-playwright \
+    && chown -R dsm:dsm /app /ms-playwright
 
 USER dsm
 

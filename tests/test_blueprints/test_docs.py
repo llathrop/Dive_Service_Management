@@ -1,8 +1,15 @@
 """Tests for the in-app documentation blueprint."""
 
+from pathlib import Path
+
 import pytest
 
 pytestmark = pytest.mark.blueprint
+
+SCREENSHOT_FILES = [
+    "docs/screenshots/customer_detail.png",
+    "docs/screenshots/item_detail_service_history.png",
+]
 
 
 class TestDocsIndex:
@@ -74,3 +81,13 @@ class TestDocsNavLink:
         assert resp.status_code in (200, 302)
         if resp.status_code == 200:
             assert b"Documentation" in resp.data
+
+
+class TestDocsScreenshots:
+    """Documentation screenshot assets stay tracked."""
+
+    def test_user_guide_screenshot_assets_exist(self):
+        """The screenshot references in the user guide resolve to files."""
+        root = Path(__file__).resolve().parents[2]
+        for rel_path in SCREENSHOT_FILES:
+            assert (root / rel_path).is_file(), f"Missing screenshot asset: {rel_path}"
