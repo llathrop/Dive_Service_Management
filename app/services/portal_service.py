@@ -1,13 +1,19 @@
-"""Portal service layer for customer-facing dashboard and tracking views."""
+"""Portal service layer for customer-facing dashboard, tracking, and equipment views."""
+
+from datetime import timedelta
 
 from flask import abort
 from sqlalchemy.orm import selectinload
 
+from app.extensions import db
+from app.models.attachment import Attachment
+from app.models.customer import Customer
+from app.models.portal_user import PortalAccessToken
+from app.models.service_item import ServiceItem
 from app.models.service_note import ServiceNote
-from app.models.service_order import ServiceOrder
+from app.models.service_order import COMPLETED_STATUSES, ServiceOrder
 from app.models.service_order_item import ServiceOrderItem
-from app.services import audit_service, customer_service, order_service
-
+from app.services import attachment_service, audit_service, customer_service, item_service, order_service
 
 PORTAL_ACTIVE_STATUSES = {
     "intake",
@@ -17,6 +23,9 @@ PORTAL_ACTIVE_STATUSES = {
     "awaiting_parts",
     "ready_for_pickup",
 }
+
+PORTAL_MEDIA_ORDER_STATUSES = set(COMPLETED_STATUSES)
+PORTAL_MEDIA_ORDER_STATUSES.update({"ready_for_pickup", "picked_up"})
 
 
 def get_customer_orders(customer_id, active_only=None):
@@ -174,3 +183,126 @@ def _serialize_status_change(entry):
         "new_value": entry.new_value,
         "field_name": entry.field_name,
     }
+
+
+def get_customer_portal_items(customer_id):
+    """Return active equipment records for a customer."""
+    return (
+        ServiceItem.not_deleted()
+        .filter_by(customer_id=customer_id)
+        .order_by(
+            ServiceItem.last_service_date.desc(),
+            ServiceItem.name.asc(),
+            ServiceItem.id.asc(),
+        )
+        .all()
+    )
+
+
+def get_customer_portal_item(customer_id, item_id):
+    """Return a single customer-owned item or 404."""
+    item = (
+        ServiceItem.not_deleted()
+        .filter_by(id=item_id, customer_id=customer_id)
+        .one_or_none()
+    )
+    if item is None:
+        abort(404)
+    return item
+
+
+def get_customer_portal_history(customer_id, item_id):
+    """Return service history rows scoped to the customer."""
+    item = get_customer_portal_item(customer_id, item_id)
+    history = [
+        oi
+        for oi in item_service.get_service_history(item.id)
+        if oi.order and oi.order.customer_id == customer_id
+    ]
+    return item, history
+
+
+def get_customer_portal_media(customer_id, item_id):
+    """Return customer-safe service-visit attachments.
+
+    Direct service-item attachments are not exposed through the portal
+    until there is explicit customer-safe metadata to distinguish them.
+    """
+    item = get_customer_portal_item(customer_id, item_id)
+    _, order_groups = attachment_service.get_unified_attachments(item.id)
+
+    safe_groups = []
+    for group in order_groups:
+        order = group["order"]
+        if order is None or order.customer_id != customer_id:
+            continue
+        if order.status not in PORTAL_MEDIA_ORDER_STATUSES:
+            continue
+        safe_groups.append(group)
+
+    return [], safe_groups
+
+
+def get_portal_attachment(customer_id, item_id, attachment_id):
+    """Return a portal-safe service visit attachment.
+
+    Raw service-item attachments are intentionally not served.
+    """
+    item = get_customer_portal_item(customer_id, item_id)
+    attachment = db.session.get(Attachment, attachment_id)
+    if attachment is None:
+        abort(404)
+
+    if attachment.attachable_type == "service_item":
+        abort(404)
+
+    if attachment.attachable_type == "service_order_item":
+        order_item = db.session.get(ServiceOrderItem, attachment.attachable_id)
+        if (
+            order_item is None
+            or order_item.service_item_id != item.id
+            or order_item.order is None
+            or order_item.order.customer_id != customer_id
+            or order_item.order.status not in PORTAL_MEDIA_ORDER_STATUSES
+        ):
+            abort(404)
+        return attachment
+
+    abort(404)
+
+
+def get_customer_portal_invites(customer_id):
+    """Return invite/access tokens for a customer, newest first."""
+    return (
+        PortalAccessToken.query.filter_by(customer_id=customer_id)
+        .order_by(PortalAccessToken.created_at.desc())
+        .all()
+    )
+
+
+def create_portal_invite(customer_id, email=None, expires_in=timedelta(hours=72)):
+    """Create a portal invite token for a customer."""
+    customer = db.session.get(Customer, customer_id)
+    if customer is None:
+        abort(404)
+
+    invite_email = (email or customer.email or "").strip()
+    if not invite_email:
+        raise ValueError("An invite email address is required.")
+
+    token, raw_token = PortalAccessToken.issue_activation(
+        customer=customer,
+        email=invite_email,
+        expires_in=expires_in,
+    )
+    db.session.commit()
+    return token, raw_token
+
+
+def get_next_service_due(item):
+    """Return the next service due date for an item, if calculable."""
+    if not item.last_service_date or not item.service_interval_days:
+        return None
+    from datetime import timedelta as _timedelta
+
+    return item.last_service_date + _timedelta(days=item.service_interval_days)

@@ -1,0 +1,51 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Equipment - {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="portal-card rounded-4 p-4 p-lg-5">
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <div class="portal-caption text-muted mb-2">Customer equipment</div>
+      <h1 class="h2 mb-2">{{ customer.display_name }}</h1>
+      <p class="text-muted mb-0">Equipment visible in your portal account.</p>
+    </div>
+    <a href="{{ url_for('portal.dashboard') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> Dashboard
+    </a>
+  </div>
+
+  {% if equipment_items %}
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Serial</th>
+          <th>Status</th>
+          <th>Last Service</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in equipment_items %}
+        <tr>
+          <td>{{ item.name }}</td>
+          <td>{{ item.serial_number or 'N/A' }}</td>
+          <td>{{ item.serviceability|replace('_', ' ')|title }}</td>
+          <td>{{ item.last_service_date.strftime('%Y-%m-%d') if item.last_service_date else 'No service date' }}</td>
+          <td class="text-end">
+            <a href="{{ url_for('portal.equipment_detail', item_id=item.id) }}" class="btn btn-sm btn-primary">
+              View
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted mb-0">No equipment is linked to your account yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

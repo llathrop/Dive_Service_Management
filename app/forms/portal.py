@@ -2,7 +2,7 @@
 
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, PasswordField, StringField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo, Length
+from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional
 
 
 class PortalLoginForm(FlaskForm):
@@ -35,3 +35,13 @@ class PortalActivationForm(FlaskForm):
         ],
     )
     submit = SubmitField("Activate Account")
+
+
+class PortalInviteForm(FlaskForm):
+    """Admin form for issuing a customer portal invite."""
+
+    email = StringField(
+        "Invite Email Address",
+        validators=[Optional(), Email(), Length(max=255)],
+    )
+    submit = SubmitField("Send Invite")

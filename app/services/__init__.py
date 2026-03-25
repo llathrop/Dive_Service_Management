@@ -19,6 +19,7 @@ from app.services import (  # noqa: F401
     log_service,
     notification_service,
     order_service,
+    portal_service,
     price_list_service,
     report_service,
     saved_search_service,

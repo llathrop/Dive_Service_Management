@@ -1,0 +1,77 @@
+{# Customer-safe equipment media gallery. #}
+
+<h6 class="fw-semibold mb-2"><i class="bi bi-camera me-1"></i>Item Photos</h6>
+{% if direct_media %}
+<div class="row g-2 mb-4">
+  {% for att in direct_media %}
+  <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+    <div class="card h-100">
+      <a href="{{ url_for('portal.equipment_media', item_id=item.id, attachment_id=att.id) }}"
+         target="_blank" class="text-decoration-none">
+        {% if att.is_image %}
+        <img src="{{ url_for('portal.equipment_media', item_id=item.id, attachment_id=att.id) }}"
+             class="card-img-top"
+             alt="{{ att.filename }}"
+             style="height: 120px; object-fit: cover;"
+             loading="lazy">
+        {% else %}
+        <div class="card-img-top d-flex align-items-center justify-content-center bg-light"
+             style="height: 120px;">
+          <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 2.5rem;"></i>
+        </div>
+        {% endif %}
+      </a>
+      <div class="card-body p-2">
+        <p class="card-text small text-truncate mb-0" title="{{ att.filename }}">
+          {{ att.filename }}
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-muted small mb-3">No item photos.</p>
+{% endif %}
+
+<h6 class="fw-semibold mb-2"><i class="bi bi-clock-history me-1"></i>Service Visit Photos</h6>
+{% if service_media %}
+{% for group in service_media %}
+<div class="mb-3">
+  <p class="small fw-semibold mb-1">
+    {{ group.order.order_number }}
+    <span class="text-muted ms-1">{{ group.order.date_received.strftime('%Y-%m-%d') }}</span>
+  </p>
+  <div class="row g-2">
+    {% for att in group.attachments %}
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+      <div class="card h-100">
+        <a href="{{ url_for('portal.equipment_media', item_id=item.id, attachment_id=att.id) }}"
+           target="_blank" class="text-decoration-none">
+          {% if att.is_image %}
+          <img src="{{ url_for('portal.equipment_media', item_id=item.id, attachment_id=att.id) }}"
+               class="card-img-top"
+               alt="{{ att.filename }}"
+               style="height: 120px; object-fit: cover;"
+               loading="lazy">
+          {% else %}
+          <div class="card-img-top d-flex align-items-center justify-content-center bg-light"
+               style="height: 120px;">
+            <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 2.5rem;"></i>
+          </div>
+          {% endif %}
+        </a>
+        <div class="card-body p-2">
+          <p class="card-text small text-truncate mb-0" title="{{ att.filename }}">
+            {{ att.filename }}
+          </p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<p class="text-muted small mb-0">No service visit photos.</p>
+{% endif %}
