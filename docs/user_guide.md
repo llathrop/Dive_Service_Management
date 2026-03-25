@@ -115,7 +115,9 @@ This also works on mobile and touch devices. The quick-create dropdowns for cust
    - Tags applied to this customer
 3. Use the **New Order** button on the customer detail page to create a service order pre-populated with this customer.
 
-<!-- Screenshot: docs/screenshots/customer_detail.png -->
+<!-- Screenshot: docs/screenshots/customer_detail.png
+     Customer detail page with contact info, service items, open orders,
+     order history, and quick actions. -->
 
 ### Editing a Customer
 
@@ -162,7 +164,9 @@ The item detail page shows:
 - **Service history** -- a list of all service orders that included this item, showing order number, status, date received, and assigned technician. This is derived from the `ServiceOrderItem` -> `ServiceOrder` relationship.
 - File attachments associated with this item
 
-<!-- Screenshot: docs/screenshots/item_detail_service_history.png -->
+<!-- Screenshot: docs/screenshots/item_detail_service_history.png
+     Service item detail page with item summary, attachment gallery, and
+     service history. -->
 
 ---
 

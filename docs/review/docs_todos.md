@@ -17,8 +17,8 @@
 ## user_guide.md
 
 - [ ] P2: Settings section (line 514) says "organized into six tabs" but then lists 7 tabs (Company, Invoice, Tax, Service, Notification, Display, Security). Should say "seven tabs".
-- [ ] P3: Screenshot reference `docs/screenshots/customer_detail.png` (line 118) — file does not exist. The `docs/screenshots/` directory contains only `.gitkeep`.
-- [ ] P3: Screenshot reference `docs/screenshots/item_detail_service_history.png` (line 165) — file does not exist.
+- [x] P3: Screenshot reference `docs/screenshots/customer_detail.png` (line 118) — captured and added to `docs/screenshots/`.
+- [x] P3: Screenshot reference `docs/screenshots/item_detail_service_history.png` (line 165) — captured and added to `docs/screenshots/`.
 
 ## installation.md
 
@@ -52,8 +52,9 @@
 
 ## Missing Screenshots
 
-- [ ] `docs/screenshots/customer_detail.png` — referenced in `docs/user_guide.md` line 118, should show the customer detail page with contact info, equipment, orders (open/completed split), invoices, and tags
-- [ ] `docs/screenshots/item_detail_service_history.png` — referenced in `docs/user_guide.md` line 165, should show the service item detail page with equipment specs, owner info, service history list, and attachments
+None. The `customer_detail.png` and `item_detail_service_history.png` assets now
+exist under `docs/screenshots/` and are maintained by the screenshot capture
+lane.
 
 ## Summary
 
@@ -63,5 +64,6 @@ No P0 (critical/blocking) issues found. The documentation is broadly accurate bu
 - **Model/service inventory**: architecture.md undercounts models (missing Attachment, SavedSearch) and services (missing 6 modules added in later waves).
 - **Health check descriptions**: Three docs files describe outdated health check commands that no longer match docker-compose.yml.
 - **Stale status markers**: The email system is documented as a placeholder despite being functional, and PROGRESS.md has an incorrect "In Progress" label.
-- **Missing screenshots**: Both screenshot references in user_guide.md point to non-existent files.
+- **Missing screenshots**: Resolved in Wave 5A by capturing `customer_detail.png`
+  and `item_detail_service_history.png` into `docs/screenshots/`.
 - **Migration count**: installation.md says 7 migrations but there are 11.
