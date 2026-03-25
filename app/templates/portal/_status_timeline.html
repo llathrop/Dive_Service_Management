@@ -1,0 +1,23 @@
+{% if status_history %}
+<div class="timeline">
+  {% for entry in status_history %}
+  <div class="d-flex gap-3 mb-3">
+    <div class="flex-shrink-0 text-center" style="width: 1.5rem;">
+      <span class="badge rounded-pill bg-primary">&bull;</span>
+    </div>
+    <div class="flex-grow-1">
+      <div class="small text-muted">
+        {{ entry.created_at.strftime('%b %d, %Y %H:%M') if entry.created_at else '' }}
+      </div>
+      <div class="fw-semibold">
+        {{ entry.old_value.replace('_', ' ').title() if entry.old_value else 'Created' }}
+        <span class="text-muted">to</span>
+        {{ entry.new_value.replace('_', ' ').title() if entry.new_value else 'Unknown' }}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-muted mb-0">No status changes have been recorded yet.</p>
+{% endif %}
