@@ -1,0 +1,43 @@
+{% extends "portal/base.html" %}
+{% from "macros/forms.html" import render_field, render_checkbox %}
+
+{% block title %}Portal Login - {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 68vh;">
+  <div class="col-12 col-md-10 col-lg-8 col-xxl-7">
+    <div class="row g-0 portal-card rounded-4 overflow-hidden">
+      <div class="col-lg-5 p-4 p-lg-5 text-white" style="background: linear-gradient(160deg, #10233d 0%, #173660 52%, #2f7cff 100%);">
+        <div class="h-100 d-flex flex-column justify-content-between">
+          <div>
+            <div class="portal-caption mb-3">Customer access</div>
+            <h1 class="display-6 fw-semibold">Service history, invoices, and updates in one place.</h1>
+          </div>
+          <p class="mb-0 mt-4 text-white-50">
+            Sign in with the email address tied to your service account. If you have
+            not activated your account yet, use the invitation link from your shop.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-lg-7 p-4 p-lg-5">
+        <h2 class="h4 mb-1">Sign in</h2>
+        <p class="text-muted mb-4">Use your portal credentials to continue.</p>
+
+        <form method="POST" action="{{ url_for('portal.login') }}" novalidate>
+          {{ form.hidden_tag() }}
+          <input type="hidden" name="next" value="{{ next_url or '' }}">
+          {{ render_field(form.email, placeholder="name@example.com") }}
+          {{ render_field(form.password, placeholder="Enter your password") }}
+          {{ render_checkbox(form.remember) }}
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="bi bi-box-arrow-in-right me-1"></i> Sign in
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
