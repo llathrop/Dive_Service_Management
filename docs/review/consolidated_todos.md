@@ -3,6 +3,8 @@
 Prioritized findings from 4 parallel audits: code, documentation, test suite, and security.
 Use this as input for planning the next sprint.
 
+Remote backlog intake note: GitHub open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) adds a follow-on shipping-provider expansion (real-time carrier integrations) that is not part of the original four audits. It should be planned separately from the remaining audit items below.
+
 ---
 
 ## P1 — High Priority (Fix Before Next Release)
@@ -104,6 +106,7 @@ Status note: items 1, 4, 5, 6, 7, 8, 9, and 10 below have already been implement
 8. **Auto-populate last_service_date** — Set when order transitions to "completed".
 9. **Audit log export** — CSV/XLSX export for compliance.
 10. **Password recovery via email** — Enable Flask-Security's recovery flow (email now works).
+11. **Real-time carrier shipping framework** — Tracked separately as GitHub issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46); extends the current flat-rate/pluggable shipping base with carrier APIs.
 
 ---
 

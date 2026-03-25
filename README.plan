@@ -161,6 +161,9 @@ As of 2026-03-24:
 - Waves 1-3 of Sprint `2026-03-22B` are complete and pushed on `master`
 - The next execution stage is **Wave 4: Customer Portal**
 - Final follow-up stage after Wave 4 is **Wave 5: Final Polish**
+- Every new feature, fix, or docs lane now requires an isolated worktree, a remote feature branch, and a GitHub PR before merge to `master`
+- Remote issue intake is now part of active planning; open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) is a follow-on expansion of the shipping framework for real-time carriers
+- Recent Wave 3 recovery / Wave 4 kickoff direct pushes on `master` are a historical exception and are not cleanly backfillable into real review PRs without rewriting published history
 
 ### Wave 4: Customer Portal (parallel)
 
