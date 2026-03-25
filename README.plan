@@ -97,7 +97,8 @@ Testing is embedded into every development step, not deferred to a final phase:
 - **Unit tests**: written with each piece of code (model, service, form, utility), run immediately (`pytest tests/unit/ -x`) before proceeding to the next step. Covers creation, validation, relationships, computed properties, business rules, edge cases, and error cases.
 - **Blueprint tests**: written with each route, verify HTTP status codes, authentication enforcement, authorization per the permission matrix, HTMX fragment responses, and form handling.
 - **Validation tests**: 14 end-to-end workflow tests run at phase/feature completion---customer workflow, order workflow, serial lookup, invoice generation, price list application, inventory deduction, import/export round-trip, auth/permissions matrix, notifications, search, report accuracy, PDF generation, data integrity, and concurrent access.
-- **Smoke tests**: app starts, all pages load (no 500s), static assets served. Run after any config/infra change.
+- **Smoke tests**: app starts, public pages load, authenticated core routes load, static assets served. Run after any config/infra change.
+- **Final-wave gate**: `make test-gate` runs the smoke suite plus the core workflow integration checks before handoff.
 - **Full regression**: all tests run at dev stop and before any commit. Coverage target: 80%+.
 
 Phase gates require all tests passing and coverage check before advancing to the next implementation phase. Uses pytest with factory-boy, Faker, freezegun, and pytest-cov.
@@ -176,5 +177,5 @@ As of 2026-03-25:
 
 - Capture missing screenshots
 - Finalize sprint documentation
-- Run integration smoke tests
+- Run integration smoke tests (`make test-gate`)
 - Execute each Wave 5 lane from its own worktree/branch/PR with QA/security review before merge

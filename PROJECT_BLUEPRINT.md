@@ -2507,7 +2507,7 @@ Testing is **not a separate phase** — it is embedded into every development st
 
 | Category | Scope | When to run | Pytest marker | Typical run time |
 | --- | --- | --- | --- | --- |
-| **Smoke** | App starts, pages load, assets served | After any config/infra change | `@pytest.mark.smoke` | < 10s |
+| **Smoke** | App starts, pages load, authenticated core routes, assets served | After any config/infra change | `@pytest.mark.smoke` | < 10s |
 | **Unit** | Single function/method/model in isolation | Immediately after writing the code under test | `@pytest.mark.unit` | < 60s total |
 | **Blueprint** | HTTP route request/response cycle | After writing or modifying a route | `@pytest.mark.blueprint` | < 90s total |
 | **Validation** | Multi-step end-to-end workflow | At phase/feature completion | `@pytest.mark.validation` | < 5min total |
@@ -2832,6 +2832,7 @@ Each phase below specifies exactly which tests to write and when to run them.
 
 test:               pytest                                         # Full regression
 test-smoke:         pytest tests/smoke/ -x                         # Smoke tests only
+test-gate:          ./scripts/final_wave_gate.sh                  # Smoke + integration gate
 test-unit:          pytest tests/unit/ -x --tb=short               # Unit tests only, stop on first fail
 test-blueprint:     pytest tests/blueprint/ -x --tb=short          # Blueprint tests only
 test-validation:    pytest tests/validation/ -v --tb=long          # Validation tests, verbose
