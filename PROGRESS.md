@@ -472,7 +472,7 @@
 - `pytest tests/ -q --tb=short`: passed
 
 **Wave 4: Customer Portal** (4 parallel agents)
-- [ ] 4A: PortalUser model + auth system (separate from Flask-Security)
+- [x] 4A: PortalUser model + auth system (separate from Flask-Security)
 - [ ] 4B: Portal dashboard + order tracking
 - [ ] 4C: Portal invoice view + payment provider framework
 - [ ] 4D: Portal equipment view + admin invite management + email notifications
@@ -488,6 +488,12 @@
 - Pulled remote GitHub backlog into planning: open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) extends the Wave 3 shipping foundation into real-time carrier integrations and is tracked as a follow-on after Wave 4 unless portal/invoice work forces earlier extraction
 - Process correction: every new feature, fix, or docs lane now requires an isolated worktree, a remote feature branch, and a GitHub PR before merge to `master`
 - Historical exception: the Wave 3 recovery and Wave 4 kickoff commits on `master` (`3bfd7ae` through `a6db2de`) were pushed without PRs and cannot be turned into true reviewable PRs retroactively without rewriting published history
+
+**2026-03-25 Wave 4A Update**
+- Completed Wave 4A portal auth foundation in dedicated worktree, reviewed it with dedicated QA/security agents, and merged it via [PR #48](https://github.com/llathrop/Dive_Service_Management/pull/48)
+- Verified Wave 4A after review in the persistent Docker test container
+- `tests/unit/models/test_portal_user.py` + `tests/blueprint/test_portal_auth.py` + `tests/blueprint/test_auth_routes.py` + `tests/unit/test_user_model.py`: passed
+- Created fresh implementation worktrees from merged `master` for 4B portal orders/dashboard, 4C portal invoices/payments, and 4D portal equipment/invites, then launched new worker lanes for those slices
 
 **Wave 5: Final Polish** (3 agents)
 - [ ] 5A: Capture missing screenshots
