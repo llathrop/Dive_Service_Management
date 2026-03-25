@@ -6,8 +6,7 @@ from app.extensions import db
 from app.models.invoice import Invoice, InvoiceLineItem
 from app.services import audit_service, payment_provider_service
 
-ACTIVE_INVOICE_STATUSES = (
-    "draft",
+PORTAL_VISIBLE_INVOICE_STATUSES = (
     "sent",
     "viewed",
     "partially_paid",
@@ -22,7 +21,7 @@ def get_customer_invoices(customer_id, page=1, per_page=10):
     """Return a paginated invoice list for a specific customer."""
     query = (
         Invoice.query.filter(Invoice.customer_id == customer_id)
-        .filter(Invoice.status.in_(ACTIVE_INVOICE_STATUSES))
+        .filter(Invoice.status.in_(PORTAL_VISIBLE_INVOICE_STATUSES))
         .order_by(Invoice.issue_date.desc(), Invoice.id.desc())
     )
     return db.paginate(query, page=page, per_page=per_page)
@@ -32,7 +31,7 @@ def get_customer_recent_invoices(customer_id, limit=5):
     """Return the most recent invoices for a customer."""
     return (
         Invoice.query.filter(Invoice.customer_id == customer_id)
-        .filter(Invoice.status.in_(ACTIVE_INVOICE_STATUSES))
+        .filter(Invoice.status.in_(PORTAL_VISIBLE_INVOICE_STATUSES))
         .order_by(Invoice.issue_date.desc(), Invoice.id.desc())
         .limit(limit)
         .all()
@@ -44,6 +43,7 @@ def get_customer_invoice(customer_id, invoice_id):
     return (
         Invoice.query.filter(Invoice.customer_id == customer_id)
         .filter(Invoice.id == invoice_id)
+        .filter(Invoice.status.in_(PORTAL_VISIBLE_INVOICE_STATUSES))
         .first()
     )
 

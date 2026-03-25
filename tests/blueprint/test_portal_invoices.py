@@ -57,6 +57,12 @@ def test_portal_invoice_list_and_detail_are_scoped(app, db_session, client):
     _set_session(db_session)
     customer = CustomerFactory(first_name="Portal", last_name="Customer")
     invoice = _make_invoice(db_session, customer)
+    draft_invoice = _make_invoice(
+        db_session,
+        customer,
+        invoice_number="INV-2026-20002",
+        status="draft",
+    )
     InvoiceLineItemFactory(
         invoice=invoice,
         line_type="labor",
@@ -74,6 +80,7 @@ def test_portal_invoice_list_and_detail_are_scoped(app, db_session, client):
     assert list_response.status_code == 200
     html = list_response.data.decode()
     assert invoice.invoice_number in html
+    assert draft_invoice.invoice_number not in html
 
     detail_response = client.get(f"/portal/invoices/{invoice.id}")
     assert detail_response.status_code == 200
@@ -84,6 +91,9 @@ def test_portal_invoice_list_and_detail_are_scoped(app, db_session, client):
     assert "SYNC-123" not in detail_html
     assert "Technician Name" not in detail_html
     assert "Labor" in detail_html
+
+    draft_detail_response = client.get(f"/portal/invoices/{draft_invoice.id}")
+    assert draft_detail_response.status_code == 404
 
 
 def test_portal_invoice_detail_rejects_foreign_customer(app, db_session, client):
@@ -130,3 +140,20 @@ def test_portal_invoice_pdf_download_hides_internal_notes(app, db_session, clien
     assert response.mimetype == "application/pdf"
     assert response.data[:5] == b"%PDF-"
 
+
+def test_portal_invoice_pdf_rejects_draft_invoice(app, db_session, client):
+    _set_session(db_session)
+    customer = CustomerFactory(first_name="Draft", last_name="Customer")
+    draft_invoice = _make_invoice(
+        db_session,
+        customer,
+        invoice_number="INV-2026-20003",
+        status="draft",
+    )
+    _make_portal_user(db_session, customer)
+
+    login_response = _login_portal(client)
+    assert login_response.status_code == 302
+
+    response = client.get(f"/portal/invoices/{draft_invoice.id}/pdf")
+    assert response.status_code == 404
