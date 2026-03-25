@@ -134,6 +134,7 @@ def _serialize_order_item(order_item, public_notes, customer_id):
         return None
     return {
         "id": order_item.id,
+        "service_item_id": service_item.id,
         "status": order_item.status,
         "display_status": order_item.status.replace("_", " ").title() if order_item.status else "",
         "work_description": order_item.work_description,

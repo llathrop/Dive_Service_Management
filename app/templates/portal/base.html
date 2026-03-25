@@ -107,6 +107,7 @@
         <div class="d-flex align-items-center gap-3">
           {% if portal_current_user.is_authenticated %}
           <a class="portal-nav-link small" href="{{ url_for('portal.dashboard') }}">Dashboard</a>
+          <a class="portal-nav-link small" href="{{ url_for('portal.equipment') }}">Equipment</a>
           <a class="portal-nav-link small" href="{{ url_for('portal.invoices') }}">Invoices</a>
           <form method="POST" action="{{ url_for('portal.logout') }}" class="d-inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -137,6 +137,7 @@ def test_order_detail_shows_safe_tracking_and_hides_internal_notes(app, db_sessi
     assert "We found a leak near the zipper" in html
     assert "Intake" in html and "Assessment" in html
     assert "Estimated total" in html
+    assert f"/portal/equipment/{item.id}" in html
 
     forbidden = client.get(f"/portal/orders/{other_order.id}")
     assert forbidden.status_code == 404
@@ -154,3 +155,18 @@ def test_dashboard_links_to_order_detail(app, db_session, client):
     response = client.get("/portal/dashboard")
     html = response.data.decode()
     assert f"/portal/orders/{order.id}" in html
+
+
+def test_portal_navigation_links_to_equipment(app, db_session, client):
+    """Authenticated portal pages should expose the equipment surface in nav."""
+    customer = CustomerFactory(first_name="Portal", last_name="Owner")
+    _create_portal_user(db_session, customer)
+    ServiceOrderFactory(customer=customer, status="completed")
+    db_session.commit()
+
+    _login_portal(client)
+
+    response = client.get("/portal/dashboard")
+    assert response.status_code == 200
+    html = response.data.decode()
+    assert "/portal/equipment" in html
