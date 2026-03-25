@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.attachment import Attachment
+from app.models.service_order import ServiceOrder
 from app.models.service_order_item import ServiceOrderItem
 
 # Allowed MIME types for upload
@@ -236,8 +237,15 @@ def get_unified_attachments(service_item_id):
 
     # Find all service order items referencing this equipment
     order_items = (
-        ServiceOrderItem.query
-        .filter_by(service_item_id=service_item_id)
+        db.session.query(ServiceOrderItem)
+        .join(ServiceOrder)
+        .filter(ServiceOrderItem.service_item_id == service_item_id)
+        .filter(ServiceOrder.is_deleted == False)  # noqa: E712
+        .order_by(
+            ServiceOrder.date_received.desc(),
+            ServiceOrder.id.desc(),
+            ServiceOrderItem.id.desc(),
+        )
         .all()
     )
 

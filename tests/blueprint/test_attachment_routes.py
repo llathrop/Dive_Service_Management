@@ -1,5 +1,7 @@
 """Blueprint tests for attachment routes including unified gallery."""
 
+from datetime import date
+
 import pytest
 
 from tests.factories import (
@@ -77,3 +79,29 @@ class TestUnifiedGalleryEndpoint:
         assert resp.status_code == 200
         assert b"No item photos" in resp.data
         assert b"No service visit photos" in resp.data
+
+    def test_deleted_order_photos_are_hidden(self, app, db_session, logged_in_client):
+        """Deleted service orders should not appear in the unified gallery."""
+        _set_session(db_session)
+        item = ServiceItemFactory()
+        visible_order = ServiceOrderFactory(date_received=date(2026, 3, 10))
+        deleted_order = ServiceOrderFactory(
+            date_received=date(2026, 3, 11),
+            is_deleted=True,
+        )
+        visible_item = ServiceOrderItemFactory(order=visible_order, service_item=item)
+        deleted_item = ServiceOrderItemFactory(order=deleted_order, service_item=item)
+        AttachmentFactory(
+            attachable_type="service_order_item",
+            attachable_id=visible_item.id,
+        )
+        AttachmentFactory(
+            attachable_type="service_order_item",
+            attachable_id=deleted_item.id,
+        )
+
+        resp = logged_in_client.get(f"/attachments/gallery/unified/{item.id}")
+
+        assert resp.status_code == 200
+        assert visible_order.order_number.encode() in resp.data
+        assert deleted_order.order_number.encode() not in resp.data
