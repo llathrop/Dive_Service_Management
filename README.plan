@@ -151,17 +151,26 @@ The Admin System Settings and Data Management pages are being upgraded from read
 - **Kanban view for orders**: Drag-and-drop order status board (template placeholder exists)
 - **Camera image capture for service orders/items**: Mobile-first photo capture (HTML5 camera API), polymorphic Attachment model, gallery on detail pages
 
-### Wave 3: Polish & Tech Debt (parallel)
+## Current Execution Status
 
-- **Service layer refactoring**: Phase 2 blueprints use services instead of direct model access
-- **FULLTEXT search + streaming exports**: Scalability for large datasets
-- **Import column mapping wizard**: Drag-and-drop column mapping for arbitrary CSV/XLSX layouts
+Historical planning waves above were completed iteratively and are no longer the active execution plan.
+The current source of truth for sprint execution status is `PROGRESS.md`.
 
-### Wave 4: Lower Priority
+As of 2026-03-24:
 
-- dsm-beat healthcheck fix
-- Email notifications (SMTP)
-- Saved searches per user
-- ~~File attachments~~ (promoted to Wave 2d)
-- Generalized logging access
-- Module splitting, MariaDB parity tests, broadcast notification UI
+- Waves 1-3 of Sprint `2026-03-22B` are complete and pushed on `master`
+- The next execution stage is **Wave 4: Customer Portal**
+- Final follow-up stage after Wave 4 is **Wave 5: Final Polish**
+
+### Wave 4: Customer Portal (parallel)
+
+- **4A: PortalUser model + separate auth system**: Portal accounts are separate from internal Flask-Security users and are linked to customers
+- **4B: Portal dashboard + order tracking**: Customer-facing order visibility, status timeline, and history
+- **4C: Portal invoice view + payment provider framework**: Customer-facing invoice access plus pluggable payment integration groundwork
+- **4D: Portal equipment view + invite/email flow**: Equipment history, invite activation, and customer notifications
+
+### Wave 5: Final Polish
+
+- Capture missing screenshots
+- Finalize sprint documentation
+- Run integration smoke tests

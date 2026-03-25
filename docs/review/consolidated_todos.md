@@ -92,6 +92,8 @@ Use this as input for planning the next sprint.
 
 ## Feature Proposals (Discussion — Not Prioritized)
 
+Status note: items 1, 4, 5, 6, 7, 8, 9, and 10 below have already been implemented across Sprint `2026-03-22B` Waves 1-3. The primary remaining proposal in this section is the customer portal work (`3`), which is now the active next wave in `PROGRESS.md`.
+
 1. **Wire notification triggers** — 3-6 lines of glue to call existing notify functions from inventory/order/invoice services. Immediate value.
 2. **Part linking UI** — Modal on price list detail to associate inventory parts. Enables auto-deduction.
 3. **Customer portal** — Public status lookup by order number. Eliminates "is my suit done?" calls.
