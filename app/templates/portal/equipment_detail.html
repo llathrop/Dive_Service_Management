@@ -1,0 +1,75 @@
+{% extends "portal/base.html" %}
+
+{% block title %}{{ item.name }} - {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="portal-card rounded-4 p-4 p-lg-5 mb-4">
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <div class="portal-caption text-muted mb-2">Equipment detail</div>
+      <h1 class="h2 mb-2">{{ item.name }}</h1>
+      <div class="text-muted">{{ item.serial_number or 'No serial number' }}</div>
+    </div>
+    <a href="{{ url_for('portal.equipment') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> Equipment list
+    </a>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <dl class="row mb-0">
+        <dt class="col-5 text-muted">Category</dt>
+        <dd class="col-7">{{ item.item_category or 'N/A' }}</dd>
+        <dt class="col-5 text-muted">Brand</dt>
+        <dd class="col-7">{{ item.brand or 'N/A' }}</dd>
+        <dt class="col-5 text-muted">Model</dt>
+        <dd class="col-7">{{ item.model or 'N/A' }}</dd>
+      </dl>
+    </div>
+    <div class="col-md-6">
+      <dl class="row mb-0">
+        <dt class="col-5 text-muted">Serviceability</dt>
+        <dd class="col-7">{{ item.serviceability|replace('_', ' ')|title }}</dd>
+        <dt class="col-5 text-muted">Last Service</dt>
+        <dd class="col-7">{{ item.last_service_date.strftime('%Y-%m-%d') if item.last_service_date else 'No service date yet' }}</dd>
+        <dt class="col-5 text-muted">Next Due</dt>
+        <dd class="col-7">{{ next_service_due.strftime('%Y-%m-%d') if next_service_due else 'Not scheduled' }}</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<div class="portal-card rounded-4 p-4 p-lg-5 mb-4">
+  {% include "portal/_media_gallery.html" %}
+</div>
+
+<div class="portal-card rounded-4 p-4 p-lg-5">
+  <h2 class="h5 mb-3">Service History</h2>
+  {% if history %}
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Date Received</th>
+          <th>Status</th>
+          <th>Work Requested</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for oi in history %}
+        <tr>
+          <td>{{ oi.order.order_number }}</td>
+          <td>{{ oi.order.date_received.strftime('%Y-%m-%d') }}</td>
+          <td>{{ oi.order.display_status }}</td>
+          <td>{{ oi.work_description or 'Not provided' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted mb-0">No service history is available for this equipment.</p>
+  {% endif %}
+</div>
+{% endblock %}

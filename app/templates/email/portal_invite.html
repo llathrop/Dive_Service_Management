@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<body>
+  <h2>Your customer portal invite is ready</h2>
+  <p>Hello {{ customer.display_name }},</p>
+  <p>{{ inviter.display_name if inviter else 'Your service team' }} has created a portal account for your customer profile.</p>
+  <p>
+    Activate your account here:
+    <a href="{{ invite_url }}">{{ invite_url }}</a>
+  </p>
+  <p>This link expires on {{ token.expires_at.strftime('%Y-%m-%d %H:%M UTC') }}.</p>
+  <p>After activation, you will be able to view your equipment and service history online.</p>
+</body>
+</html>

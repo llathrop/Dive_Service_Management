@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/forms.html" import render_field %}
 {% from 'macros/modals.html' import delete_modal %}
 {% from 'macros/status_badges.html' import order_status_badge, priority_badge %}
 
@@ -130,6 +131,80 @@
     </div>
   </div>
 </div>
+
+{% if current_user.has_role('admin') %}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Customer Portal</h5>
+    <a href="{{ url_for('portal.index') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-box-arrow-up-right me-1"></i>Open portal
+    </a>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <form method="POST" action="{{ url_for('customers.send_portal_invite', id=customer.id) }}">
+          {{ portal_invite_form.hidden_tag() }}
+          {{ render_field(portal_invite_form.email, placeholder="customer@example.com", help_text="Use the contact email for the portal account.") }}
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-envelope-plus me-1"></i> Send Invite
+          </button>
+        </form>
+      </div>
+      <div class="col-lg-6">
+        <h6 class="fw-semibold">Portal Accounts</h6>
+        {% if portal_users %}
+        <ul class="list-group mb-3">
+          {% for portal_user in portal_users %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>
+              {{ portal_user.email }}
+              <small class="text-muted d-block">{{ portal_user.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+            </span>
+            <span class="badge bg-{{ 'success' if portal_user.active else 'secondary' }}">
+              {{ 'Active' if portal_user.active else 'Pending' }}
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-3">No portal account has been activated yet.</p>
+        {% endif %}
+
+        <h6 class="fw-semibold">Invite History</h6>
+        {% if portal_invites %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Expires</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for invite in portal_invites %}
+              <tr>
+                <td>{{ invite.email }}</td>
+                <td>
+                  <span class="badge bg-{{ 'success' if invite.used_at else 'warning' if invite.is_expired else 'secondary' }}">
+                    {{ 'Used' if invite.used_at else 'Expired' if invite.is_expired else 'Active' }}
+                  </span>
+                </td>
+                <td>{{ invite.expires_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No invites have been sent.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 {# Service Items #}
 <div class="card mb-4">
