@@ -1,0 +1,47 @@
+{% if quote %}
+<div class="border rounded-3 p-3 bg-body-tertiary">
+  <div class="d-flex justify-content-between align-items-start gap-3">
+    <div>
+      <div class="text-muted text-uppercase small fw-semibold">Estimated Quote</div>
+      <div class="fs-4 fw-bold text-success mb-1">{{ quote.amount_display }}</div>
+      <div class="fw-semibold">{{ quote.provider_name }} · {{ quote.method_name }}</div>
+    </div>
+    {% if quote.metadata.quote_source %}
+    <span class="badge text-bg-light border">
+      {{ quote.metadata.quote_source|replace('_', ' ')|title }}
+    </span>
+    {% endif %}
+  </div>
+
+  <div class="small text-muted mt-2">
+    {% if quote.metadata.destination_summary %}
+    <div>Destination: {{ quote.metadata.destination_summary }}</div>
+    {% endif %}
+    {% if quote.metadata.estimated_delivery_days %}
+    <div>ETA: {{ quote.metadata.estimated_delivery_days }}</div>
+    {% endif %}
+    {% if quote.metadata.billable_weight_lbs %}
+    <div>
+      Billable weight: {{ quote.metadata.billable_weight_lbs }} lbs
+      {% if quote.metadata.dimensional_weight_lbs %}
+      <span>(dimensional {{ quote.metadata.dimensional_weight_lbs }} lbs)</span>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if quote.metadata.tier_label %}
+    <div>Rate tier: {{ quote.metadata.tier_label }}</div>
+    {% endif %}
+    {% if quote.metadata.pickup_message %}
+    <div>{{ quote.metadata.pickup_message }}</div>
+    {% endif %}
+    {% if quote.metadata.destination_surcharge %}
+    <div>Destination surcharge: ${{ quote.metadata.destination_surcharge }}</div>
+    {% endif %}
+    {% if quote.metadata.oversize_applied %}
+    <div>Oversize surcharge applied.</div>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<span class="text-muted">{{ placeholder_text }}</span>
+{% endif %}

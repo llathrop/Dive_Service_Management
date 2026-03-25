@@ -27,6 +27,12 @@ class TestToolsUAT:
         admin_page.goto(f"{base_url}/tools/pricing-calculator")
         expect(admin_page.locator("h1")).to_contain_text("Pricing")
 
+    def test_shipping_calculator(self, admin_page: Page, base_url: str):
+        """Shipping calculator page loads."""
+        admin_page.goto(f"{base_url}/tools/shipping-calculator")
+        expect(admin_page.locator("h1")).to_contain_text("Shipping Calculator")
+        expect(admin_page.locator("text=Provider")).to_be_visible()
+
     def test_unit_converter(self, admin_page: Page, base_url: str):
         """Unit converter page loads."""
         admin_page.goto(f"{base_url}/tools/converter")

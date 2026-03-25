@@ -59,6 +59,66 @@ class TestFlatRateProvider:
         assert methods[0]["code"] == "flat_rate"
         assert methods[0]["name"] == "Flat Rate Shipping"
 
+    def test_quote_shipping_tracks_destination_metadata(self, app, db_session):
+        """Destination details should flow through provider quotes."""
+        quote = shipping_service.quote_shipping(
+            weight_lbs=Decimal("5.00"),
+            provider_code="ups",
+            method="ups_ground",
+            destination_postal_code="V6B1A1",
+            destination_country="CA",
+        )
+
+        assert quote.provider_code == "ups"
+        assert quote.metadata["destination_postal_code"] == "V6B1A1"
+        assert quote.metadata["destination_country"] == "CA"
+        assert quote.metadata["international"] is True
+        assert quote.amount > Decimal("0.00")
+
+    def test_local_pickup_quote_requires_no_weight(self, app, db_session):
+        """Local pickup should quote successfully with no package measurements."""
+        quote = shipping_service.quote_shipping(
+            provider_code="local_pickup",
+            method="local_pickup",
+        )
+
+        assert quote.amount == Decimal("0.00")
+        assert quote.method_code == "local_pickup"
+
+    def test_local_pickup_is_workflow_default_provider(self, monkeypatch, app, db_session):
+        """UI workflows should default to local pickup when available."""
+        monkeypatch.setattr(
+            shipping_service.config_service,
+            "get_config",
+            lambda key, default=None: default,
+        )
+
+        assert shipping_service.get_workflow_default_provider_code() == "local_pickup"
+
+    def test_required_providers_always_enabled(self, monkeypatch, app, db_session):
+        """Local pickup and flat rate should remain available even if config omits them."""
+        monkeypatch.setattr(
+            shipping_service.config_service,
+            "get_config",
+            lambda key, default=None: ["ups"] if key == "shipping.enabled_providers" else default,
+        )
+
+        enabled_codes = shipping_service.get_enabled_provider_codes()
+        assert enabled_codes[0] == "local_pickup"
+        assert "ups" in enabled_codes
+        assert "flat_rate" in enabled_codes
+
+    def test_disabled_provider_is_rejected(self, monkeypatch, app, db_session):
+        """Disabled providers should not be usable via direct requests."""
+        monkeypatch.setattr(
+            shipping_service.config_service,
+            "get_config",
+            lambda key, default=None: ["ups"] if key == "shipping.enabled_providers" else default,
+        )
+
+        with pytest.raises(ValueError, match="disabled"):
+            shipping_service.get_provider("fedex")
+
 
 # ======================================================================
 # Service CRUD tests
@@ -90,6 +150,26 @@ class TestShipmentCRUD:
         assert shipment.weight_lbs == Decimal("10.00")
         assert shipment.shipping_cost == Decimal("14.99")
         assert shipment.status == "pending"
+
+    def test_create_shipment_persists_provider_quote_metadata(self, app, db_session):
+        """Shipments should persist provider and destination quote metadata."""
+        self._set_sessions(db_session)
+        order = ServiceOrderFactory()
+        db_session.flush()
+
+        shipment = shipping_service.create_shipment(
+            order_id=order.id,
+            weight_lbs=Decimal("8.00"),
+            provider_code="fedex",
+            shipping_method="fedex_two_day",
+            destination_postal_code="33139",
+            destination_country="US",
+        )
+
+        assert shipment.provider_code == "fedex"
+        assert shipment.quote_metadata["provider_name"] == "FedEx"
+        assert shipment.quote_metadata["metadata"]["destination_postal_code"] == "33139"
+        assert shipment.carrier == "FedEx"
 
     def test_update_shipment_tracking(self, app, db_session):
         """Updating tracking number should persist."""
@@ -349,15 +429,17 @@ class TestShippingRoutes:
         response = logged_in_client.get(f"/orders/{order.id}/shipping")
         assert response.status_code == 200
         assert b"Shipping Management" in response.data
+        assert b"Local pickup stays at $0.00" in response.data
 
     def test_estimate_endpoint(self, app, db_session, logged_in_client):
         """HTMX estimate endpoint should return cost fragment."""
         order = self._create_order(db_session)
         response = logged_in_client.get(
-            f"/orders/{order.id}/shipping/estimate?weight_lbs=10"
+            f"/orders/{order.id}/shipping/estimate?provider_code=ups&shipping_method=ups_ground&weight_lbs=10&destination_postal_code=77002&destination_country=US"
         )
         assert response.status_code == 200
-        assert b"$14.99" in response.data
+        assert b"UPS" in response.data
+        assert b"77002" in response.data
         assert b"text-success" in response.data
 
     def test_estimate_endpoint_rejects_nan(self, app, db_session, logged_in_client):
@@ -367,7 +449,17 @@ class TestShippingRoutes:
             f"/orders/{order.id}/shipping/estimate?weight_lbs=NaN"
         )
         assert response.status_code == 200
-        assert b"Enter weight to estimate cost" in response.data
+        assert b"Enter weight and optional dimensions to estimate shipping" in response.data
+
+    def test_estimate_endpoint_invalid_provider_shows_error(self, app, db_session, logged_in_client):
+        """Malformed provider inputs should render an error fragment instead of 500ing."""
+        order = self._create_order(db_session)
+        response = logged_in_client.get(
+            f"/orders/{order.id}/shipping/estimate?provider_code={'x' * 51}"
+        )
+
+        assert response.status_code == 200
+        assert b"Provider Code must be 50 characters or fewer." in response.data
 
     def test_create_shipment_via_form(self, app, db_session, logged_in_client):
         """POST should create a shipment and redirect."""
@@ -376,7 +468,10 @@ class TestShippingRoutes:
             f"/orders/{order.id}/shipping",
             data={
                 "weight_lbs": "10.00",
-                "carrier": "USPS",
+                "provider_code": "usps",
+                "shipping_method": "usps_priority_mail",
+                "destination_postal_code": "30301",
+                "destination_country": "US",
                 "tracking_number": "TEST123",
             },
             follow_redirects=True,
@@ -386,7 +481,27 @@ class TestShippingRoutes:
 
         shipments = shipping_service.get_order_shipments(order.id)
         assert len(shipments) == 1
+        assert shipments[0].provider_code == "usps"
         assert shipments[0].carrier == "USPS"
+
+    def test_create_local_pickup_without_weight(self, app, db_session, logged_in_client):
+        """Local pickup shipments should be creatable without weight."""
+        order = self._create_order(db_session)
+        response = logged_in_client.post(
+            f"/orders/{order.id}/shipping",
+            data={
+                "provider_code": "local_pickup",
+                "shipping_method": "local_pickup",
+                "destination_country": "US",
+            },
+            follow_redirects=True,
+        )
+
+        assert response.status_code == 200
+        assert b"Shipment created successfully" in response.data
+        shipments = shipping_service.get_order_shipments(order.id)
+        assert shipments[0].provider_code == "local_pickup"
+        assert shipments[0].shipping_cost == Decimal("0.00")
 
     def test_order_detail_financial_summary_includes_shipping(
         self, app, db_session, logged_in_client
