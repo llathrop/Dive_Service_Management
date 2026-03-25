@@ -64,7 +64,14 @@
           <div class="border rounded-4 p-3 bg-white">
             <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
               <div>
-                <h3 class="h5 mb-1">{{ item.name }}</h3>
+                <h3 class="h5 mb-1">
+                  <a
+                    class="link-primary link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover text-decoration-none"
+                    href="{{ url_for('portal.equipment_detail', item_id=item.service_item_id) }}"
+                  >
+                    {{ item.name }}
+                  </a>
+                </h3>
                 <div class="small text-muted">
                   {% if item.brand %}{{ item.brand }}{% endif %}
                   {% if item.brand and item.model %} · {% endif %}
