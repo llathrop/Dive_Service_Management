@@ -29,7 +29,10 @@ services:
       - DSM_SECRET_KEY=uat-secret-key-not-for-production
       - DSM_SECURITY_PASSWORD_SALT=uat-salt-not-for-production
       - DSM_DATABASE_URL=mysql+mysqldb://dsm:dsm_uat_pass@db:3306/dsm_uat
+      - DSM_REDIS_URL=memory://
       - DSM_DEBUG=false
+    volumes:
+      - ./uploads:/app/uploads
     networks:
       - uat-net
     healthcheck:
@@ -69,16 +72,22 @@ services:
       context: .
       dockerfile: Dockerfile.uat
     container_name: dsm-uat-runner
+    user: "${DSM_UAT_UID:-1000}:${DSM_UAT_GID:-1000}"
     depends_on:
       web:
         condition: service_healthy
     environment:
       - DSM_UAT_BASE_URL=http://web:8080
-      - DSM_ENV=testing
+      - DSM_ENV=mariadb_testing
       - DSM_SECRET_KEY=uat-secret-key-not-for-production
+      - DSM_DATABASE_URL=mysql+mysqldb://dsm:dsm_uat_pass@db:3306/dsm_uat
+      - DSM_REDIS_URL=memory://
+      - PYTEST_ADDOPTS=-o cache_dir=/tmp/pytest-cache
     volumes:
       # Mount tests for live editing
       - ./tests:/app/tests:ro
+      - ./uploads:/app/uploads
+      - ./docs/screenshots:/app/docs/screenshots
     networks:
       - uat-net
 

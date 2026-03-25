@@ -76,7 +76,7 @@ Remote backlog intake note: GitHub issue [#46](https://github.com/llathrop/Dive_
 - [ ] **`blueprints/__init__.py` missing entries** — Missing admin_bp, docs_bp, attachments_bp exports. (code_audit)
 
 ### Documentation
-- [ ] **Missing screenshots** — `customer_detail.png` and `item_detail_service_history.png` referenced in user_guide.md but don't exist. (docs_todos)
+- [x] **Screenshot lane complete** — `customer_detail.png` and `item_detail_service_history.png` are now captured and tracked under `docs/screenshots/`. (docs_todos)
 - [ ] **Docker volume table missing backups mount** — architecture.md and system overview diagram. (docs_todos)
 - [ ] **cloud_deployment.md Azure MariaDB retired** — Microsoft retired Azure Database for MariaDB. (docs_todos)
 - [ ] **cloud_deployment.md GCP MariaDB confusion** — Contradicts installation.md about Cloud SQL MariaDB support. (docs_todos)

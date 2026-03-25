@@ -175,7 +175,7 @@ As of 2026-03-25:
 
 ### Wave 5: Final Polish (active)
 
-- Capture missing screenshots
+- Capture missing screenshots (completed in Wave 5A)
 - Finalize sprint documentation
 - Run integration smoke tests (`make test-gate`)
 - Execute each Wave 5 lane from its own worktree/branch/PR with QA/security review before merge
