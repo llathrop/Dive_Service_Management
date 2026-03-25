@@ -9,6 +9,16 @@ from app.models.service_order_item import ServiceOrderItem
 from app.services import audit_service, customer_service, order_service
 
 
+PORTAL_ACTIVE_STATUSES = {
+    "intake",
+    "assessment",
+    "awaiting_approval",
+    "in_progress",
+    "awaiting_parts",
+    "ready_for_pickup",
+}
+
+
 def get_customer_orders(customer_id, active_only=None):
     """Return portal-visible orders for a customer."""
     return customer_service.get_customer_orders(customer_id, active_only=active_only)
@@ -16,7 +26,7 @@ def get_customer_orders(customer_id, active_only=None):
 
 def get_customer_dashboard(customer_id, active_limit=5, recent_limit=5):
     """Build the customer dashboard payload."""
-    active_orders = get_customer_orders(customer_id, active_only=True)
+    active_orders = _get_customer_active_orders(customer_id)
     all_orders = get_customer_orders(customer_id)
 
     return {
@@ -56,8 +66,9 @@ def get_customer_order_detail(customer_id, order_id):
         "order": order,
         "summary": summary,
         "items": [
-            _serialize_order_item(item, public_notes.get(item.id, []))
+            _serialize_order_item(item, public_notes.get(item.id, []), order.customer_id)
             for item in items
+            if _is_portal_visible_item(item, order.customer_id)
         ],
         "status_history": status_history,
     }
@@ -93,8 +104,20 @@ def _serialize_order_card(order):
     }
 
 
-def _serialize_order_item(order_item, public_notes):
+def _get_customer_active_orders(customer_id):
+    orders = get_customer_orders(customer_id)
+    return [order for order in orders if order.status in PORTAL_ACTIVE_STATUSES]
+
+
+def _is_portal_visible_item(order_item, customer_id):
     service_item = order_item.service_item
+    return service_item is not None and service_item.customer_id == customer_id
+
+
+def _serialize_order_item(order_item, public_notes, customer_id):
+    service_item = order_item.service_item
+    if service_item is None or service_item.customer_id != customer_id:
+        return None
     return {
         "id": order_item.id,
         "status": order_item.status,

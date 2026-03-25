@@ -61,7 +61,7 @@ def test_dashboard_shows_only_customer_orders(app, db_session, client):
 
     own_order = ServiceOrderFactory(
         customer=customer,
-        status="in_progress",
+        status="ready_for_pickup",
         date_received=date(2026, 3, 3),
         description="Own order",
     )

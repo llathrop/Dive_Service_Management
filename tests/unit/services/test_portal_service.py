@@ -41,7 +41,11 @@ def test_get_customer_dashboard_scopes_orders(app, db_session):
     customer = CustomerFactory(first_name="Portal", last_name="Owner")
     other_customer = CustomerFactory(first_name="Other", last_name="Owner")
 
-    active_order = ServiceOrderFactory(customer=customer, status="in_progress", date_received=date(2026, 3, 1))
+    active_order = ServiceOrderFactory(
+        customer=customer,
+        status="ready_for_pickup",
+        date_received=date(2026, 3, 1),
+    )
     recent_order = ServiceOrderFactory(customer=customer, status="completed", date_received=date(2026, 2, 28))
     ServiceOrderFactory(customer=other_customer, status="intake", date_received=date(2026, 3, 2))
     db_session.commit()
@@ -68,13 +72,27 @@ def test_get_customer_order_rejects_other_customer_order(app, db_session):
 def test_get_customer_order_detail_includes_only_public_notes_and_history(app, db_session):
     """Portal order detail should expose only customer-safe notes and status history."""
     customer = CustomerFactory(first_name="Portal", last_name="Owner")
+    other_customer = CustomerFactory(first_name="Other", last_name="Owner")
     item = ServiceItemFactory(customer=customer, name="Drysuit", serial_number="DS-123")
+    leaked_item = ServiceItemFactory(
+        customer=other_customer,
+        name="Do Not Leak",
+        serial_number="LEAK-123",
+        brand="Leaky Brand",
+        model="Leaky Model",
+    )
     order = ServiceOrderFactory(customer=customer, description="Repair the zipper")
     order_item = ServiceOrderItemFactory(
         order=order,
         service_item=item,
         work_description="Replace zipper",
         condition_at_receipt="Small tear near the ankle.",
+    )
+    ServiceOrderItemFactory(
+        order=order,
+        service_item=leaked_item,
+        work_description="Mismatched item",
+        condition_at_receipt="Should not appear in portal.",
     )
     user = UserFactory()
     ServiceNoteFactory(
@@ -98,5 +116,7 @@ def test_get_customer_order_detail_includes_only_public_notes_and_history(app, d
     assert detail["summary"]["estimated_total"] is not None
     assert len(detail["items"]) == 1
     assert detail["items"][0]["notes"][0]["note_text"].startswith("We found a zipper leak")
+    assert "Do Not Leak" not in str(detail)
+    assert "LEAK-123" not in str(detail)
     assert detail["status_history"][0]["new_value"] == "assessment"
     assert len(detail["status_history"]) == 1
