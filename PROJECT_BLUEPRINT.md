@@ -2471,7 +2471,7 @@ All reports support date range filtering, export to CSV/XLSX/PDF, and are viewab
 
 ### Post-Phase 6 Reviews (Complete, 809 tests cumulative)
 
-- 3 rounds of external review fixes (CODEX, Gemini)
+- 3 rounds of external review fixes
 - Critical fixes: inventory decimals, notification broadcast reads, status bypass prevention
 - Admin overhaul: SystemConfig, editable settings UI, data management, CSV import
 

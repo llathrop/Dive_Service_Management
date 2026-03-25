@@ -1,7 +1,7 @@
-# CODEX Project Re-Review (2026-03-10, Refreshed)
+# Static Project Re-Review (2026-03-10, Refreshed)
 
 ## Scope and Constraints
-- This report overwrites the prior CODEX review.
+- This report overwrites the prior static review report.
 - Per request, no project test suites were run and no code was changed.
 - Required docs were re-read first, in order: `README.plan`, `PROJECT_BLUEPRINT.md`, `MEMORY.md`, `PROGRESS.md`.
 - `GEMINI-PROJECT_REVIEW.md` was reviewed and only still-valid points were retained.

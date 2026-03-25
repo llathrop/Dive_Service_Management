@@ -207,7 +207,7 @@
 
 ### Post-Phase 6: Second Review Fix-ups (Complete)
 
-**Trigger**: CODEX and Gemini static reviews identified additional correctness, security, and resilience issues.
+**Trigger**: external static review passes identified additional correctness, security, and resilience issues.
 
 **Critical (P0) Fixes**:
 
@@ -247,7 +247,7 @@
 - [x] `Dockerfile.uat` — added `default-libmysqlclient-dev` and simplified pip install (requirements-dev.txt includes requirements.txt transitively)
 - [x] `PROJECT_BLUEPRINT.md` section 8.2 — documented hard constraints for data persistence and auto-upgrade
 - [x] `README.md` — updated setup instructions to reflect automatic migration/seeding
-- [x] `.gitignore` — added exclusions for `.claude/`, `MEMORY.md`, `test_uat_eval.py`
+- [x] `.gitignore` — added exclusions for agent worktree directories, `MEMORY.md`, `test_uat_eval.py`
 
 **Hard constraints documented**:
 
@@ -256,9 +256,9 @@
 3. All schema changes must have Alembic migration scripts
 4. Database seeding must be idempotent and run automatically
 
-### Post-Phase 6: Third Review Fix-ups — CODEX Re-Review (Complete)
+### Post-Phase 6: Third Review Fix-ups — Static Re-Review (Complete)
 
-**Trigger**: CODEX static re-review (2026-03-04, updated 2026-03-10) identified remaining correctness and usability issues.
+**Trigger**: a static re-review (2026-03-04, updated 2026-03-10) identified remaining correctness and usability issues.
 
 **Critical (P0) Fixes**:
 
@@ -455,7 +455,7 @@
 - [x] 3D: Shipping calculator with pluggable provider framework
 
 **2026-03-24 Wave 3 Recovery Update**
-- Recovered interrupted `3D` shipping work into dedicated worktree `.claude/worktrees/agent-wave3d-shipping`, completed lead review plus QA/security fixes, then cherry-picked onto `master`
+- Recovered interrupted `3D` shipping work into a dedicated worktree, completed lead review plus QA/security fixes, then cherry-picked onto `master`
 - Verified `3D` in the persistent Docker test container (`docker-compose.test-dev.yml`)
 - `tests/test_services/test_shipping.py`: 29 passed
 - `tests/blueprint/test_order_routes.py`: 43 passed
@@ -479,13 +479,13 @@
 
 **2026-03-24 Wave 4 Kickoff**
 - Reconciled planning docs on `master` so `PROGRESS.md`, `README.plan`, and `consolidated_todos.md` all point at Wave 4 as the active next stage
-- Created dedicated Wave 4A auth worktree `.claude/worktrees/agent-wave4a-portal-auth`
+- Created a dedicated Wave 4A auth worktree
 - Launched parallel agent work for:
   - 4A auth foundation implementation
   - 4B order/dashboard integration discovery
   - 4C invoice/payment integration discovery
   - 4D equipment/invite/email integration discovery
-- 4C invoice/payment implementation is now active in `.claude/worktrees/agent-wave4c-portal-invoices` on `feature/customer-portal-invoices`; it will ship as its own remote branch and PR before merge
+- 4C invoice/payment implementation is now active on its own feature branch and will ship as its own remote PR before merge
 - Pulled remote GitHub backlog into planning: open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) extends the Wave 3 shipping foundation into real-time carrier integrations and is tracked as a follow-on after Wave 4 unless portal/invoice work forces earlier extraction
 - Process correction: every new feature, fix, or docs lane now requires an isolated worktree, a remote feature branch, and a GitHub PR before merge to `master`
 - Historical exception: the Wave 3 recovery and Wave 4 kickoff commits on `master` (`3bfd7ae` through `a6db2de`) were pushed without PRs and cannot be turned into true reviewable PRs retroactively without rewriting published history
@@ -497,17 +497,17 @@
 - Created fresh implementation worktrees from merged `master` for 4B portal orders/dashboard, 4C portal invoices/payments, and 4D portal equipment/invites, then launched new worker lanes for those slices
 
 **2026-03-25 Wave 4B Update**
-- Completed the portal dashboard + order tracking slice in `.claude/worktrees/agent-wave4b-portal-orders`
+- Completed the portal dashboard + order tracking slice in its dedicated worktree
 - Reviewed QA findings for customer/item scoping and `ready_for_pickup` visibility, patched them on the feature branch, and merged via [PR #50](https://github.com/llathrop/Dive_Service_Management/pull/50)
 - Verified the portal order slice in the persistent Docker test container with `tests/unit/services/test_portal_service.py` + `tests/blueprint/test_portal.py` + `tests/blueprint/test_portal_auth.py`
 
 **2026-03-25 Wave 4C Update**
-- Completed the portal invoice/payment slice in `.claude/worktrees/agent-wave4c-portal-invoices`
+- Completed the portal invoice/payment slice in its dedicated worktree
 - Reviewed the draft-invoice exposure issue, patched it on the feature branch, resolved a portal blueprint merge-conflict blocker, and merged via [PR #52](https://github.com/llathrop/Dive_Service_Management/pull/52)
 - Verified the portal invoice slice in the persistent Docker test container with `tests/blueprint/test_portal_invoices.py` + `tests/unit/services/test_portal_invoice_service.py` + `tests/unit/services/test_payment_provider_service.py` + `tests/test_utils/test_pdf.py`
 
 **2026-03-25 Wave 4D Update**
-- Completed the portal equipment/invite slice in `.claude/worktrees/agent-wave4d-portal-equipment-invites`
+- Completed the portal equipment/invite slice in its dedicated worktree
 - Repaired the stale branch merge state, tightened portal equipment media to image attachments only after security review, and merged the lane via [PR #51](https://github.com/llathrop/Dive_Service_Management/pull/51)
 - Verified the portal equipment/invite slice in the persistent Docker test container with `tests/unit/services/test_portal_service.py` + `tests/blueprint/test_portal_equipment.py` + `tests/blueprint/test_customer_portal_invites.py` + `tests/blueprint/test_portal_auth.py` + `tests/blueprint/test_portal.py` + `tests/blueprint/test_portal_invoices.py` + `tests/test_utils/test_pdf.py`
 
