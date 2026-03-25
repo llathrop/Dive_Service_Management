@@ -262,7 +262,7 @@ A **TaggableMixin** in `app/models/tag.py` provides `add_tag()`, `remove_tag()`,
 
 ### Migration Chain
 
-Migrations are stored in `migrations/versions/` and applied in order:
+Migrations are stored in `migrations/versions/` and applied in order. The current chain contains 17 revisions:
 
 1. `65a0d287ea08` -- Initial schema: users, roles, user_roles
 2. `46a737a590f6` -- Phase 2: customers, service_items, drysuit_details, inventory, price_list, tags
@@ -274,6 +274,13 @@ Migrations are stored in `migrations/versions/` and applied in order:
 8. `f6a7b8c9d0e1` -- Attachments table
 9. `g7b8c9d0e1f2` -- Saved searches table
 10. `h8c9d0e1f2g3` -- Service item customer_id NOT NULL (with smart orphan resolution)
+11. `i9d0e1f2g3h4` -- Dashboard config fields on users
+12. `j0e1f2g3h4i5` -- Service order templates
+13. `k1f2g3h4i5j6` -- Service interval on service items
+14. `l2g3h4i5j6k7` -- Shipments table
+15. `m1n2o3p4q5r6` -- Service reminder deliveries
+16. `q4a5b6c7d8e9` -- Portal auth foundation
+17. `r5b6c7d8e9f0` -- Shipping provider metadata
 
 The `docker-entrypoint.sh` runs `flask db upgrade` automatically on web container startup, so schema updates are applied when a new version is deployed.
 

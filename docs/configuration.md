@@ -66,7 +66,7 @@ Environment variables are defined in the `.env` file (copied from `.env.example`
 
 ### Mail
 
-Email is fully implemented via `app/services/email_service.py` with Celery async delivery. SMTP settings are read from `SystemConfig` at send-time by default, but can be overridden with these environment variables:
+Email is fully implemented via `app/services/email_service.py` with Celery async delivery. SMTP settings are read from `SystemConfig` at send-time by default. These environment variables are optional overrides; they are not populated in `.env.example` because the admin UI is the primary configuration surface:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -75,6 +75,7 @@ Email is fully implemented via `app/services/email_service.py` with Celery async
 | `DSM_MAIL_USE_TLS` | `false` | Enable TLS for SMTP connections. |
 | `DSM_MAIL_USERNAME` | *(none)* | SMTP authentication username. |
 | `DSM_MAIL_PASSWORD` | *(none)* | SMTP authentication password. |
+| `DSM_MAIL_DEFAULT_SENDER` | *(none)* | Default sender address used when mail is enabled. |
 
 ### Database Maintenance
 
@@ -109,9 +110,9 @@ These environment variables, when set, override the corresponding database-store
 
 ## Database-Stored Settings
 
-System configuration is stored in the `system_config` table and managed via the Admin > Settings page. Each setting has a key, value, type, category, and description. The seed command creates 38 default entries on first run.
+System configuration is stored in the `system_config` table and managed via the Admin > Settings page. Each setting has a key, value, type, category, and description. The seed command creates 39 default entries on first run.
 
-Settings are resolved in order: ENV variable (if mapped) > database value > default. Settings are organized into 8 categories: company, invoice, tax, service, notification, email, display, and security.
+Settings are resolved in order: ENV variable (if mapped) > database value > default. Settings are organized into 9 categories: company, invoice, tax, service, notification, email, display, shipping, and security.
 
 ### Company Settings
 
@@ -180,6 +181,12 @@ Settings are resolved in order: ENV variable (if mapped) > database value > defa
 | `display.currency_symbol` | `$` | string | Currency symbol displayed before monetary values. |
 | `display.currency_code` | `USD` | string | ISO 4217 currency code. |
 | `display.pagination_size` | `25` | integer | Default number of rows per page in list views. |
+
+### Shipping Settings
+
+| Key | Default | Type | Description |
+|-----|---------|------|-------------|
+| `shipping.flat_rate_tiers` | `[{"max_weight": 5, "rate": "9.99"}, {"max_weight": 15, "rate": "14.99"}, {"max_weight": 30, "rate": "24.99"}, {"max_weight": 9999, "rate": "39.99"}]` | string | Flat-rate shipping tiers used by the shipping calculator and shipping quote service. Not currently exposed as a dedicated admin tab. |
 
 ### Security Settings
 
