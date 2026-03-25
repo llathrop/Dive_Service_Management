@@ -427,9 +427,9 @@
 **GitHub Issues**: #44 — closed
 **Tests**: 1458 total, all passing
 
-### Sprint 2026-03-22B (Wave 1-3 Complete, Wave 4 In Progress)
+### Sprint 2026-03-22B (Wave 1-4 Complete, Wave 5 In Progress)
 
-**Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Waves 1-3 are landed and pushed on `master`; Wave 4 is the next execution stage.
+**Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Waves 1-4 are landed and pushed on `master`; Wave 5 is now the active execution stage.
 
 **Wave 1: P1 Fixes + Quick-Win Features** (Complete)
 - [x] Security headers, secure session cookies, and rate limiting added
@@ -475,7 +475,7 @@
 - [x] 4A: PortalUser model + auth system (separate from Flask-Security)
 - [x] 4B: Portal dashboard + order tracking
 - [x] 4C: Portal invoice view + payment provider framework
-- [ ] 4D: Portal equipment view + admin invite management + email notifications
+- [x] 4D: Portal equipment view + admin invite management + email notifications
 
 **2026-03-24 Wave 4 Kickoff**
 - Reconciled planning docs on `master` so `PROGRESS.md`, `README.plan`, and `consolidated_todos.md` all point at Wave 4 as the active next stage
@@ -506,10 +506,16 @@
 - Reviewed the draft-invoice exposure issue, patched it on the feature branch, resolved a portal blueprint merge-conflict blocker, and merged via [PR #52](https://github.com/llathrop/Dive_Service_Management/pull/52)
 - Verified the portal invoice slice in the persistent Docker test container with `tests/blueprint/test_portal_invoices.py` + `tests/unit/services/test_portal_invoice_service.py` + `tests/unit/services/test_payment_provider_service.py` + `tests/test_utils/test_pdf.py`
 
-**2026-03-25 Wave 4D Status**
-- `feature/customer-portal-equipment-invites` is open as [PR #51](https://github.com/llathrop/Dive_Service_Management/pull/51) but is not merged yet
-- Dedicated QA/security review found unresolved merge-conflict markers in the branch plus unsafe portal exposure that required follow-up
-- The 4D worker is actively repairing the branch in `.claude/worktrees/agent-wave4d-portal-equipment-invites`; do not treat this lane as complete until the conflict-marker grep is clean and the targeted portal equipment/invite suite passes again
+**2026-03-25 Wave 4D Update**
+- Completed the portal equipment/invite slice in `.claude/worktrees/agent-wave4d-portal-equipment-invites`
+- Repaired the stale branch merge state, tightened portal equipment media to image attachments only after security review, and merged the lane via [PR #51](https://github.com/llathrop/Dive_Service_Management/pull/51)
+- Verified the portal equipment/invite slice in the persistent Docker test container with `tests/unit/services/test_portal_service.py` + `tests/blueprint/test_portal_equipment.py` + `tests/blueprint/test_customer_portal_invites.py` + `tests/blueprint/test_portal_auth.py` + `tests/blueprint/test_portal.py` + `tests/blueprint/test_portal_invoices.py` + `tests/test_utils/test_pdf.py`
+
+**2026-03-25 Wave 5 Kickoff**
+- Pulled remote GitHub backlog before the final wave: open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) is the only open issue and remains a follow-on expansion of the shipping framework unless reprioritized into a later sprint
+- Confirmed all Wave 4 feature lanes were shipped via remote PRs: [#48](https://github.com/llathrop/Dive_Service_Management/pull/48), [#50](https://github.com/llathrop/Dive_Service_Management/pull/50), [#52](https://github.com/llathrop/Dive_Service_Management/pull/52), and [#51](https://github.com/llathrop/Dive_Service_Management/pull/51)
+- Confirmed the only remaining open PR on GitHub is unrelated portal/gallery work [#45](https://github.com/llathrop/Dive_Service_Management/pull/45)
+- Started final-wave planning/doc reconciliation on a dedicated docs branch so `PROGRESS.md`, `README.plan`, and shared memory all reflect the post-Wave-4 state
 
 **Wave 5: Final Polish** (3 agents)
 - [ ] 5A: Capture missing screenshots

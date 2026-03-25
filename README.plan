@@ -156,23 +156,23 @@ The Admin System Settings and Data Management pages are being upgraded from read
 Historical planning waves above were completed iteratively and are no longer the active execution plan.
 The current source of truth for sprint execution status is `PROGRESS.md`.
 
-As of 2026-03-24:
+As of 2026-03-25:
 
-- Waves 1-3 of Sprint `2026-03-22B` are complete and pushed on `master`
-- The next execution stage is **Wave 4: Customer Portal**
-- Final follow-up stage after Wave 4 is **Wave 5: Final Polish**
+- Waves 1-4 of Sprint `2026-03-22B` are complete and pushed on `master`
+- The current execution stage is **Wave 5: Final Polish**
+- Open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) remains the only remote backlog item and is currently planned as a follow-on shipping expansion after the final wave unless reprioritized
+- Open PR [#45](https://github.com/llathrop/Dive_Service_Management/pull/45) is still active on GitHub but is unrelated to the Wave 4 portal rollout
 - Every new feature, fix, or docs lane now requires an isolated worktree, a remote feature branch, and a GitHub PR before merge to `master`
-- Remote issue intake is now part of active planning; open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) is a follow-on expansion of the shipping framework for real-time carriers
 - Recent Wave 3 recovery / Wave 4 kickoff direct pushes on `master` are a historical exception and are not cleanly backfillable into real review PRs without rewriting published history
 
-### Wave 4: Customer Portal (parallel)
+### Wave 4: Customer Portal (complete)
 
 - **4A: PortalUser model + separate auth system**: Portal accounts are separate from internal Flask-Security users and are linked to customers
 - **4B: Portal dashboard + order tracking**: Customer-facing order visibility, status timeline, and history
 - **4C: Portal invoice view + payment provider framework**: Customer-facing invoice access plus pluggable payment integration groundwork
 - **4D: Portal equipment view + invite/email flow**: Equipment history, invite activation, and customer notifications
 
-### Wave 5: Final Polish
+### Wave 5: Final Polish (active)
 
 - Capture missing screenshots
 - Finalize sprint documentation
