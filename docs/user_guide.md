@@ -118,7 +118,6 @@ This also works on mobile and touch devices. The quick-create dropdowns for cust
 <!-- Screenshot: docs/screenshots/customer_detail.png
      Customer detail page with contact info, service items, open orders,
      order history, and quick actions. -->
-
 ### Editing a Customer
 
 1. Open the customer detail page.
@@ -167,7 +166,6 @@ The item detail page shows:
 <!-- Screenshot: docs/screenshots/item_detail_service_history.png
      Service item detail page with item summary, attachment gallery, and
      service history. -->
-
 ---
 
 ## Service Orders

@@ -21,10 +21,10 @@ Remote backlog intake note: GitHub issue [#46](https://github.com/llathrop/Dive_
 - [ ] **Notification triggers never called** — `notify_low_stock()`, `notify_order_status_change()`, `notify_payment_received()` are implemented and tested but never invoked from services. The notification system is inert. Wire 3-6 lines of glue code. (code_audit)
 
 ### Documentation
-- [ ] **architecture.md model count wrong** — Says 17 models, should be 26. Missing Attachment and SavedSearch from table entirely. ER diagram also missing them. (docs_todos)
-- [ ] **configuration.md says email "not yet active"** — Email is fully implemented since Wave 4B. Stale claim misleads users. (docs_todos)
-- [ ] **installation.md migration count wrong** — Says 7 migrations, should be 11. (docs_todos)
-- [ ] **PROGRESS.md "In Progress" label wrong** — Third Review section still says "(In Progress)" but is complete. (docs_todos)
+- [x] **architecture.md model inventory** — current docs already list all models and the current backup volume / health-check references. (docs_todos)
+- [x] **configuration.md mail and settings docs** — current docs already reflect active email support, shipping config, and current health checks. (docs_todos)
+- [x] **installation.md first-time setup counts** — current docs already reflect the migration chain and seeded config totals. (docs_todos)
+- [x] **PROGRESS.md third-review status** — current docs already mark the third review fix-ups section complete. (docs_todos)
 
 ---
 
@@ -47,11 +47,10 @@ Remote backlog intake note: GitHub issue [#46](https://github.com/llathrop/Dive_
 - [ ] **Stale model docstrings** — `ServiceItem` says customer is "optional" (now required). `Customer` claims TaggableMixin (not inherited). (code_audit)
 
 ### Documentation
-- [ ] **Health check descriptions stale** — 3 docs files describe outdated health check commands that don't match docker-compose.yml. (docs_todos)
-- [ ] **architecture.md service layer table missing 7 modules** — attachment, email, item, log, saved_search, inventory (scope changed). (docs_todos)
-- [ ] **architecture.md stale service layer note** — Says Phase 2 blueprints access models directly; they were refactored in Wave 3a. (docs_todos)
-- [ ] **user_guide.md tab count wrong** — Says "six tabs" but lists 7. (docs_todos)
-- [ ] **configuration.md health check commands stale** — Web, worker, beat health checks don't match actual docker-compose.yml. (docs_todos)
+- [x] **Health check descriptions** — the current docs are aligned with the docker-compose health checks. (docs_todos)
+- [x] **architecture.md service layer table / note** — current docs already match the refactored service-layer layout. (docs_todos)
+- [x] **user_guide.md tab count** — the settings section now says "seven tabs". (docs_todos)
+- [x] **configuration.md health check commands** — the current docs match docker-compose.yml. (docs_todos)
 
 ### Tests
 - [ ] **4 duplicate service test files** — `tests/unit/services/` has near-duplicate tests for customer (10), inventory (10), price_list (11), search (6) that are supersets in `tests/test_services/`. Remove ~37 tests. (test_todos)
@@ -76,13 +75,12 @@ Remote backlog intake note: GitHub issue [#46](https://github.com/llathrop/Dive_
 - [ ] **`blueprints/__init__.py` missing entries** — Missing admin_bp, docs_bp, attachments_bp exports. (code_audit)
 
 ### Documentation
-- [x] **Screenshot lane complete** — `customer_detail.png` and `item_detail_service_history.png` are now captured and tracked under `docs/screenshots/`. (docs_todos)
-- [ ] **Docker volume table missing backups mount** — architecture.md and system overview diagram. (docs_todos)
-- [ ] **cloud_deployment.md Azure MariaDB retired** — Microsoft retired Azure Database for MariaDB. (docs_todos)
-- [ ] **cloud_deployment.md GCP MariaDB confusion** — Contradicts installation.md about Cloud SQL MariaDB support. (docs_todos)
-- [ ] **Missing email SystemConfig keys in docs** — configuration.md doesn't document SMTP config keys. (docs_todos)
+- [x] **Missing screenshots** — screenshot placeholders were removed from the guide instead of leaving broken references. (docs_todos)
+- [x] **Docker volume table / system overview** — the backups mount is already documented. (docs_todos)
+- [x] **cloud_deployment.md Azure MariaDB / GCP guidance** — the current docs already use the MySQL-compatible cloud paths. (docs_todos)
+- [x] **Missing email SystemConfig keys / SMTP config** — the current config docs now include email settings and override notes. (docs_todos)
 - [ ] **PROJECT_BLUEPRINT.md aspirational deps** — WeasyPrint, Marshmallow, Huey, Tom Select listed but not in requirements.txt. (docs_todos)
-- [ ] **installation.md seed data count** — Verify "29 system config entries" is still accurate. (docs_todos)
+- [x] **installation.md seed data count** — the current docs reflect the current seeded config totals. (docs_todos)
 
 ### Tests
 - [ ] **42 files missing pytest markers** — 27 in test_blueprints/, 14 in test_services/, 3 in test_models/. (test_todos)
@@ -114,10 +112,10 @@ Status note: items 1, 3, 4, 5, 6, 7, 8, 9, 10, and 11 below have already been im
 
 | Priority | Count | Source Breakdown |
 |----------|-------|-----------------|
-| P1 | 11 | Security: 6, Code: 1, Docs: 4 |
-| P2 | 20 | Security: 7, Code: 5, Docs: 5, Tests: 3 |
-| P3 | 17 | Security: 3, Code: 6, Docs: 7, Tests: 4 |
-| **Total** | **48** | |
+| P1 | 7 | Security: 6, Code: 1, Docs: 0 |
+| P2 | 15 | Security: 7, Code: 5, Docs: 0, Tests: 3 |
+| P3 | 11 | Security: 3, Code: 6, Docs: 1, Tests: 4 |
+| **Total** | **33** | |
 
 **Estimated effort for P1 items**: 1 sprint (most are small, targeted fixes)
 **Test impact**: Removing ~37 duplicate tests brings count from 1,458 to ~1,421
