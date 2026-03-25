@@ -262,6 +262,16 @@ function refreshGallery(type, id) {
     if (gallery) {
         htmx.ajax('GET', '/attachments/gallery/' + type + '/' + id, {target: gallery, swap: 'innerHTML'});
     }
+    if (type === 'service_item') {
+        refreshUnifiedGallery(id);
+    }
+}
+
+function refreshUnifiedGallery(id) {
+    const gallery = document.getElementById('unified-gallery-' + id);
+    if (gallery) {
+        htmx.ajax('GET', '/attachments/gallery/unified/' + id, {target: gallery, swap: 'innerHTML'});
+    }
 }
 
 function showError(type, id, msg) {

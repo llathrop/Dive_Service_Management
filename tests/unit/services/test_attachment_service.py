@@ -1,5 +1,7 @@
 """Unit tests for attachment service unified gallery function."""
 
+from datetime import date
+
 import pytest
 
 from app.services import attachment_service
@@ -108,3 +110,53 @@ class TestGetUnifiedAttachments:
         direct, order_atts = attachment_service.get_unified_attachments(item.id)
 
         assert len(order_atts) == 0
+
+    def test_excludes_deleted_orders(self, app, db_session):
+        """Attachments from soft-deleted service orders should be hidden."""
+        _set_session(db_session)
+        item = ServiceItemFactory()
+        visible_order = ServiceOrderFactory(
+            date_received=date(2026, 3, 10),
+        )
+        deleted_order = ServiceOrderFactory(
+            date_received=date(2026, 3, 11),
+            is_deleted=True,
+        )
+        visible_item = ServiceOrderItemFactory(order=visible_order, service_item=item)
+        deleted_item = ServiceOrderItemFactory(order=deleted_order, service_item=item)
+        AttachmentFactory(
+            attachable_type="service_order_item",
+            attachable_id=visible_item.id,
+        )
+        AttachmentFactory(
+            attachable_type="service_order_item",
+            attachable_id=deleted_item.id,
+        )
+
+        _, order_atts = attachment_service.get_unified_attachments(item.id)
+
+        assert [group["order_item"].id for group in order_atts] == [visible_item.id]
+
+    def test_orders_newest_first(self, app, db_session):
+        """Service-visit groups should follow the same newest-first ordering as history."""
+        _set_session(db_session)
+        item = ServiceItemFactory()
+        older_order = ServiceOrderFactory(date_received=date(2026, 3, 1))
+        newer_order = ServiceOrderFactory(date_received=date(2026, 3, 15))
+        older_item = ServiceOrderItemFactory(order=older_order, service_item=item)
+        newer_item = ServiceOrderItemFactory(order=newer_order, service_item=item)
+        AttachmentFactory(
+            attachable_type="service_order_item",
+            attachable_id=older_item.id,
+        )
+        AttachmentFactory(
+            attachable_type="service_order_item",
+            attachable_id=newer_item.id,
+        )
+
+        _, order_atts = attachment_service.get_unified_attachments(item.id)
+
+        assert [group["order_item"].id for group in order_atts] == [
+            newer_item.id,
+            older_item.id,
+        ]
