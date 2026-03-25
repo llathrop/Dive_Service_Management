@@ -3061,7 +3061,7 @@ At the end of each wave (after all tasks are merged), a dedicated security revie
 - **At wave milestones**: Run the full test suite to catch regressions (`pytest`)
 - **Pre-push**: Full suite must pass with no failures
 - **Docker-based testing preferred**: Use the persistent test container (`docker-compose.test-dev.yml`) to avoid rebuild overhead and permission issues
-- **Resource-capped test containers**: Run Docker test commands with `--env-file docker/test-resources.env`; regenerate sane host-based defaults with `./scripts/configure_test_resources.sh`
+- **Resource-capped test containers**: Regenerate sane host-based defaults with `./scripts/configure_test_resources.sh`, then run test Docker commands through `./scripts/test-compose.sh` so the checked-in caps file is required and shell overrides do not silently bypass it
 - **Coverage target**: 80% minimum (currently ~92%)
 
 ---

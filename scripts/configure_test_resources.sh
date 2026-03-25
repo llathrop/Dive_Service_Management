@@ -41,11 +41,18 @@ if (( CPU_LIMIT < 1 )); then
 fi
 
 MEMORY_LIMIT_MB=$(( TOTAL_MEM_MB / 4 ))
-if (( MEMORY_LIMIT_MB < 2048 )); then
-    MEMORY_LIMIT_MB=2048
+HALF_MEM_MB=$(( TOTAL_MEM_MB / 2 ))
+if (( MEMORY_LIMIT_MB < 512 )); then
+    MEMORY_LIMIT_MB=${HALF_MEM_MB}
+fi
+if (( MEMORY_LIMIT_MB < 256 )); then
+    MEMORY_LIMIT_MB=256
 fi
 if (( MEMORY_LIMIT_MB > 6144 )); then
     MEMORY_LIMIT_MB=6144
+fi
+if (( MEMORY_LIMIT_MB > HALF_MEM_MB )); then
+    MEMORY_LIMIT_MB=${HALF_MEM_MB}
 fi
 
 cat > "${OUTPUT_FILE}" <<EOF

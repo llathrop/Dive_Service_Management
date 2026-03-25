@@ -75,9 +75,9 @@ create-admin: ## Create an admin user interactively
 # Testing (Docker-based)
 # ---------------------------------------------------------------------------
 
-COMPOSE_TEST_ENV := --env-file docker/test-resources.env
-COMPOSE_TEST := docker compose $(COMPOSE_TEST_ENV) -f docker-compose.test.yml
-COMPOSE_TEST_DEV := docker compose $(COMPOSE_TEST_ENV) -f docker-compose.test-dev.yml
+COMPOSE_TEST_WRAPPER := ./scripts/test-compose.sh
+COMPOSE_TEST := $(COMPOSE_TEST_WRAPPER) -f docker-compose.test.yml
+COMPOSE_TEST_DEV := $(COMPOSE_TEST_WRAPPER) -f docker-compose.test-dev.yml
 
 .PHONY: test-resources-auto
 test-resources-auto: ## Recalculate docker test resource limits from this host

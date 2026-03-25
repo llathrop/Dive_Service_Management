@@ -129,15 +129,16 @@ python3 -m pytest --cov=app --cov-report=html
 ./scripts/configure_test_resources.sh
 
 # One-off test run
-docker compose --env-file docker/test-resources.env -f docker-compose.test.yml run --rm test
+./scripts/test-compose.sh -f docker-compose.test.yml run --rm test
 
 # Persistent test container (avoids rebuild overhead)
-docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml up -d test
-docker compose --env-file docker/test-resources.env -f docker-compose.test-dev.yml exec test pytest
+./scripts/test-compose.sh -f docker-compose.test-dev.yml up -d test
+./scripts/test-compose.sh -f docker-compose.test-dev.yml exec test pytest
 ```
 
 `docker/test-resources.env` is the single place to adjust CPU, memory, and PID caps later.
-The helper script defaults to half the detected host CPUs and one quarter of host RAM, capped at `6144m`.
+The helper script defaults to half the detected host CPUs and one quarter of host RAM.
+Very small hosts are clamped to no more than half of detected RAM, with a `256m` floor and a `6144m` ceiling.
 
 ## Project Structure
 

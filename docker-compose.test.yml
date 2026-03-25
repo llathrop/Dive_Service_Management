@@ -4,10 +4,11 @@
 # No external services (MariaDB, Redis) required for unit/smoke/blueprint tests.
 #
 # Usage:
-#   docker compose -f docker-compose.test.yml build
-#   docker compose -f docker-compose.test.yml run --rm test
-#   docker compose -f docker-compose.test.yml run --rm test pytest tests/ -v --cov=app
-#   docker compose -f docker-compose.test.yml run --rm test pytest tests/ -m smoke
+#   ./scripts/configure_test_resources.sh
+#   ./scripts/test-compose.sh -f docker-compose.test.yml build
+#   ./scripts/test-compose.sh -f docker-compose.test.yml run --rm test
+#   ./scripts/test-compose.sh -f docker-compose.test.yml run --rm test pytest tests/ -v --cov=app
+#   ./scripts/test-compose.sh -f docker-compose.test.yml run --rm test pytest tests/ -m smoke
 # =============================================================================
 
 services:
@@ -15,9 +16,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test
-    cpus: "${DSM_TEST_DOCKER_CPUS:-4}"
-    mem_limit: "${DSM_TEST_DOCKER_MEMORY:-6144m}"
-    pids_limit: "${DSM_TEST_DOCKER_PIDS_LIMIT:-512}"
+    cpus: "${DSM_TEST_DOCKER_CPUS:?Run ./scripts/configure_test_resources.sh or use ./scripts/test-compose.sh}"
+    mem_limit: "${DSM_TEST_DOCKER_MEMORY:?Run ./scripts/configure_test_resources.sh or use ./scripts/test-compose.sh}"
+    pids_limit: "${DSM_TEST_DOCKER_PIDS_LIMIT:?Run ./scripts/configure_test_resources.sh or use ./scripts/test-compose.sh}"
     environment:
       - DSM_ENV=testing
       - DSM_SECRET_KEY=test-secret-key-not-for-production
