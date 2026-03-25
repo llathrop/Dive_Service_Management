@@ -94,7 +94,7 @@ Remote backlog intake note: GitHub open issue [#46](https://github.com/llathrop/
 
 ## Feature Proposals (Discussion — Not Prioritized)
 
-Status note: items 1, 4, 5, 6, 7, 8, 9, and 10 below have already been implemented across Sprint `2026-03-22B` Waves 1-3. The primary remaining proposal in this section is the customer portal work (`3`), which is now the active next wave in `PROGRESS.md`.
+Status note: items 1, 3, 4, 5, 6, 7, 8, 9, and 10 below have already been implemented across Sprint `2026-03-22B` Waves 1-4. The primary remaining proposal in this section is the real-time carrier shipping expansion (`11`), which is tracked separately as remote issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46).
 
 1. **Wire notification triggers** — 3-6 lines of glue to call existing notify functions from inventory/order/invoice services. Immediate value.
 2. **Part linking UI** — Modal on price list detail to associate inventory parts. Enables auto-deduction.
