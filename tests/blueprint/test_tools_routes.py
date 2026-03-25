@@ -53,6 +53,11 @@ class TestUnauthenticated:
         assert response.status_code == 302
         assert "/login" in response.location
 
+    def test_shipping_calculator_unauthenticated_redirects(self, client):
+        response = client.get("/tools/shipping-calculator")
+        assert response.status_code == 302
+        assert "/login" in response.location
+
 
 # ---------------------------------------------------------------------------
 # Authenticated access
@@ -89,3 +94,24 @@ class TestAuthenticatedAccess:
     def test_converter(self, logged_in_client, app, db_session):
         response = logged_in_client.get("/tools/converter")
         assert response.status_code == 200
+
+    def test_shipping_calculator(self, logged_in_client, app, db_session):
+        response = logged_in_client.get("/tools/shipping-calculator")
+        assert response.status_code == 200
+        assert b"Shipping Calculator" in response.data
+        assert b"Local pickup stays at $0.00" in response.data
+
+    def test_shipping_calculator_estimate(self, logged_in_client, app, db_session):
+        response = logged_in_client.get(
+            "/tools/shipping-calculator/estimate?provider_code=fedex&shipping_method=fedex_ground&weight_lbs=8&destination_postal_code=90210&destination_country=US"
+        )
+        assert response.status_code == 200
+        assert b"FedEx" in response.data
+        assert b"90210" in response.data
+
+    def test_shipping_calculator_invalid_provider_shows_error(self, logged_in_client, app, db_session):
+        response = logged_in_client.get(
+            f"/tools/shipping-calculator/estimate?provider_code={'x' * 51}"
+        )
+        assert response.status_code == 200
+        assert b"Provider Code must be 50 characters or fewer." in response.data
