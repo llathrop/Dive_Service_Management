@@ -516,6 +516,7 @@
 - Confirmed all Wave 4 feature lanes were shipped via remote PRs: [#48](https://github.com/llathrop/Dive_Service_Management/pull/48), [#50](https://github.com/llathrop/Dive_Service_Management/pull/50), [#52](https://github.com/llathrop/Dive_Service_Management/pull/52), and [#51](https://github.com/llathrop/Dive_Service_Management/pull/51)
 - Confirmed the only remaining open PR on GitHub is unrelated portal/gallery work [#45](https://github.com/llathrop/Dive_Service_Management/pull/45)
 - Started final-wave planning/doc reconciliation on a dedicated docs branch so `PROGRESS.md`, `README.plan`, and shared memory all reflect the post-Wave-4 state
+- Merged follow-up [PR #56](https://github.com/llathrop/Dive_Service_Management/pull/56) after QA flagged that the new equipment portal surface was not discoverable from the shared nav or order detail view
 
 **Wave 5: Final Polish** (3 agents)
 - [ ] 5A: Capture missing screenshots
