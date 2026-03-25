@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from 'macros/forms.html' import render_field, render_submit %}
 
 {% block title %}Shipping - {{ order.order_number }} - Dive Service Management{% endblock %}
 
@@ -13,170 +12,182 @@
         <li class="breadcrumb-item active">Shipping</li>
       </ol>
     </nav>
-    <h1 class="h3 mb-0">Shipping Management</h1>
+    <h1 class="h3 mb-1">Shipping Management</h1>
+    <p class="text-muted mb-0">Capture provider-specific quotes and apply them directly to this order.</p>
   </div>
   <a href="{{ url_for('orders.detail', id=order.id) }}" class="btn btn-outline-secondary">
     <i class="bi bi-arrow-left me-1"></i> Back to Order
   </a>
 </div>
 
-{# ===== SHIPPING SUMMARY ===== #}
-{% if shipments %}
-<div class="card mb-4">
-  <div class="card-header">
-    <h5 class="card-title mb-0"><i class="bi bi-box-seam me-2"></i>Shipping Summary</h5>
-  </div>
-  <div class="card-body">
-    <div class="row">
-      <div class="col-md-4">
-        <p class="mb-1"><strong>Total Shipments:</strong> {{ shipments|length }}</p>
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0"><i class="bi bi-truck me-2"></i>Add Shipment</h5>
+        <span class="badge text-bg-light border">{{ providers|length }} providers enabled</span>
       </div>
-      <div class="col-md-4">
-        <p class="mb-1"><strong>Total Shipping Cost:</strong>
-          <span class="fw-bold text-success">${{ "%.2f"|format(shipping_total) }}</span>
-        </p>
+      <div class="card-body">
+        <form id="shipment-form" method="POST" action="{{ url_for('orders.create_shipment', id=order.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="provider_code" class="form-label">Provider</label>
+              <select class="form-select" id="provider_code" name="provider_code" data-shipping-input>
+                {% for provider in providers %}
+                <option value="{{ provider.code }}" {{ "selected" if provider.code == default_provider_code else "" }}>
+                  {{ provider.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="shipping_method" class="form-label">Service</label>
+              <select class="form-select" id="shipping_method" name="shipping_method" data-shipping-input></select>
+            </div>
+            <div class="col-md-4">
+              <label for="carrier" class="form-label">Display Carrier</label>
+              <input type="text" class="form-control" id="carrier" name="carrier"
+                     placeholder="Defaults to selected provider">
+            </div>
+
+            <div class="col-md-3">
+              <label for="weight_lbs" class="form-label">Weight (lbs)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="weight_lbs"
+                     name="weight_lbs" data-shipping-input>
+            </div>
+            <div class="col-md-3">
+              <label for="length_in" class="form-label">Length (in)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="length_in"
+                     name="length_in" data-shipping-input>
+            </div>
+            <div class="col-md-3">
+              <label for="width_in" class="form-label">Width (in)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="width_in"
+                     name="width_in" data-shipping-input>
+            </div>
+            <div class="col-md-3">
+              <label for="height_in" class="form-label">Height (in)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="height_in"
+                     name="height_in" data-shipping-input>
+            </div>
+
+            <div class="col-md-4">
+              <label for="destination_postal_code" class="form-label">Destination Postal Code</label>
+              <input type="text" class="form-control" id="destination_postal_code" name="destination_postal_code"
+                     value="{{ default_destination_postal_code }}" data-shipping-input>
+            </div>
+            <div class="col-md-4">
+              <label for="destination_country" class="form-label">Destination Country</label>
+              <input type="text" class="form-control" id="destination_country" name="destination_country"
+                     value="{{ default_destination_country }}" data-shipping-input>
+            </div>
+            <div class="col-md-4">
+              <label for="tracking_number" class="form-label">Tracking Number</label>
+              <input type="text" class="form-control" id="tracking_number" name="tracking_number">
+            </div>
+
+            <div class="col-12">
+              <label for="notes" class="form-label">Notes</label>
+              <textarea class="form-control" id="notes" name="notes" rows="2"
+                        placeholder="Optional shipping notes..."></textarea>
+            </div>
+          </div>
+
+          <div class="border rounded-3 p-3 mt-4 bg-body-tertiary">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-semibold">Live Quote</div>
+              <span class="small text-muted" id="shipping-weight-hint">{{ quote_placeholder }}</span>
+            </div>
+            <div id="shipping-quote">
+              {% set quote = None %}
+              {% set placeholder_text = quote_placeholder %}
+              {% include "partials/shipping_quote.html" %}
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-plus-circle me-1"></i> Create Shipment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-receipt-cutoff me-2"></i>Shipping Summary</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="text-muted small text-uppercase">Total Shipments</div>
+          <div class="fs-4 fw-bold">{{ shipments|length }}</div>
+        </div>
+        <div class="mb-3">
+          <div class="text-muted small text-uppercase">Billable Shipping</div>
+          <div class="fs-4 fw-bold text-success">${{ "%.2f"|format(shipping_total) }}</div>
+        </div>
+        <p class="text-muted small mb-0">Invoice previews and generated invoices include non-cancelled shipping totals automatically.</p>
       </div>
     </div>
   </div>
 </div>
-{% endif %}
 
-{# ===== ADD SHIPMENT FORM ===== #}
-<div class="card mb-4">
+<div class="card">
   <div class="card-header">
-    <h5 class="card-title mb-0"><i class="bi bi-plus-circle me-2"></i>Add Shipment</h5>
+    <h5 class="card-title mb-0"><i class="bi bi-box-seam me-2"></i>Shipments ({{ shipments|length }})</h5>
   </div>
   <div class="card-body">
-    <form method="POST" action="{{ url_for('orders.create_shipment', id=order.id) }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-      <div class="row g-3 mb-3">
-        <div class="col-md-3">
-          <label for="weight_lbs" class="form-label">Weight (lbs) <span class="text-danger">*</span></label>
-          <input type="number" step="0.01" min="0.01" class="form-control" id="weight_lbs"
-                 name="weight_lbs" required
-                 hx-get="{{ url_for('orders.shipping_estimate', id=order.id) }}"
-                 hx-trigger="keyup changed delay:500ms"
-                 hx-include="[name='length_in'], [name='width_in'], [name='height_in'], [name='shipping_method']"
-                 hx-target="#cost-estimate">
-        </div>
-        <div class="col-md-3">
-          <label for="length_in" class="form-label">Length (in)</label>
-          <input type="number" step="0.01" min="0" class="form-control" id="length_in" name="length_in">
-        </div>
-        <div class="col-md-3">
-          <label for="width_in" class="form-label">Width (in)</label>
-          <input type="number" step="0.01" min="0" class="form-control" id="width_in" name="width_in">
-        </div>
-        <div class="col-md-3">
-          <label for="height_in" class="form-label">Height (in)</label>
-          <input type="number" step="0.01" min="0" class="form-control" id="height_in" name="height_in">
-        </div>
-      </div>
-
-      <div class="row g-3 mb-3">
-        <div class="col-md-3">
-          <label for="shipping_method" class="form-label">Shipping Method</label>
-          <select class="form-select" id="shipping_method" name="shipping_method">
-            {% for m in methods %}
-            <option value="{{ m.code }}">{{ m.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="carrier" class="form-label">Carrier</label>
-          <input type="text" class="form-control" id="carrier" name="carrier"
-                 placeholder="e.g. UPS, FedEx, USPS">
-        </div>
-        <div class="col-md-3">
-          <label for="tracking_number" class="form-label">Tracking Number</label>
-          <input type="text" class="form-control" id="tracking_number" name="tracking_number">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Estimated Cost</label>
-          <div id="cost-estimate" class="form-control-plaintext">
-            <span class="text-muted">Enter weight to estimate cost</span>
+    {% if shipments %}
+      {% for shipment in shipments %}
+      {% set quote_data = shipment.quote_metadata or {} %}
+      {% set quote_meta = quote_data.get('metadata', {}) if quote_data is mapping else {} %}
+      <div class="border rounded-3 p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <h6 class="mb-1">
+              Shipment #{{ shipment.id }}
+              <span class="badge text-bg-light border ms-2">{{ shipment.status.replace('_', ' ')|title }}</span>
+            </h6>
+            <div class="text-muted small">
+              {{ quote_data.get('provider_name') or shipment.provider_code|default('Provider', true)|replace('_', ' ')|title }}
+              {% if quote_data.get('method_name') or shipment.shipping_method %}
+              · {{ quote_data.get('method_name') or shipment.shipping_method|replace('_', ' ')|title }}
+              {% endif %}
+            </div>
+          </div>
+          <div class="text-end">
+            <div class="fs-5 fw-bold text-success">${{ "%.2f"|format(shipment.shipping_cost or 0) }}</div>
+            <div class="text-muted small">{{ shipment.created_at.strftime('%m/%d/%Y %I:%M %p') if shipment.created_at else 'N/A' }}</div>
           </div>
         </div>
-      </div>
 
-      <div class="row g-3 mb-3">
-        <div class="col-md-12">
-          <label for="notes" class="form-label">Notes</label>
-          <textarea class="form-control" id="notes" name="notes" rows="2"
-                    placeholder="Optional shipping notes..."></textarea>
-        </div>
-      </div>
-
-      <button type="submit" class="btn btn-primary">
-        <i class="bi bi-plus-circle me-1"></i> Create Shipment
-      </button>
-    </form>
-  </div>
-</div>
-
-{# ===== EXISTING SHIPMENTS ===== #}
-{% if shipments %}
-<div class="card mb-4">
-  <div class="card-header">
-    <h5 class="card-title mb-0"><i class="bi bi-truck me-2"></i>Shipments ({{ shipments|length }})</h5>
-  </div>
-  <div class="card-body">
-    {% for shipment in shipments %}
-    <div class="border rounded p-3 mb-3">
-      <div class="d-flex justify-content-between align-items-start mb-2">
-        <div>
-          <h6 class="mb-1">
-            Shipment #{{ shipment.id }}
-            {% if shipment.status == 'pending' %}
-            <span class="badge bg-secondary ms-2">Pending</span>
-            {% elif shipment.status == 'shipped' %}
-            <span class="badge bg-info ms-2">Shipped</span>
-            {% elif shipment.status == 'in_transit' %}
-            <span class="badge bg-primary ms-2">In Transit</span>
-            {% elif shipment.status == 'delivered' %}
-            <span class="badge bg-success ms-2">Delivered</span>
-            {% elif shipment.status == 'cancelled' %}
-            <span class="badge bg-danger ms-2">Cancelled</span>
+        <div class="row small g-2 mb-3">
+          <div class="col-md-3"><strong>Weight:</strong> {{ shipment.weight_lbs or "N/A" }} lbs</div>
+          <div class="col-md-3">
+            <strong>Dimensions:</strong>
+            {% if shipment.length_in and shipment.width_in and shipment.height_in %}
+              {{ shipment.length_in }}" x {{ shipment.width_in }}" x {{ shipment.height_in }}"
+            {% else %}
+              N/A
             {% endif %}
-          </h6>
-          <p class="text-muted small mb-0">
-            Created {{ shipment.created_at.strftime('%m/%d/%Y %I:%M %p') if shipment.created_at else 'N/A' }}
-          </p>
+          </div>
+          <div class="col-md-3"><strong>Carrier:</strong> {{ shipment.carrier or quote_data.get('provider_name') or "N/A" }}</div>
+          <div class="col-md-3"><strong>Tracking:</strong> {{ shipment.tracking_number or "Not assigned" }}</div>
+          <div class="col-md-3"><strong>Destination:</strong> {{ quote_meta.get('destination_summary') or "N/A" }}</div>
+          <div class="col-md-3"><strong>ETA:</strong> {{ quote_meta.get('estimated_delivery_days') or "N/A" }}</div>
+          <div class="col-md-3"><strong>Provider Code:</strong> {{ shipment.provider_code or "N/A" }}</div>
+          <div class="col-md-3"><strong>Method Code:</strong> {{ shipment.shipping_method or "N/A" }}</div>
         </div>
-        <div class="text-end">
-          <span class="h5 text-success">${{ "%.2f"|format(shipment.shipping_cost or 0) }}</span>
-        </div>
-      </div>
 
-      <div class="row small mb-2">
-        <div class="col-md-3">
-          <strong>Weight:</strong> {{ shipment.weight_lbs }} lbs
-        </div>
-        {% if shipment.length_in and shipment.width_in and shipment.height_in %}
-        <div class="col-md-3">
-          <strong>Dimensions:</strong>
-          {{ shipment.length_in }}" x {{ shipment.width_in }}" x {{ shipment.height_in }}"
-        </div>
+        {% if shipment.notes %}
+        <p class="small mb-3"><strong>Notes:</strong> {{ shipment.notes }}</p>
         {% endif %}
-        {% if shipment.carrier %}
-        <div class="col-md-3">
-          <strong>Carrier:</strong> {{ shipment.carrier }}
-        </div>
-        {% endif %}
-        {% if shipment.tracking_number %}
-        <div class="col-md-3">
-          <strong>Tracking:</strong> {{ shipment.tracking_number }}
-        </div>
-        {% endif %}
-      </div>
 
-      {% if shipment.notes %}
-      <p class="small mb-2"><strong>Notes:</strong> {{ shipment.notes }}</p>
-      {% endif %}
-
-      {# Update form #}
-      <div class="border-top pt-2 mt-2">
         <form method="POST" action="{{ url_for('orders.update_shipment', id=order.id, shipment_id=shipment.id) }}" class="row g-2 align-items-end">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="col-md-3">
@@ -219,14 +230,95 @@
           </div>
         </form>
       </div>
+      {% endfor %}
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <i class="bi bi-box-seam" style="font-size: 2rem;"></i>
+      <p class="mt-2 mb-0">No shipments configured for this order yet.</p>
     </div>
-    {% endfor %}
+    {% endif %}
   </div>
 </div>
-{% else %}
-<div class="text-center text-muted py-4">
-  <i class="bi bi-box-seam" style="font-size: 2rem;"></i>
-  <p class="mt-2">No shipments configured for this order yet.</p>
-</div>
-{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const providers = {{ providers|tojson }};
+  const providerMap = Object.fromEntries(providers.map((provider) => [provider.code, provider]));
+  const form = document.getElementById("shipment-form");
+  if (!form) return;
+
+  const estimateUrl = {{ url_for('orders.shipping_estimate', id=order.id)|tojson }};
+  const providerInput = form.querySelector("[name='provider_code']");
+  const methodInput = form.querySelector("[name='shipping_method']");
+  const carrierInput = form.querySelector("[name='carrier']");
+  const quoteTarget = document.getElementById("shipping-quote");
+  const weightHint = document.getElementById("shipping-weight-hint");
+
+  function getSelectedProvider() {
+    return providerMap[providerInput.value] || providers[0];
+  }
+
+  function syncMethods() {
+    const provider = getSelectedProvider();
+    const methods = provider.methods || [];
+    const current = methodInput.value;
+    methodInput.innerHTML = "";
+    methods.forEach((method) => {
+      const option = document.createElement("option");
+      option.value = method.code;
+      option.textContent = method.name;
+      methodInput.appendChild(option);
+    });
+    methodInput.value = methods.some((method) => method.code === current)
+      ? current
+      : (provider.default_method_code || (methods[0] && methods[0].code) || "");
+
+    if (!carrierInput.value.trim()) {
+      carrierInput.value = provider.name || "";
+    }
+    weightHint.textContent = provider.requires_weight
+      ? "Weight is required for this provider."
+      : "Local pickup can be created without package weight.";
+  }
+
+  async function refreshQuote() {
+    const params = new URLSearchParams();
+    ["provider_code", "shipping_method", "weight_lbs", "length_in", "width_in", "height_in", "destination_postal_code", "destination_country"]
+      .forEach((field) => {
+        const input = form.querySelector(`[name='${field}']`);
+        if (input && input.value.trim()) {
+          params.set(field, input.value.trim());
+        }
+      });
+
+    const response = await fetch(`${estimateUrl}?${params.toString()}`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+    quoteTarget.innerHTML = await response.text();
+  }
+
+  form.querySelectorAll("[data-shipping-input]").forEach((input) => {
+    const eventName = input.tagName === "SELECT" ? "change" : "input";
+    input.addEventListener(eventName, () => {
+      if (input === providerInput) {
+        syncMethods();
+      }
+      refreshQuote();
+    });
+    if (eventName !== "change") {
+      input.addEventListener("change", () => {
+        if (input === providerInput) {
+          syncMethods();
+        }
+        refreshQuote();
+      });
+    }
+  });
+
+  syncMethods();
+  refreshQuote();
+})();
+</script>
 {% endblock %}

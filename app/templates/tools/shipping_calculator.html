@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Shipping Calculator - Dive Service Management{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+      <li class="breadcrumb-item"><a href="{{ url_for('tools.hub') }}">Tools</a></li>
+      <li class="breadcrumb-item active">Shipping Calculator</li>
+    </ol>
+  </nav>
+  <h1 class="h3 mb-1">Shipping Calculator</h1>
+  <p class="text-muted mb-0">Compare configured providers with package dimensions and destination details.</p>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-globe-americas me-2"></i>Quote Inputs</h5>
+      </div>
+      <div class="card-body">
+        <form id="shipping-calculator-form">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="calc_provider_code" class="form-label">Provider</label>
+              <select class="form-select" id="calc_provider_code" name="provider_code" data-shipping-input>
+                {% for provider in providers %}
+                <option value="{{ provider.code }}" {{ "selected" if provider.code == default_provider_code else "" }}>
+                  {{ provider.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="calc_shipping_method" class="form-label">Service</label>
+              <select class="form-select" id="calc_shipping_method" name="shipping_method" data-shipping-input></select>
+            </div>
+            <div class="col-md-3">
+              <label for="calc_weight_lbs" class="form-label">Weight (lbs)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="calc_weight_lbs" name="weight_lbs" data-shipping-input>
+            </div>
+            <div class="col-md-3">
+              <label for="calc_length_in" class="form-label">Length (in)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="calc_length_in" name="length_in" data-shipping-input>
+            </div>
+            <div class="col-md-3">
+              <label for="calc_width_in" class="form-label">Width (in)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="calc_width_in" name="width_in" data-shipping-input>
+            </div>
+            <div class="col-md-3">
+              <label for="calc_height_in" class="form-label">Height (in)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="calc_height_in" name="height_in" data-shipping-input>
+            </div>
+            <div class="col-md-6">
+              <label for="calc_destination_postal_code" class="form-label">Destination Postal Code</label>
+              <input type="text" class="form-control" id="calc_destination_postal_code" name="destination_postal_code" data-shipping-input>
+            </div>
+            <div class="col-md-6">
+              <label for="calc_destination_country" class="form-label">Destination Country</label>
+              <input type="text" class="form-control" id="calc_destination_country" name="destination_country"
+                     value="{{ default_destination_country }}" data-shipping-input>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0"><i class="bi bi-currency-dollar me-2"></i>Estimated Quote</h5>
+        <span class="small text-muted" id="calculator-weight-hint">{{ quote_placeholder }}</span>
+      </div>
+      <div class="card-body">
+        <div id="shipping-calculator-quote">
+          <span class="text-muted">{{ quote_placeholder }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const providers = {{ providers|tojson }};
+  const providerMap = Object.fromEntries(providers.map((provider) => [provider.code, provider]));
+  const form = document.getElementById("shipping-calculator-form");
+  if (!form) return;
+
+  const estimateUrl = {{ url_for('tools.shipping_calculator_estimate')|tojson }};
+  const providerInput = form.querySelector("[name='provider_code']");
+  const methodInput = form.querySelector("[name='shipping_method']");
+  const quoteTarget = document.getElementById("shipping-calculator-quote");
+  const weightHint = document.getElementById("calculator-weight-hint");
+
+  function getSelectedProvider() {
+    return providerMap[providerInput.value] || providers[0];
+  }
+
+  function syncMethods() {
+    const provider = getSelectedProvider();
+    const methods = provider.methods || [];
+    const current = methodInput.value;
+    methodInput.innerHTML = "";
+    methods.forEach((method) => {
+      const option = document.createElement("option");
+      option.value = method.code;
+      option.textContent = method.name;
+      methodInput.appendChild(option);
+    });
+    methodInput.value = methods.some((method) => method.code === current)
+      ? current
+      : (provider.default_method_code || (methods[0] && methods[0].code) || "");
+    weightHint.textContent = provider.requires_weight
+      ? "Weight is required for this provider."
+      : "Local pickup quotes immediately at $0.00.";
+  }
+
+  async function refreshQuote() {
+    const params = new URLSearchParams();
+    ["provider_code", "shipping_method", "weight_lbs", "length_in", "width_in", "height_in", "destination_postal_code", "destination_country"]
+      .forEach((field) => {
+        const input = form.querySelector(`[name='${field}']`);
+        if (input && input.value.trim()) {
+          params.set(field, input.value.trim());
+        }
+      });
+
+    const response = await fetch(`${estimateUrl}?${params.toString()}`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+    quoteTarget.innerHTML = await response.text();
+  }
+
+  form.querySelectorAll("[data-shipping-input]").forEach((input) => {
+    const eventName = input.tagName === "SELECT" ? "change" : "input";
+    input.addEventListener(eventName, () => {
+      if (input === providerInput) {
+        syncMethods();
+      }
+      refreshQuote();
+    });
+    if (eventName !== "change") {
+      input.addEventListener("change", () => {
+        if (input === providerInput) {
+          syncMethods();
+        }
+        refreshQuote();
+      });
+    }
+  });
+
+  syncMethods();
+  refreshQuote();
+})();
+</script>
+{% endblock %}

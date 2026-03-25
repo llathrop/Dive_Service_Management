@@ -29,8 +29,10 @@ class Shipment(TimestampMixin, AuditMixin, db.Model):
     height_in = db.Column(db.Numeric(8, 2), nullable=True)
 
     # Shipping details
+    provider_code = db.Column(db.String(50), nullable=True)
     shipping_method = db.Column(db.String(100), nullable=True)
     shipping_cost = db.Column(db.Numeric(10, 2), nullable=True)
+    quote_metadata = db.Column(db.JSON, nullable=True, default=dict)
     tracking_number = db.Column(db.String(255), nullable=True)
     carrier = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(50), default="pending", nullable=False)
