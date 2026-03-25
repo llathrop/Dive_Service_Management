@@ -40,12 +40,16 @@ def test_get_customer_dashboard_scopes_orders(app, db_session):
     """The portal dashboard should only include the customer's own orders."""
     customer = CustomerFactory(first_name="Portal", last_name="Owner")
     other_customer = CustomerFactory(first_name="Other", last_name="Owner")
+    visible_item = ServiceItemFactory(customer=customer, name="Visible Item")
+    leaked_item = ServiceItemFactory(customer=other_customer, name="Do Not Leak")
 
     active_order = ServiceOrderFactory(
         customer=customer,
         status="ready_for_pickup",
         date_received=date(2026, 3, 1),
     )
+    ServiceOrderItemFactory(order=active_order, service_item=visible_item)
+    ServiceOrderItemFactory(order=active_order, service_item=leaked_item)
     recent_order = ServiceOrderFactory(customer=customer, status="completed", date_received=date(2026, 2, 28))
     ServiceOrderFactory(customer=other_customer, status="intake", date_received=date(2026, 3, 2))
     db_session.commit()
@@ -56,6 +60,8 @@ def test_get_customer_dashboard_scopes_orders(app, db_session):
     assert dashboard["recent_count"] == 2
     assert [order["id"] for order in dashboard["active_orders"]] == [active_order.id]
     assert [order["id"] for order in dashboard["recent_orders"]] == [active_order.id, recent_order.id]
+    assert dashboard["active_orders"][0]["item_names"] == ["Visible Item"]
+    assert dashboard["active_orders"][0]["item_count"] == 1
 
 
 def test_get_customer_order_rejects_other_customer_order(app, db_session):
