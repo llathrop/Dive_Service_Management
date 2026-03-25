@@ -160,7 +160,7 @@
 - [x] Alembic migration for Phases 3-5 (11 tables: service_orders, service_order_items, service_notes, applied_services, parts_used, labor_entries, invoices, invoice_orders, invoice_line_items, payments, notifications)
 - [x] Dockerfile verified: multi-stage build, non-root user, health check, proper gunicorn config
 - [x] docker-compose.yml verified: health checks, service dependencies, restart policies, named volumes
-- [x] .env.example verified: all active DSM_ variables documented (mail vars deferred — not yet active)
+- [x] .env.example verified: all active DSM_ variables documented (mail settings are active and documented through SystemConfig with optional DSM_MAIL_* overrides)
 - [x] config.py verified: ProductionConfig disables DEBUG, argon2 password hashing, proper SECRET_KEY handling
 - [x] Makefile updated: added export-test and lint targets
 - [x] All 15 blueprints registered and wired (admin, auth, customers, dashboard, export, health, inventory, invoices, items, notifications, orders, price_list, reports, search, tools)
@@ -294,11 +294,11 @@
 - SystemConfig model (`system_config` table per PROJECT_BLUEPRINT.md section 9.3)
 - Alembic migration for new table
 - `config_service.py` with `get_config(key)`, `set_config(key, value)`, type coercion, ENV override locking
-- Seed ~25 default config entries via `flask seed-db` (company, invoice, tax, service, notification, display, security categories)
+- Seed 39 default config entries via `flask seed-db` (company, invoice, tax, service, notification, email, display, shipping, security categories)
 - ~25 tests covering model, service, seeding, ENV override behavior
 
 **PR B: Editable Settings UI**
-- Replace read-only settings.html with tabbed form layout (6 tabs: Company, Service, Invoice/Tax, Display, Notifications, Security)
+- Replace read-only settings.html with tabbed form layout (7 tabs: Company, Service, Invoice/Tax, Display, Notifications, Email, Security)
 - WTForms for each settings category, pre-populated from `config_service`
 - POST routes to save settings back to `system_config` table
 - ENV-locked settings shown as read-only with explanation
@@ -339,7 +339,7 @@
 **Wave 1: High Impact** (3 parallel agents)
 - [x] **1a: Wire audit logging** — `audit_service.log_action()` wired into all 7 write-path blueprints + order_service + invoice_service. 21 new tests.
 - [x] **1b: PDF invoice generation** — `app/utils/pdf.py` with fpdf2, invoice PDF route (`/invoices/<id>/pdf`), price list PDF route (`/price-list/pdf`). 35 new tests.
-- [x] **1c: Documentation suite** — `docs/architecture.md` (469 lines), `docs/user_guide.md` (539 lines), `docs/installation.md` (481 lines), `docs/configuration.md` (344 lines).
+- [x] **1c: Documentation suite** — `docs/architecture.md` (497 lines), `docs/user_guide.md` (544 lines), `docs/installation.md` (579 lines), `docs/configuration.md` (376 lines).
 
 **Wave 2: Medium Impact** (4 parallel agents)
 - [x] **2a: Dashboard activity feed** — live audit log feed on dashboard with HTMX polling (60s), action badges, entity links. 14 new tests.
@@ -417,7 +417,7 @@
 
 **Wave B: Comprehensive Project Review** (4 parallel agents)
 - [x] **Code audit** — Found 3 P1 (unwired notification triggers), 12 P2 (unused service functions, inconsistent update patterns), 7 P3 (dead templates/forms, stale comments). No TODOs/FIXMEs remaining. 10 feature proposals generated.
-- [x] **Documentation audit** — 27 findings (6 P1, 9 P2, 12 P3). Stale model counts, outdated health check descriptions, email system misclaimed as inactive, missing screenshots.
+- [x] **Documentation audit** — 27 findings (6 P1, 9 P2, 12 P3). Stale model counts, outdated health check descriptions, and email system misclaimed as inactive were identified and later resolved in the Wave 5B docs-finalization lane.
 - [x] **Test suite review** — ~37 duplicate tests identified across 4 service test files. 42 files missing pytest markers. No blueprint or model test overlap despite dual directories. conftest duplication with MariaDB.
 - [x] **Security audit** — 0 P0, 7 P1 (missing CSRF on 2 forms, no security headers, export/reports lack role restrictions, no rate limiting), 8 P2, 8 P3. No SQL injection, XSS, or critical vulnerabilities found.
 

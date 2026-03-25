@@ -265,11 +265,11 @@ The general approach for cloud deployment:
 
 When the application starts for the first time, the following happens automatically:
 
-1. **Database migration**: `flask db upgrade` creates all tables from the migration chain (10 migrations total).
+1. **Database migration**: `flask db upgrade` creates all tables from the migration chain (17 migrations total).
 2. **Seed data**: `flask seed-db` creates:
    - 3 roles: admin, technician, viewer
    - 6 price list categories: Drysuit Repairs, Seal Replacement, Zipper Service, Valve Service, Testing & Inspection, General Service
-   - 38 system config entries across 8 categories (company, invoice, tax, service, notification, email, display, security)
+   - 39 system config entries across 9 categories (company, invoice, tax, service, notification, email, display, shipping, security)
    - 3 demo users (development/testing mode only)
 3. **Admin account**: In production mode, no demo users are created. Run `flask create-admin` to create your first admin user:
 
