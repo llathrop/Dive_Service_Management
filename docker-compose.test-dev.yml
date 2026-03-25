@@ -4,17 +4,18 @@
 # Uses SQLite in-memory (no MariaDB/Redis needed).
 #
 # Usage:
-#   docker compose -f docker-compose.test-dev.yml up -d
-#   docker compose -f docker-compose.test-dev.yml exec test pytest
-#   docker compose -f docker-compose.test-dev.yml exec test pytest tests/unit/ -v
-#   docker compose -f docker-compose.test-dev.yml exec test pytest -k "test_customer"
-#   docker compose -f docker-compose.test-dev.yml exec test pytest --cov=app
+#   ./scripts/configure_test_resources.sh
+#   ./scripts/test-compose.sh -f docker-compose.test-dev.yml up -d
+#   ./scripts/test-compose.sh -f docker-compose.test-dev.yml exec test pytest
+#   ./scripts/test-compose.sh -f docker-compose.test-dev.yml exec test pytest tests/unit/ -v
+#   ./scripts/test-compose.sh -f docker-compose.test-dev.yml exec test pytest -k "test_customer"
+#   ./scripts/test-compose.sh -f docker-compose.test-dev.yml exec test pytest --cov=app
 #
 # The container stays running. Re-run tests instantly without rebuild.
 # Source code changes are reflected immediately via volume mounts.
 #
 # To rebuild after dependency changes:
-#   docker compose -f docker-compose.test-dev.yml build test
+#   ./scripts/test-compose.sh -f docker-compose.test-dev.yml build test
 # =============================================================================
 
 services:
@@ -22,6 +23,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test-dev
+    cpus: "${DSM_TEST_DOCKER_CPUS:?Run ./scripts/configure_test_resources.sh or use ./scripts/test-compose.sh}"
+    mem_limit: "${DSM_TEST_DOCKER_MEMORY:?Run ./scripts/configure_test_resources.sh or use ./scripts/test-compose.sh}"
+    pids_limit: "${DSM_TEST_DOCKER_PIDS_LIMIT:?Run ./scripts/configure_test_resources.sh or use ./scripts/test-compose.sh}"
     volumes:
       - ./app:/app/app
       - ./tests:/app/tests

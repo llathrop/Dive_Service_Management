@@ -75,7 +75,29 @@ create-admin: ## Create an admin user interactively
 # Testing (Docker-based)
 # ---------------------------------------------------------------------------
 
-COMPOSE_TEST := docker compose -f docker-compose.test.yml
+COMPOSE_TEST_WRAPPER := ./scripts/test-compose.sh
+COMPOSE_TEST := $(COMPOSE_TEST_WRAPPER) -f docker-compose.test.yml
+COMPOSE_TEST_DEV := $(COMPOSE_TEST_WRAPPER) -f docker-compose.test-dev.yml
+
+.PHONY: test-resources-auto
+test-resources-auto: ## Recalculate docker test resource limits from this host
+	./scripts/configure_test_resources.sh
+
+.PHONY: test-dev-up
+test-dev-up: ## Start the persistent test container with capped resources
+	$(COMPOSE_TEST_DEV) up -d test
+
+.PHONY: test-dev-down
+test-dev-down: ## Stop the persistent test container
+	$(COMPOSE_TEST_DEV) down
+
+.PHONY: test-dev-build
+test-dev-build: ## Build the persistent test container
+	$(COMPOSE_TEST_DEV) build test
+
+.PHONY: test-dev-exec
+test-dev-exec: ## Open a shell in the persistent test container
+	$(COMPOSE_TEST_DEV) exec test bash
 
 .PHONY: test-build
 test-build: ## Build the test container
