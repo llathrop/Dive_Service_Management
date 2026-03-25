@@ -1,0 +1,34 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Portal Dashboard - {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="portal-card rounded-4 p-4 p-lg-5">
+      <div class="portal-caption text-muted mb-2">Portal dashboard</div>
+      <h1 class="h2 mb-3">Welcome, {{ portal_current_user.display_name }}</h1>
+      <p class="text-muted mb-0">
+        This is the portal foundation. Customer-specific orders, invoices, and equipment
+        views will land here in the next wave.
+      </p>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="portal-card rounded-4 p-4 p-lg-5 h-100">
+      <h2 class="h5 mb-3">Account</h2>
+      <dl class="row mb-0">
+        <dt class="col-5 text-muted">Email</dt>
+        <dd class="col-7">{{ portal_current_user.email }}</dd>
+        <dt class="col-5 text-muted">Customer</dt>
+        <dd class="col-7">{{ portal_current_user.customer.display_name }}</dd>
+        <dt class="col-5 text-muted">Status</dt>
+        <dd class="col-7">
+          <span class="badge text-bg-success">Active</span>
+        </dd>
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

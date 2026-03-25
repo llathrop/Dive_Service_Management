@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Customer Portal - Dive Service Management{% endblock %}</title>
+  <link href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap-icons.min.css') }}" rel="stylesheet">
+  <style>
+    :root {
+      --portal-ink: #10233d;
+      --portal-accent: #2f7cff;
+      --portal-accent-2: #14b8a6;
+      --portal-surface: rgba(255, 255, 255, 0.92);
+    }
+
+    body.portal-shell {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(47, 124, 255, 0.22), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.18), transparent 30%),
+        linear-gradient(135deg, #081120 0%, #10233d 48%, #173660 100%);
+      color: #f8fbff;
+    }
+
+    .portal-shell__wrap {
+      position: relative;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .portal-shell__glow {
+      position: absolute;
+      inset: auto auto 10% 5%;
+      width: 18rem;
+      height: 18rem;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(47, 124, 255, 0.28), transparent 70%);
+      filter: blur(12px);
+      pointer-events: none;
+    }
+
+    .portal-card {
+      background: var(--portal-surface);
+      color: var(--portal-ink);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.25);
+    }
+
+    .portal-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .portal-brand__mark {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--portal-accent), var(--portal-accent-2));
+      color: white;
+      box-shadow: 0 0.85rem 1.8rem rgba(47, 124, 255, 0.35);
+    }
+
+    .portal-caption {
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 0.74rem;
+      color: rgba(248, 251, 255, 0.72);
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="portal-shell">
+  <div class="portal-shell__wrap">
+    <div class="portal-shell__glow"></div>
+
+    <div class="container py-4 py-lg-5 position-relative">
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <a class="portal-brand" href="{{ url_for('portal.index') }}">
+          <span class="portal-brand__mark">
+            <i class="bi bi-water"></i>
+          </span>
+          <span>
+            <span class="portal-caption d-block">Customer Portal</span>
+            <strong class="fs-5">{{ company_name }}</strong>
+          </span>
+        </a>
+
+        {% if portal_current_user.is_authenticated %}
+        <form method="POST" action="{{ url_for('portal.logout') }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-box-arrow-right me-1"></i> Sign out
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-4">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+                 role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='vendor/bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>
