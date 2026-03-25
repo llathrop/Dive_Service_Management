@@ -495,6 +495,12 @@
 - `tests/unit/models/test_portal_user.py` + `tests/blueprint/test_portal_auth.py` + `tests/blueprint/test_auth_routes.py` + `tests/unit/test_user_model.py`: passed
 - Created fresh implementation worktrees from merged `master` for 4B portal orders/dashboard, 4C portal invoices/payments, and 4D portal equipment/invites, then launched new worker lanes for those slices
 
+**2026-03-24 Wave 4D Update**
+- Completed the portal equipment + admin invite/email slice in `.claude/worktrees/agent-wave4d-portal-equipment-invites`
+- Pushed `feature/customer-portal-equipment-invites` and opened [PR #51](https://github.com/llathrop/Dive_Service_Management/pull/51)
+- Verified the slice in the persistent Docker test container with portal service, equipment, invite, auth, and customer-order regression tests
+- Kept the change slice-local: no broad portal shell/dashboard ownership was taken from 4B beyond minimal shared portal helpers
+
 **Wave 5: Final Polish** (3 agents)
 - [ ] 5A: Capture missing screenshots
 - [ ] 5B: Sprint documentation finalization
