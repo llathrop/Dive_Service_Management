@@ -7,6 +7,7 @@ and stored in a separate session key.
 
 import os
 from datetime import datetime
+from io import BytesIO
 from functools import wraps
 from urllib.parse import urljoin, urlparse
 
@@ -30,7 +31,7 @@ from app.models.portal_user import (
     PortalAccessToken,
     PortalUser,
 )
-from app.services import attachment_service, portal_service
+from app.services import attachment_service, portal_invoice_service, portal_service
 
 portal_bp = Blueprint("portal", __name__, url_prefix="/portal")
 
@@ -226,6 +227,62 @@ def equipment_media(item_id, attachment_id):
         mimetype=attachment.mime_type,
         as_attachment=False,
         download_name=attachment.filename,
+    )
+
+
+@portal_bp.route("/invoices")
+@portal_login_required
+def invoices():
+    customer_id = getattr(portal_current_user.customer, "id", None)
+    if customer_id is None:
+        abort(404)
+
+    page = request.args.get("page", 1, type=int)
+    pagination = portal_invoice_service.get_customer_invoices(
+        customer_id,
+        page=page,
+        per_page=10,
+    )
+    return render_template(
+        "portal/invoices/list.html",
+        invoices=pagination,
+    )
+
+
+@portal_bp.route("/invoices/<int:invoice_id>")
+@portal_login_required
+def invoice_detail(invoice_id):
+    customer_id = getattr(portal_current_user.customer, "id", None)
+    if customer_id is None:
+        abort(404)
+
+    view = portal_invoice_service.get_customer_invoice_view(customer_id, invoice_id)
+    if view is None:
+        abort(404)
+
+    return render_template("portal/invoices/detail.html", **view)
+
+
+@portal_bp.route("/invoices/<int:invoice_id>/pdf")
+@portal_login_required
+def invoice_pdf(invoice_id):
+    customer_id = getattr(portal_current_user.customer, "id", None)
+    if customer_id is None:
+        abort(404)
+
+    invoice = portal_invoice_service.get_customer_invoice(customer_id, invoice_id)
+    if invoice is None:
+        abort(404)
+
+    from app.utils.pdf import generate_portal_invoice_pdf
+
+    pdf_bytes = generate_portal_invoice_pdf(invoice)
+    filename = f"{invoice.invoice_number}.pdf"
+    return send_file(
+        BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=filename,
     )
 
 

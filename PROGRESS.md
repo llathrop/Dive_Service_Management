@@ -473,8 +473,8 @@
 
 **Wave 4: Customer Portal** (4 parallel agents)
 - [x] 4A: PortalUser model + auth system (separate from Flask-Security)
-- [ ] 4B: Portal dashboard + order tracking
-- [ ] 4C: Portal invoice view + payment provider framework
+- [x] 4B: Portal dashboard + order tracking
+- [x] 4C: Portal invoice view + payment provider framework
 - [ ] 4D: Portal equipment view + admin invite management + email notifications
 
 **2026-03-24 Wave 4 Kickoff**
@@ -485,6 +485,7 @@
   - 4B order/dashboard integration discovery
   - 4C invoice/payment integration discovery
   - 4D equipment/invite/email integration discovery
+- 4C invoice/payment implementation is now active in `.claude/worktrees/agent-wave4c-portal-invoices` on `feature/customer-portal-invoices`; it will ship as its own remote branch and PR before merge
 - Pulled remote GitHub backlog into planning: open issue [#46](https://github.com/llathrop/Dive_Service_Management/issues/46) extends the Wave 3 shipping foundation into real-time carrier integrations and is tracked as a follow-on after Wave 4 unless portal/invoice work forces earlier extraction
 - Process correction: every new feature, fix, or docs lane now requires an isolated worktree, a remote feature branch, and a GitHub PR before merge to `master`
 - Historical exception: the Wave 3 recovery and Wave 4 kickoff commits on `master` (`3bfd7ae` through `a6db2de`) were pushed without PRs and cannot be turned into true reviewable PRs retroactively without rewriting published history
@@ -495,11 +496,20 @@
 - `tests/unit/models/test_portal_user.py` + `tests/blueprint/test_portal_auth.py` + `tests/blueprint/test_auth_routes.py` + `tests/unit/test_user_model.py`: passed
 - Created fresh implementation worktrees from merged `master` for 4B portal orders/dashboard, 4C portal invoices/payments, and 4D portal equipment/invites, then launched new worker lanes for those slices
 
-**2026-03-24 Wave 4D Update**
-- Completed the portal equipment + admin invite/email slice in `.claude/worktrees/agent-wave4d-portal-equipment-invites`
-- Pushed `feature/customer-portal-equipment-invites` and opened [PR #51](https://github.com/llathrop/Dive_Service_Management/pull/51)
-- Verified the slice in the persistent Docker test container with portal service, equipment, invite, auth, and customer-order regression tests
-- Kept the change slice-local: no broad portal shell/dashboard ownership was taken from 4B beyond minimal shared portal helpers
+**2026-03-25 Wave 4B Update**
+- Completed the portal dashboard + order tracking slice in `.claude/worktrees/agent-wave4b-portal-orders`
+- Reviewed QA findings for customer/item scoping and `ready_for_pickup` visibility, patched them on the feature branch, and merged via [PR #50](https://github.com/llathrop/Dive_Service_Management/pull/50)
+- Verified the portal order slice in the persistent Docker test container with `tests/unit/services/test_portal_service.py` + `tests/blueprint/test_portal.py` + `tests/blueprint/test_portal_auth.py`
+
+**2026-03-25 Wave 4C Update**
+- Completed the portal invoice/payment slice in `.claude/worktrees/agent-wave4c-portal-invoices`
+- Reviewed the draft-invoice exposure issue, patched it on the feature branch, resolved a portal blueprint merge-conflict blocker, and merged via [PR #52](https://github.com/llathrop/Dive_Service_Management/pull/52)
+- Verified the portal invoice slice in the persistent Docker test container with `tests/blueprint/test_portal_invoices.py` + `tests/unit/services/test_portal_invoice_service.py` + `tests/unit/services/test_payment_provider_service.py` + `tests/test_utils/test_pdf.py`
+
+**2026-03-25 Wave 4D Status**
+- `feature/customer-portal-equipment-invites` is open as [PR #51](https://github.com/llathrop/Dive_Service_Management/pull/51) but is not merged yet
+- Dedicated QA/security review found unresolved merge-conflict markers in the branch plus unsafe portal exposure that required follow-up
+- The 4D worker is actively repairing the branch in `.claude/worktrees/agent-wave4d-portal-equipment-invites`; do not treat this lane as complete until the conflict-marker grep is clean and the targeted portal equipment/invite suite passes again
 
 **Wave 5: Final Polish** (3 agents)
 - [ ] 5A: Capture missing screenshots

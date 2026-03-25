@@ -96,7 +96,12 @@ def get_order_status_history(customer_id, order_id):
 
 
 def _serialize_order_card(order):
-    item_names = [item.service_item.name for item in order.order_items.all()]
+    visible_items = [
+        item
+        for item in order.order_items.all()
+        if _is_portal_visible_item(item, order.customer_id)
+    ]
+    item_names = [item.service_item.name for item in visible_items]
     summary = order_service.get_order_summary(order.id)
     return {
         "id": order.id,
@@ -106,7 +111,7 @@ def _serialize_order_card(order):
         "date_received": order.date_received,
         "date_promised": order.date_promised,
         "date_completed": order.date_completed,
-        "item_count": len(item_names),
+        "item_count": len(visible_items),
         "item_names": item_names[:3],
         "estimated_total": summary["estimated_total"],
         "is_overdue": order.is_overdue,

@@ -155,6 +155,23 @@ def generate_invoice_pdf(invoice):
     return pdf.output()
 
 
+def generate_portal_invoice_pdf(invoice):
+    """Generate a customer-safe PDF for the portal invoice view."""
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=25)
+    pdf.add_page()
+    pdf.set_margins(15, 15, 15)
+
+    _draw_company_header(pdf)
+    _draw_invoice_info(pdf, invoice)
+    _draw_customer_info(pdf, invoice)
+    _draw_portal_line_items_table(pdf, invoice)
+    _draw_totals(pdf, invoice)
+    _draw_portal_invoice_footer(pdf, invoice)
+
+    return pdf.output()
+
+
 def _draw_invoice_info(pdf, invoice):
     """Draw the invoice number, dates, and status block."""
     y_start = pdf.get_y()
@@ -313,6 +330,84 @@ def _draw_line_items_table(pdf, invoice):
     pdf.ln(3)
 
 
+def _draw_portal_line_items_table(pdf, invoice):
+    """Draw a portal-safe line-item table without technician-specific details."""
+    items = invoice.line_items.all() if hasattr(invoice.line_items, "all") else list(invoice.line_items)
+
+    col_w = {
+        "desc": 90,
+        "qty": 20,
+        "unit": 35,
+        "total": 35,
+    }
+
+    pdf.set_fill_color(*_HEADER_BG)
+    pdf.set_text_color(*_HEADER_FG)
+    pdf.set_font("Helvetica", "B", 9)
+
+    pdf.cell(col_w["desc"], 8, "  Description", fill=True, new_x="RIGHT", new_y="TOP")
+    pdf.cell(col_w["qty"], 8, "Qty", fill=True, align="C", new_x="RIGHT", new_y="TOP")
+    pdf.cell(col_w["unit"], 8, "Unit Price", fill=True, align="R", new_x="RIGHT", new_y="TOP")
+    pdf.cell(col_w["total"], 8, "Line Total", fill=True, align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_text_color(40, 40, 40)
+
+    if not items:
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.cell(sum(col_w.values()), 8, "  No line items", new_x="LMARGIN", new_y="NEXT")
+    else:
+        for i, item in enumerate(items):
+            if i % 2 == 1:
+                pdf.set_fill_color(*_ROW_ALT_BG)
+                fill = True
+            else:
+                fill = False
+
+            pdf.set_font("Helvetica", "", 9)
+
+            desc = _portal_line_item_description(item)
+            qty = _safe_str(item.quantity, "1")
+            unit = _fmt_currency(item.unit_price)
+            total = _fmt_currency(item.line_total)
+
+            desc_width = pdf.get_string_width(desc)
+            if desc_width > col_w["desc"] - 4:
+                y_before = pdf.get_y()
+                x_start = pdf.get_x()
+
+                if fill:
+                    row_h = _calc_multi_line_height(pdf, desc, col_w["desc"] - 4)
+                    pdf.rect(x_start, y_before, sum(col_w.values()), row_h, "F")
+
+                pdf.set_xy(x_start, y_before)
+                pdf.multi_cell(col_w["desc"], 5, f"  {desc}", new_x="RIGHT", new_y="TOP")
+                y_after_desc = pdf.get_y()
+
+                pdf.set_xy(x_start + col_w["desc"], y_before)
+                pdf.cell(col_w["qty"], 5, qty, align="C", new_x="RIGHT", new_y="TOP")
+                pdf.cell(col_w["unit"], 5, unit, align="R", new_x="RIGHT", new_y="TOP")
+                pdf.cell(col_w["total"], 5, total, align="R", new_x="LMARGIN", new_y="NEXT")
+
+                pdf.set_y(max(y_after_desc, pdf.get_y()))
+            else:
+                pdf.cell(col_w["desc"], 7, f"  {desc}", fill=fill, new_x="RIGHT", new_y="TOP")
+                pdf.cell(col_w["qty"], 7, qty, fill=fill, align="C", new_x="RIGHT", new_y="TOP")
+                pdf.cell(col_w["unit"], 7, unit, fill=fill, align="R", new_x="RIGHT", new_y="TOP")
+                pdf.cell(col_w["total"], 7, total, fill=fill, align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_draw_color(*_LINE_COLOR)
+    pdf.set_line_width(0.3)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+    pdf.ln(3)
+
+
+def _portal_line_item_description(item):
+    """Return a description safe for customer consumption."""
+    if item.line_type == "labor":
+        return "Labor"
+    return _safe_str(item.description, "")
+
+
 def _calc_multi_line_height(pdf, text, max_width):
     """Estimate multi-line cell height for a given text and width."""
     words = text.split()
@@ -443,6 +538,32 @@ def _draw_invoice_footer(pdf, invoice):
         pdf.ln(3)
 
     # Thank you
+    pdf.set_font("Helvetica", "I", 10)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 8, "Thank you for your business!", align="C", new_x="LMARGIN", new_y="NEXT")
+
+
+def _draw_portal_invoice_footer(pdf, invoice):
+    """Draw a simpler portal footer with optional payment terms."""
+    terms = _safe_str(invoice.terms) if invoice.terms else _safe_str(
+        config_service.get_config("invoice.default_terms"), ""
+    )
+
+    if terms:
+        pdf.set_draw_color(*_LINE_COLOR)
+        pdf.set_line_width(0.3)
+        pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+        pdf.ln(4)
+
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*_ACCENT)
+        pdf.cell(0, 6, "Payment Terms", new_x="LMARGIN", new_y="NEXT")
+
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(80, 80, 80)
+        pdf.multi_cell(0, 5, terms, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+
     pdf.set_font("Helvetica", "I", 10)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 8, "Thank you for your business!", align="C", new_x="LMARGIN", new_y="NEXT")
