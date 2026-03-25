@@ -528,4 +528,7 @@
 **Wave 5: Final Polish** (3 agents)
 - [ ] 5A: Capture missing screenshots
 - [ ] 5B: Sprint documentation finalization
-- [ ] 5C: Integration smoke tests
+- [x] 5C: Integration smoke tests
+
+**5C completion note**
+- Added an authenticated smoke route lane for the core internal surfaces and a single Dockerized handoff gate via `make test-gate`

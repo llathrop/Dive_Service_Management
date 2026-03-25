@@ -117,6 +117,7 @@ python3 -m pytest
 python3 -m pytest -m smoke      # Smoke tests
 python3 -m pytest -m unit       # Unit tests
 python3 -m pytest -m blueprint  # Route/blueprint tests
+make test-gate                  # Final smoke + integration gate in Docker
 
 # Run with coverage report
 python3 -m pytest --cov=app --cov-report=html
@@ -155,8 +156,8 @@ app/
   static/              # CSS, JS, images
   cli/                 # Flask CLI commands
 migrations/            # Alembic database migrations
-tests/                 # Test suite (1448 tests)
-  smoke/               # Application startup and health tests
+tests/                 # Test suite
+  smoke/               # App startup, health, and core authenticated route smoke tests
   unit/                # Model and service unit tests
   blueprint/           # Route and view tests
   uat/                 # User acceptance test infrastructure
