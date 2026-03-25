@@ -4,7 +4,7 @@
 - This report overwrites the prior static review report.
 - Per request, no project test suites were run and no code was changed.
 - Required docs were re-read first, in order: `README.plan`, `PROJECT_BLUEPRINT.md`, `MEMORY.md`, `PROGRESS.md`.
-- `GEMINI-PROJECT_REVIEW.md` was reviewed and only still-valid points were retained.
+- `ARCHIVED_STATIC_PROJECT_REVIEW_2026_03_04.md` was reviewed and only still-valid points were retained.
 - Because another agent is actively changing files, this pass re-reviewed changed files before finalizing.
 
 ## Refresh Status (What Changed Since Last Pass)
