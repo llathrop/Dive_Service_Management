@@ -70,6 +70,11 @@ class Customer(TimestampMixin, SoftDeleteMixin, AuditMixin, db.Model):
         back_populates="customer",
         lazy="dynamic",
     )
+    portal_users = db.relationship(
+        "PortalUser",
+        back_populates="customer",
+        lazy="dynamic",
+    )
 
     # --- Table indexes ---
     __table_args__ = (

@@ -6,6 +6,14 @@ discover every model by importing this single package.
 """
 
 from app.models.user import Role, User, user_roles
+from app.models.portal_user import (
+    PORTAL_TOKEN_PURPOSE_ACTIVATION,
+    PORTAL_TOKEN_PURPOSE_INVITE,
+    PORTAL_TOKEN_PURPOSE_PASSWORD_RESET,
+    PORTAL_TOKEN_PURPOSES,
+    PortalAccessToken,
+    PortalUser,
+)
 from app.models.customer import Customer
 from app.models.service_item import ServiceItem
 from app.models.drysuit_details import DrysuitDetails
@@ -34,6 +42,12 @@ __all__ = [
     "Role",
     "User",
     "user_roles",
+    "PortalUser",
+    "PortalAccessToken",
+    "PORTAL_TOKEN_PURPOSE_ACTIVATION",
+    "PORTAL_TOKEN_PURPOSE_INVITE",
+    "PORTAL_TOKEN_PURPOSE_PASSWORD_RESET",
+    "PORTAL_TOKEN_PURPOSES",
     "Customer",
     "ServiceItem",
     "DrysuitDetails",

@@ -1,0 +1,31 @@
+{% extends "portal/base.html" %}
+{% from "macros/forms.html" import render_field %}
+
+{% block title %}Activate Portal Account - {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="min-height: 66vh;">
+  <div class="col-12 col-md-10 col-lg-7 col-xl-6">
+    <div class="portal-card rounded-4 p-4 p-lg-5">
+      <div class="mb-4">
+        <div class="portal-caption text-muted mb-2">Activation</div>
+        <h1 class="h3 mb-2">Set your portal password</h1>
+        <p class="text-muted mb-0">
+          This link is tied to {{ token_record.email }} and the customer account it was issued for.
+        </p>
+      </div>
+
+      <form method="POST" action="{{ url_for('portal.activate', token=token) }}" novalidate>
+        {{ form.hidden_tag() }}
+        {{ render_field(form.password, placeholder="Create a password") }}
+        {{ render_field(form.confirm_password, placeholder="Re-enter the password") }}
+        <div class="d-grid">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-shield-check me-1"></i> Activate account
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -152,6 +152,7 @@ def _register_blueprints(app):
     from app.blueprints.notifications import notifications_bp
     from app.blueprints.orders import orders_bp
     from app.blueprints.price_list import price_list_bp
+    from app.blueprints.portal import portal_bp
     from app.blueprints.reports import reports_bp
     from app.blueprints.search import search_bp
     from app.blueprints.tools import tools_bp
@@ -170,6 +171,7 @@ def _register_blueprints(app):
     app.register_blueprint(notifications_bp)
     app.register_blueprint(orders_bp)
     app.register_blueprint(price_list_bp)
+    app.register_blueprint(portal_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(search_bp)
     app.register_blueprint(tools_bp)
@@ -261,6 +263,12 @@ def _apply_rate_limits(app):
             "10/minute"
         )(login_view)
 
+    portal_login_view = app.view_functions.get("portal.login")
+    if portal_login_view is not None:
+        app.view_functions["portal.login"] = limiter.limit(
+            "10/minute"
+        )(portal_login_view)
+
     # Rate-limit password reset endpoint (prevents email enumeration)
     reset_view = app.view_functions.get("security.reset_password")
     if reset_view is not None:
@@ -272,6 +280,12 @@ def _apply_rate_limits(app):
         app.view_functions["security.forgot_password"] = limiter.limit(
             "5/minute"
         )(forgot_view)
+
+    portal_activate_view = app.view_functions.get("portal.activate")
+    if portal_activate_view is not None:
+        app.view_functions["portal.activate"] = limiter.limit(
+            "5/minute"
+        )(portal_activate_view)
 
     # Rate-limit API-like search/export endpoints
     for endpoint_name in ("search.search", "search.autocomplete",

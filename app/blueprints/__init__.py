@@ -18,6 +18,7 @@ from app.blueprints.items import items_bp
 from app.blueprints.notifications import notifications_bp
 from app.blueprints.orders import orders_bp
 from app.blueprints.price_list import price_list_bp
+from app.blueprints.portal import portal_bp
 from app.blueprints.reports import reports_bp
 from app.blueprints.search import search_bp
 from app.blueprints.tools import tools_bp
@@ -37,6 +38,7 @@ __all__ = [
     "notifications_bp",
     "orders_bp",
     "price_list_bp",
+    "portal_bp",
     "reports_bp",
     "search_bp",
     "tools_bp",
