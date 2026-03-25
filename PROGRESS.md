@@ -427,7 +427,7 @@
 **GitHub Issues**: #44 — closed
 **Tests**: 1458 total, all passing
 
-### Sprint 2026-03-22B (Wave 1-3 Complete, Wave 4 Pending)
+### Sprint 2026-03-22B (Wave 1-3 Complete, Wave 4 In Progress)
 
 **Scope**: All 48 audit fix items (P1: 11, P2: 20, P3: 17) + all 13 feature proposals from consolidated TODO list. Waves 1-3 are landed and pushed on `master`; Wave 4 is the next execution stage.
 
@@ -476,6 +476,15 @@
 - [ ] 4B: Portal dashboard + order tracking
 - [ ] 4C: Portal invoice view + payment provider framework
 - [ ] 4D: Portal equipment view + admin invite management + email notifications
+
+**2026-03-24 Wave 4 Kickoff**
+- Reconciled planning docs on `master` so `PROGRESS.md`, `README.plan`, and `consolidated_todos.md` all point at Wave 4 as the active next stage
+- Created dedicated Wave 4A auth worktree `.claude/worktrees/agent-wave4a-portal-auth`
+- Launched parallel agent work for:
+  - 4A auth foundation implementation
+  - 4B order/dashboard integration discovery
+  - 4C invoice/payment integration discovery
+  - 4D equipment/invite/email integration discovery
 
 **Wave 5: Final Polish** (3 agents)
 - [ ] 5A: Capture missing screenshots
