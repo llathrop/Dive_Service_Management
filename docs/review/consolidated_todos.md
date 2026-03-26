@@ -119,3 +119,24 @@ Status note: items 1, 3, 4, 5, 6, 7, 8, 9, 10, and 11 below have already been im
 
 **Estimated effort for P1 items**: 1 sprint (most are small, targeted fixes)
 **Test impact**: Removing ~37 duplicate tests brings count from 1,458 to ~1,421
+
+## Wave D: Agent-Driven Code Review Findings (March 25, 2026)
+
+### Backend & Architecture (codebase_investigator)
+- [ ] **App Factory Decomposition** — `app/__init__.py` is becoming a "God Object". Extract blueprint registration and rate-limit configuration to dedicated modules.
+- [ ] **SoftDelete Event Listener** — SoftDelete relies on manual filtering (e.g., `.not_deleted()`). Implement a global filter via SQLAlchemy events to prevent data leaks.
+- [ ] **Validation Standardization** — Models use a mix of `@validates` and custom methods (like `validate_name` in Customer). Enforce consistent automatic validation before commit.
+- [ ] **Large Service Decomposition** — `order_service.py` is oversized (~32KB). Break it down into specialized services (e.g., `OrderPricingService`, `OrderStatusService`).
+
+### Frontend & Forms (generalist)
+- [ ] **Dead Code (Unused Macros)** — Remove unused macros from `status_badges.html` (`boolean_badge`), `tags.html` (all macros), and `tables.html` (`bulk_actions_bar`).
+- [ ] **Form Rendering Consistency** — Standardize search forms (e.g., in `customers/list.html`) to use the `render_field` macro instead of hardcoded HTML.
+- [ ] **Badge Logic Duplication** — Extract `customer_type` badge logic from list templates into a reusable macro in `status_badges.html`.
+- [ ] **Alpine vs HTMX Fragmentation** — Standardize batch operations to rely strictly on HTMX for server updates where appropriate, minimizing fragmented state logic.
+- [ ] **Form Regex Validators** — Add explicit regex validators to `CustomerForm` for `postal_code` and `phone` to ensure data cleanliness before DB insertion.
+
+### Documentation & Misalignment (generalist / manual)
+- [x] **README.md Overstatement** — `README.md` claims "kanban-style views" for Service Orders, but this is currently just a placeholder mockup. Update README or prioritize the Kanban feature (#68).
+- [x] **Stale Comments** — `app/extensions.py` and `app/config.py` still refer to Flask-Mail as a "placeholder", but it is fully implemented. Remove these comments.
+- [x] **Aspirational Dependencies** — `PROJECT_BLUEPRINT.md` lists `WeasyPrint`, `Marshmallow`, `Huey`, and `Tom Select`, but they are not used or not in `requirements.txt`. Clarify their status.
+- [x] **Mockups & Placeholders Tracking** — Update planning docs to track newly identified placeholders (Cloud Storage backend, External Payment Gateways).

@@ -539,3 +539,20 @@
 
 **5C completion note**
 - Added an authenticated smoke route lane for the core internal surfaces and a single Dockerized handoff gate via `make test-gate`
+
+### Phase 2.5: Comprehensive Code & Architecture Audit (March 25, 2026)
+**Target**: Resolve technical debt, remove dead code, and align documentation with actual implementation.
+
+- [ ] **Backend Hardening**: Extract logic from `app/__init__.py`, implement global SoftDelete filters, and standardize model validation.
+- [ ] **Frontend Cleanup**: Remove unused macros (`tags.html`, `status_badges.html`), standardize search forms, and add regex field validation.
+- [x] **Documentation Sync**: Update `README.md` to reflect actual feature status (Kanban placeholder) and remove stale "placeholder" comments from `extensions.py`.
+- [ ] **Refactoring**: Decompose large service modules (e.g., `order_service.py`) and unify batch operation logic.
+
+**2026-03-25 Wave D Documentation Update**
+- Created dedicated docs/wave-d-updates worktree/branch for documentation cleanup
+- Reconciled `README.md` feature list with actual application state (marked Kanban as planned)
+- Removed stale "placeholder" comments for Mail support in `app/extensions.py`
+- Clarified `WeasyPrint` and `fpdf2` status in `PROJECT_BLUEPRINT.md`
+- Merged via [PR #69](https://github.com/llathrop/Dive_Service_Management/pull/69)
+
+*Detailed tasks are tracked in `docs/review/consolidated_todos.md` under Wave D.*

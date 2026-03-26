@@ -31,8 +31,6 @@ from flask_limiter.util import get_remote_address
 limiter = Limiter(key_func=get_remote_address)
 
 # Mail support — used for email notifications (async delivery via Celery).
-# Flask-Mail is an optional dependency; if not installed we create a small
-# stand-in so that importing this module never fails.
 try:
     from flask_mail import Mail
 

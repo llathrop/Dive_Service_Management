@@ -37,7 +37,7 @@ The system runs as a containerized web application deployable on Raspberry Pi (A
 | Gunicorn | 22.x | Production WSGI server |
 | mysqlclient | 2.2.x | MariaDB/MySQL driver (C extension, fastest) |
 | fpdf2 | 2.8.x | PDF generation for invoices, price lists, and reports (lightweight, no system dependencies, fast on ARM64) |
-| WeasyPrint | 67.x | (Optional — not included by default) Complex HTML-to-PDF rendering — evaluated but not adopted. Has heavy system dependencies (Pango, Cairo) that are slow to install on ARM64. The project uses fpdf2 exclusively. System deps are commented out in the Dockerfile for reference. |
+| WeasyPrint | 67.x | (Optional — not included by default) Evaluated but not adopted. Has heavy system dependencies (Pango, Cairo) that are slow to install on ARM64. The project uses fpdf2 exclusively. System deps are commented out in the Dockerfile for reference. |
 | openpyxl | 3.1.x | XLSX export |
 | python-dotenv | 1.0.x | Environment variable management |
 | Celery | 5.4.x | Background task queue (notifications, report generation, exports) — default for full deployments |

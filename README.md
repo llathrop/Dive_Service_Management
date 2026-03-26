@@ -7,7 +7,7 @@ While initially built for a drysuit repair shop, the architecture supports any i
 ## Features
 
 - **Customer Management** — individual and business customer records with contact info, service history, and lifetime value tracking
-- **Service Orders** — full workflow from intake through pickup, with status tracking, technician assignment, priority management, and kanban-style views
+- **Service Orders** — full workflow from intake through pickup, with status tracking, technician assignment, priority management, and planned kanban-style views
 - **Service Items** — equipment tracking by serial number with drysuit-specific fields (seals, zippers, valves, materials)
 - **Inventory** — parts and materials management with stock levels, reorder alerts, purchase cost and resale price tracking
 - **Price Lists** — categorized service pricing with associated parts lists for quick order building
@@ -23,6 +23,13 @@ While initially built for a drysuit repair shop, the architecture supports any i
 - **Inline Quick-Create** — dropdown creation for customers, inventory items, price list categories, and tags without leaving the current form
 - **In-App Documentation** — built-in docs viewer accessible from the sidebar
 - **Theme Support** — light, dark, and auto themes via Bootstrap 5 with company branding
+
+### Future Enhancements
+
+- **Kanban Board** — Drag-and-drop status management for service orders
+- **Cloud Storage** — Support for S3, Google Cloud Storage, and Azure Blob Storage for attachments
+- **External Payments** — Integration with Stripe and QuickBooks for online payments and accounting sync
+- **Customer Portal** — Self-service order tracking and profile management for customers
 
 ## Technology Stack
 
