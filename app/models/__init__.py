@@ -15,6 +15,7 @@ from app.models.portal_user import (
     PortalUser,
 )
 from app.models.customer import Customer
+from app.models.lookup import LookupValue
 from app.models.service_item import ServiceItem
 from app.models.drysuit_details import DrysuitDetails
 from app.models.inventory import InventoryItem
@@ -49,6 +50,7 @@ __all__ = [
     "PORTAL_TOKEN_PURPOSE_PASSWORD_RESET",
     "PORTAL_TOKEN_PURPOSES",
     "Customer",
+    "LookupValue",
     "ServiceItem",
     "DrysuitDetails",
     "InventoryItem",
