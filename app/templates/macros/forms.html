@@ -40,13 +40,22 @@
 </div>
 {% endmacro %}
 
-{% macro render_select(field, label_class='', field_class='') %}
+{% macro render_select(field, label_class='', field_class='', lookup_category=None) %}
 <div class="mb-3">
   <label for="{{ field.id }}" class="form-label {{ label_class }}">
     {{ field.label.text }}
     {% if field.flags.required %}<span class="text-danger">*</span>{% endif %}
   </label>
-  {{ field(class='form-select ' ~ field_class ~ (' is-invalid' if field.errors else ''), **kwargs) }}
+  <div class="input-group">
+    {{ field(class='form-select ' ~ field_class ~ (' is-invalid' if field.errors else ''), **kwargs) }}
+    {% if lookup_category %}
+    <button class="btn btn-outline-secondary" type="button" 
+            onclick="quickCreateLookup('{{ lookup_category }}', '{{ field.id }}', '{{ field.label.text }}')"
+            title="Add new {{ field.label.text }}">
+      <i class="bi bi-plus-lg"></i>+
+    </button>
+    {% endif %}
+  </div>
   {% if field.errors %}
     {% for error in field.errors %}
     <div class="invalid-feedback d-block">{{ error }}</div>

@@ -20,10 +20,12 @@ services:
         condition: service_healthy
     env_file: .env
     volumes:
+      - ./app:/app/app
       - ./uploads:/app/uploads
       - ./logs:/app/logs
       - ./instance:/app/instance
       - ./backups:/app/backups
+      - ./migrations:/app/migrations
     restart: unless-stopped
     networks:
       - dsm-net
@@ -33,10 +35,7 @@ services:
       timeout: 30s
       start_period: 15s
       retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 300M
+    mem_limit: 300M
 
   # ---------------------------------------------------------------------------
   # MariaDB 11 LTS
@@ -62,10 +61,7 @@ services:
       timeout: 30s
       start_period: 30s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 250M
+    mem_limit: 250M
 
   # ---------------------------------------------------------------------------
   # Redis 7 (cache, sessions, task broker)
@@ -87,10 +83,7 @@ services:
       timeout: 30s
       start_period: 5s
       retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 100M
+    mem_limit: 100M
 
   # ---------------------------------------------------------------------------
   # Celery Worker (async tasks: PDF generation, exports, notifications)
@@ -108,8 +101,10 @@ services:
         condition: service_healthy
     env_file: .env
     volumes:
+      - ./app:/app/app
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      - ./migrations:/app/migrations
     restart: unless-stopped
     networks:
       - dsm-net
@@ -119,10 +114,7 @@ services:
       timeout: 30s
       start_period: 30s
       retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 250M
+    mem_limit: 250M
 
   # ---------------------------------------------------------------------------
   # Celery Beat (scheduled tasks: low-stock checks, overdue reminders)
@@ -146,10 +138,7 @@ services:
       timeout: 30s
       start_period: 15s
       retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 150M
+    mem_limit: 150M
 
 # ---------------------------------------------------------------------------
 # Persistent Volumes

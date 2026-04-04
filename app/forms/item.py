@@ -80,6 +80,17 @@ class ServiceItemForm(FlaskForm):
     submit = SubmitField("Save Item")
 
 
+from app.models.lookup import LookupValue
+
+def get_lookup_choices(category):
+    """Fetch choices for a SelectField from the lookup_values table."""
+    try:
+        lookups = LookupValue.query.filter_by(category=category, is_active=True).order_by(LookupValue.sort_order, LookupValue.display_name).all()
+        return [("", "")] + [(l.value, l.display_name) for l in lookups]
+    except Exception:
+        # Fallback if DB is not ready or table doesn't exist yet
+        return [("", "")]
+
 class DrysuitDetailsForm(FlaskForm):
     """Extended detail fields for drysuit service items.
 
@@ -88,19 +99,23 @@ class DrysuitDetailsForm(FlaskForm):
     category is *Drysuit*.
     """
 
+    def __init__(self, *args, **kwargs):
+        super(DrysuitDetailsForm, self).__init__(*args, **kwargs)
+        self.material_type.choices = get_lookup_choices('material_type')
+        self.suit_entry_type.choices = get_lookup_choices('suit_entry_type')
+        self.neck_seal_type.choices = get_lookup_choices('neck_seal_type')
+        self.wrist_seal_type.choices = get_lookup_choices('wrist_seal_type')
+        self.zipper_orientation.choices = get_lookup_choices('zipper_orientation')
+        self.dump_valve_type.choices = get_lookup_choices('dump_valve_type')
+        self.boot_type.choices = get_lookup_choices('boot_type')
+
     size = StringField(
         "Size",
         validators=[Optional(), Length(max=50)],
     )
     material_type = SelectField(
         "Material Type",
-        choices=[
-            ("", ""),
-            ("Trilaminate", "Trilaminate"),
-            ("Crushed Neoprene", "Crushed Neoprene"),
-            ("Neoprene", "Neoprene"),
-            ("Hybrid", "Hybrid"),
-        ],
+        choices=[],
         validators=[Optional()],
     )
     material_thickness = StringField(
@@ -113,24 +128,14 @@ class DrysuitDetailsForm(FlaskForm):
     )
     suit_entry_type = SelectField(
         "Suit Entry Type",
-        choices=[
-            ("", ""),
-            ("Front-entry", "Front-entry"),
-            ("Back-entry", "Back-entry"),
-            ("Shoulder-entry", "Shoulder-entry"),
-        ],
+        choices=[],
         validators=[Optional()],
     )
 
     # --- Seals ---
     neck_seal_type = SelectField(
         "Neck Seal Type",
-        choices=[
-            ("", ""),
-            ("Latex", "Latex"),
-            ("Silicone", "Silicone"),
-            ("Neoprene", "Neoprene"),
-        ],
+        choices=[],
         validators=[Optional()],
     )
     neck_seal_system = StringField(
@@ -139,12 +144,7 @@ class DrysuitDetailsForm(FlaskForm):
     )
     wrist_seal_type = SelectField(
         "Wrist Seal Type",
-        choices=[
-            ("", ""),
-            ("Latex", "Latex"),
-            ("Silicone", "Silicone"),
-            ("Neoprene", "Neoprene"),
-        ],
+        choices=[],
         validators=[Optional()],
     )
     wrist_seal_system = StringField(
@@ -163,12 +163,7 @@ class DrysuitDetailsForm(FlaskForm):
     )
     zipper_orientation = SelectField(
         "Zipper Orientation",
-        choices=[
-            ("", ""),
-            ("Front", "Front"),
-            ("Back", "Back"),
-            ("Shoulder-to-hip", "Shoulder-to-hip"),
-        ],
+        choices=[],
         validators=[Optional()],
     )
 
@@ -195,25 +190,14 @@ class DrysuitDetailsForm(FlaskForm):
     )
     dump_valve_type = SelectField(
         "Dump Valve Type",
-        choices=[
-            ("", ""),
-            ("Shoulder", "Shoulder"),
-            ("Forearm", "Forearm"),
-            ("Wrist", "Wrist"),
-            ("Cuff", "Cuff"),
-        ],
+        choices=[],
         validators=[Optional()],
     )
 
     # --- Boots ---
     boot_type = SelectField(
         "Boot Type",
-        choices=[
-            ("", ""),
-            ("Integrated Rock Boot", "Integrated Rock Boot"),
-            ("Integrated Sock", "Integrated Sock"),
-            ("Attached", "Attached"),
-        ],
+        choices=[],
         validators=[Optional()],
     )
     boot_size = StringField(

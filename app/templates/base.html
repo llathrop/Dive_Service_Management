@@ -367,6 +367,61 @@
   {# Application JS #}
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 
+  <script>
+    /**
+     * Universal function to quick-create a lookup value from a dropdown.
+     */
+    function quickCreateLookup(category, fieldId, label) {
+      const name = prompt(`Add new ${label}:`);
+      if (!name || name.trim() === '') return;
+
+      fetch("{{ url_for('lookups.quick_create') }}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": document.querySelector('meta[name=\"csrf-token\"]').content
+        },
+        body: JSON.stringify({
+          category: category,
+          name: name.trim()
+        })
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(data => { throw new Error(data.error || 'Failed to create'); });
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Find the select element
+        const select = document.getElementById(fieldId);
+        if (select) {
+          // Check if option already exists
+          let optionExists = false;
+          for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === data.value) {
+              optionExists = true;
+              select.selectedIndex = i;
+              break;
+            }
+          }
+
+          if (!optionExists) {
+            // Add new option and select it
+            const newOption = new Option(data.display_name, data.value, true, true);
+            select.add(newOption);
+          }
+          
+          // Trigger change event for reactive frameworks (like Alpine.js)
+          select.dispatchEvent(new Event('change'));
+        }
+      })
+      .catch(error => {
+        alert("Error: " + error.message);
+      });
+    }
+  </script>
+
   {% block scripts %}{% endblock %}
 </body>
 </html>

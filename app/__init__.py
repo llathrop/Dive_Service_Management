@@ -149,6 +149,7 @@ def _register_blueprints(app):
     from app.blueprints.inventory import inventory_bp
     from app.blueprints.invoices import invoices_bp
     from app.blueprints.items import items_bp
+    from app.blueprints.lookups import lookups_bp
     from app.blueprints.notifications import notifications_bp
     from app.blueprints.orders import orders_bp
     from app.blueprints.price_list import price_list_bp
@@ -168,6 +169,7 @@ def _register_blueprints(app):
     app.register_blueprint(inventory_bp)
     app.register_blueprint(invoices_bp)
     app.register_blueprint(items_bp)
+    app.register_blueprint(lookups_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(orders_bp)
     app.register_blueprint(price_list_bp)

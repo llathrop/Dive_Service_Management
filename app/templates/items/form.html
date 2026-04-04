@@ -92,7 +92,7 @@
             {{ render_field(drysuit_form.size, placeholder='Size') }}
           </div>
           <div class="col-md-3">
-            {{ render_select(drysuit_form.material_type) }}
+            {{ render_select(drysuit_form.material_type, lookup_category='material_type') }}
           </div>
           <div class="col-md-3">
             {{ render_field(drysuit_form.material_thickness, placeholder='Thickness') }}
@@ -103,7 +103,7 @@
         </div>
         <div class="row">
           <div class="col-md-4">
-            {{ render_select(drysuit_form.suit_entry_type) }}
+            {{ render_select(drysuit_form.suit_entry_type, lookup_category='suit_entry_type') }}
           </div>
         </div>
 
@@ -111,13 +111,13 @@
         <h6>Seals</h6>
         <div class="row">
           <div class="col-md-3">
-            {{ render_select(drysuit_form.neck_seal_type) }}
+            {{ render_select(drysuit_form.neck_seal_type, lookup_category='neck_seal_type') }}
           </div>
           <div class="col-md-3">
             {{ render_field(drysuit_form.neck_seal_system, placeholder='Seal system') }}
           </div>
           <div class="col-md-3">
-            {{ render_select(drysuit_form.wrist_seal_type) }}
+            {{ render_select(drysuit_form.wrist_seal_type, lookup_category='wrist_seal_type') }}
           </div>
           <div class="col-md-3">
             {{ render_field(drysuit_form.wrist_seal_system, placeholder='Seal system') }}
@@ -134,7 +134,7 @@
             {{ render_field(drysuit_form.zipper_length, placeholder='Length') }}
           </div>
           <div class="col-md-4">
-            {{ render_select(drysuit_form.zipper_orientation) }}
+            {{ render_select(drysuit_form.zipper_orientation, lookup_category='zipper_orientation') }}
           </div>
         </div>
 
@@ -159,7 +159,7 @@
             {{ render_field(drysuit_form.dump_valve_model, placeholder='Model') }}
           </div>
           <div class="col-md-4">
-            {{ render_select(drysuit_form.dump_valve_type) }}
+            {{ render_select(drysuit_form.dump_valve_type, lookup_category='dump_valve_type') }}
           </div>
         </div>
 
@@ -167,7 +167,7 @@
         <h6>Boots</h6>
         <div class="row">
           <div class="col-md-6">
-            {{ render_select(drysuit_form.boot_type) }}
+            {{ render_select(drysuit_form.boot_type, lookup_category='boot_type') }}
           </div>
           <div class="col-md-6">
             {{ render_field(drysuit_form.boot_size, placeholder='Boot size') }}
