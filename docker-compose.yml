@@ -33,6 +33,10 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 300M
 
   # ---------------------------------------------------------------------------
   # MariaDB 11 LTS
@@ -58,6 +62,10 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 250M
 
   # ---------------------------------------------------------------------------
   # Redis 7 (cache, sessions, task broker)
@@ -79,6 +87,10 @@ services:
       timeout: 5s
       start_period: 5s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 100M
 
   # ---------------------------------------------------------------------------
   # Celery Worker (async tasks: PDF generation, exports, notifications)
@@ -87,6 +99,7 @@ services:
     build: .
     image: dsm-web:latest
     container_name: dsm-worker
+    init: true
     command: celery -A app.celery_app worker --loglevel=info --concurrency=2
     depends_on:
       db:
@@ -106,6 +119,10 @@ services:
       timeout: 15s
       start_period: 30s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 250M
 
   # ---------------------------------------------------------------------------
   # Celery Beat (scheduled tasks: low-stock checks, overdue reminders)
@@ -114,6 +131,7 @@ services:
     build: .
     image: dsm-web:latest
     container_name: dsm-beat
+    init: true
     command: celery -A app.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     depends_on:
       redis:
@@ -128,6 +146,10 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 150M
 
 # ---------------------------------------------------------------------------
 # Persistent Volumes
