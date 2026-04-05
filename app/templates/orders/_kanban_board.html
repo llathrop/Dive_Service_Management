@@ -1,0 +1,57 @@
+{# Kanban Board Partial for HTMX Swaps #}
+{% from 'macros/status_badges.html' import order_status_badge, priority_badge %}
+
+<div class="kanban-board" id="kanbanBoard">
+  {% for status_key in active_statuses %}
+  <div class="kanban-column" data-status="{{ status_key }}">
+    <div class="kanban-column-header">
+      <span>{{ order_status_badge(status_key) }} {{ status_labels[status_key] }}</span>
+      <span class="kanban-count" id="count-{{ status_key }}">{{ columns[status_key]|length }}</span>
+    </div>
+    <div class="kanban-column-body"
+         data-status="{{ status_key }}">
+      {% for order in columns[status_key] %}
+      <div class="kanban-card priority-{{ order.priority }}"
+           data-order-id="{{ order.id }}"
+           data-current-status="{{ order.status }}"
+           id="card-{{ order.id }}">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <a href="{{ url_for('orders.detail', id=order.id) }}" class="card-order-number text-decoration-none">
+            {{ order.order_number }}
+          </a>
+          <div class="d-flex align-items-center gap-1">
+            <span class="card-loading">
+              <span class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Updating...</span>
+              </span>
+            </span>
+            {{ priority_badge(order.priority) }}
+          </div>
+        </div>
+        <div class="card-customer">
+          <i class="bi bi-person me-1"></i>{{ order.customer.display_name }}
+        </div>
+        {% if order.description %}
+        <div class="card-description mt-1">{{ order.description[:80] }}{% if order.description|length > 80 %}...{% endif %}</div>
+        {% endif %}
+        <div class="card-meta mt-2 d-flex justify-content-between">
+          <span>
+            {% if order.assigned_tech %}
+            <i class="bi bi-wrench me-1"></i>{{ order.assigned_tech.username }}
+            {% else %}
+            <span class="text-muted"><i class="bi bi-wrench me-1"></i>Unassigned</span>
+            {% endif %}
+          </span>
+          <span>
+            <i class="bi bi-calendar me-1"></i>{{ order.date_received.strftime('%m/%d') if order.date_received else 'N/A' }}
+            {% if order.is_overdue %}
+            <span class="badge bg-danger ms-1" title="Overdue">!</span>
+            {% endif %}
+          </span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>

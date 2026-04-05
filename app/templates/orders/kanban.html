@@ -39,8 +39,8 @@
     padding: 0.5rem;
     flex: 1;
     overflow-y: auto;
-    max-height: calc(100vh - 280px);
-    min-height: 100px;
+    max-height: calc(100vh - 350px);
+    min-height: 150px;
     transition: background-color 0.2s;
   }
 
@@ -64,9 +64,9 @@
     cursor: grabbing;
   }
 
-  .kanban-card.dragging {
-    opacity: 0.5;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  .kanban-card.sortable-ghost {
+    opacity: 0.4;
+    background-color: var(--bs-primary-bg-subtle);
   }
 
   .kanban-card.priority-high {
@@ -85,17 +85,17 @@
     border-left-color: var(--bs-secondary);
   }
 
-  .kanban-card .card-order-number {
+  .card-order-number {
     font-weight: 600;
     font-size: 0.9rem;
   }
 
-  .kanban-card .card-customer {
+  .card-customer {
     font-size: 0.85rem;
     color: var(--bs-secondary-color);
   }
 
-  .kanban-card .card-description {
+  .card-description {
     font-size: 0.8rem;
     color: var(--bs-body-color);
     overflow: hidden;
@@ -104,12 +104,12 @@
     max-width: 100%;
   }
 
-  .kanban-card .card-meta {
+  .card-meta {
     font-size: 0.75rem;
     color: var(--bs-secondary-color);
   }
 
-  .kanban-card .card-loading {
+  .card-loading {
     display: none;
   }
 
@@ -158,7 +158,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
     <h1 class="h3 mb-0">Service Orders - Kanban</h1>
-    <small class="text-muted">{{ total_count }} active order{{ 's' if total_count != 1 else '' }}</small>
+    <small class="text-muted" id="activeOrderCount">{{ total_count }} active order{{ 's' if total_count != 1 else '' }}</small>
   </div>
   <div class="d-flex gap-2">
     {# View toggle #}
@@ -178,8 +178,49 @@
   </div>
 </div>
 
+{# Filter Bar #}
+<div class="card mb-4 bg-body-tertiary border-0 shadow-sm">
+  <div class="card-body py-2">
+    <form hx-get="{{ url_for('orders.kanban') }}" 
+          hx-target="#kanbanBoardContainer" 
+          hx-trigger="change from:select, input from:input delay:500ms"
+          hx-indicator="#kanban-spinner"
+          class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="small text-muted mb-1">Search</label>
+        {{ form.q(class="form-control form-control-sm", placeholder="Order # or description...") }}
+      </div>
+      <div class="col-md-2">
+        <label class="small text-muted mb-1">Technician</label>
+        {{ form.assigned_tech_id(class="form-select form-select-sm") }}
+      </div>
+      <div class="col-md-2">
+        <label class="small text-muted mb-1">Priority</label>
+        {{ form.priority(class="form-select form-select-sm") }}
+      </div>
+      <div class="col-md-2">
+        <label class="small text-muted mb-1">From</label>
+        {{ form.date_from(class="form-control form-control-sm", type="date") }}
+      </div>
+      <div class="col-md-2">
+        <label class="small text-muted mb-1">To</label>
+        {{ form.date_to(class="form-control form-control-sm", type="date") }}
+      </div>
+      <div class="col-md-1 d-flex justify-content-center pb-1">
+        <div id="kanban-spinner" class="spinner-border spinner-border-sm text-primary htmx-indicator" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="kanbanBoardContainer">
+    {% include 'orders/_kanban_board.html' %}
+</div>
+
 {# Toggle for archived statuses #}
-<div class="mb-3" x-data="{ showArchived: false }">
+<div class="mt-4 pt-4 border-top" x-data="{ showArchived: false }">
   <button class="btn btn-sm btn-outline-secondary" @click="showArchived = !showArchived">
     <i class="bi" :class="showArchived ? 'bi-eye-slash' : 'bi-eye'"></i>
     <span x-text="showArchived ? 'Hide' : 'Show'"></span> Picked Up &amp; Cancelled
@@ -221,214 +262,113 @@
   </div>
 </div>
 
-{# Main Kanban Board #}
-<div class="kanban-board" id="kanbanBoard">
-  {% for status_key in active_statuses %}
-  <div class="kanban-column" data-status="{{ status_key }}">
-    <div class="kanban-column-header">
-      <span>{{ order_status_badge(status_key) }} {{ status_labels[status_key] }}</span>
-      <span class="kanban-count" id="count-{{ status_key }}">{{ columns[status_key]|length }}</span>
-    </div>
-    <div class="kanban-column-body"
-         data-status="{{ status_key }}"
-         ondragover="kanbanDragOver(event)"
-         ondragleave="kanbanDragLeave(event)"
-         ondrop="kanbanDrop(event)">
-      {% for order in columns[status_key] %}
-      <div class="kanban-card priority-{{ order.priority }}"
-           draggable="true"
-           data-order-id="{{ order.id }}"
-           data-current-status="{{ order.status }}"
-           id="card-{{ order.id }}"
-           ondragstart="kanbanDragStart(event)"
-           ondragend="kanbanDragEnd(event)">
-        <div class="d-flex justify-content-between align-items-start mb-1">
-          <a href="{{ url_for('orders.detail', id=order.id) }}" class="card-order-number text-decoration-none">
-            {{ order.order_number }}
-          </a>
-          <div class="d-flex align-items-center gap-1">
-            <span class="card-loading">
-              <span class="spinner-border spinner-border-sm text-primary" role="status">
-                <span class="visually-hidden">Updating...</span>
-              </span>
-            </span>
-            {{ priority_badge(order.priority) }}
-          </div>
-        </div>
-        <div class="card-customer">
-          <i class="bi bi-person me-1"></i>{{ order.customer.display_name }}
-        </div>
-        {% if order.description %}
-        <div class="card-description mt-1">{{ order.description[:80] }}{% if order.description|length > 80 %}...{% endif %}</div>
-        {% endif %}
-        <div class="card-meta mt-2 d-flex justify-content-between">
-          <span>
-            {% if order.assigned_tech %}
-            <i class="bi bi-wrench me-1"></i>{{ order.assigned_tech.username }}
-            {% else %}
-            <span class="text-muted"><i class="bi bi-wrench me-1"></i>Unassigned</span>
-            {% endif %}
-          </span>
-          <span>
-            <i class="bi bi-calendar me-1"></i>{{ order.date_received.strftime('%m/%d') if order.date_received else 'N/A' }}
-            {% if order.is_overdue %}
-            <span class="badge bg-danger ms-1" title="Overdue">!</span>
-            {% endif %}
-          </span>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endfor %}
-</div>
-
 {# Toast container for notifications #}
 <div id="kanban-toast-container" class="kanban-toast" aria-live="polite"></div>
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='vendor/sortable.min.js') }}"></script>
 <script>
-(function() {
-  'use strict';
+/**
+ * Kanban Board Component
+ */
+let sortableInstances = [];
 
-  var draggedCard = null;
-  var sourceColumn = null;
+function initSortable() {
+  // Clean up existing instances
+  sortableInstances.forEach(instance => instance.destroy());
+  sortableInstances = [];
 
-  var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content') || '';
+  const columns = document.querySelectorAll('.kanban-column-body');
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-  // Make functions available globally for inline event handlers
-  window.kanbanDragStart = function(e) {
-    draggedCard = e.target.closest('.kanban-card');
-    sourceColumn = draggedCard.parentElement;
-    draggedCard.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', draggedCard.dataset.orderId);
-  };
+  columns.forEach(column => {
+    const instance = new Sortable(column, {
+      group: 'kanban',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      onEnd: function (evt) {
+        const itemEl = evt.item;
+        const targetCol = evt.to;
+        const sourceCol = evt.from;
+        
+        const orderId = itemEl.dataset.orderId;
+        const newStatus = targetCol.dataset.status;
+        const oldStatus = itemEl.dataset.currentStatus;
 
-  window.kanbanDragEnd = function(e) {
-    if (draggedCard) {
-      draggedCard.classList.remove('dragging');
-    }
-    // Remove drag-over styling from all columns
-    document.querySelectorAll('.kanban-column-body').forEach(function(col) {
-      col.classList.remove('drag-over');
-    });
-    draggedCard = null;
-    sourceColumn = null;
-  };
+        if (newStatus === oldStatus) return;
 
-  window.kanbanDragOver = function(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    var col = e.target.closest('.kanban-column-body');
-    if (col) {
-      col.classList.add('drag-over');
-    }
-  };
+        // Show loading state
+        itemEl.classList.add('loading');
 
-  window.kanbanDragLeave = function(e) {
-    var col = e.target.closest('.kanban-column-body');
-    if (col && !col.contains(e.relatedTarget)) {
-      col.classList.remove('drag-over');
-    }
-  };
+        const formData = new FormData();
+        formData.append('new_status', newStatus);
+        formData.append('csrf_token', csrfToken);
 
-  window.kanbanDrop = function(e) {
-    e.preventDefault();
-    var targetColumn = e.target.closest('.kanban-column-body');
-    if (!targetColumn || !draggedCard) return;
-
-    targetColumn.classList.remove('drag-over');
-
-    var newStatus = targetColumn.dataset.status;
-    var currentStatus = draggedCard.dataset.currentStatus;
-    var orderId = draggedCard.dataset.orderId;
-
-    // No-op if dropped on same column
-    if (newStatus === currentStatus) return;
-
-    // Show loading state
-    draggedCard.classList.add('loading');
-
-    // Optimistically move the card
-    targetColumn.appendChild(draggedCard);
-    updateColumnCounts();
-
-    // POST status change
-    var formData = new FormData();
-    formData.append('new_status', newStatus);
-    formData.append('csrf_token', csrfToken);
-
-    fetch('/orders/' + orderId + '/kanban-status', {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-    .then(function(response) {
-      return response.json().then(function(data) {
-        return { ok: response.ok, data: data };
-      });
-    })
-    .then(function(result) {
-      draggedCard.classList.remove('loading');
-
-      if (result.ok) {
-        // Update card's current status attribute
-        draggedCard.dataset.currentStatus = newStatus;
-        showToast('Status updated successfully.', 'success');
-      } else {
-        // Revert: move card back to source column
-        if (sourceColumn) {
-          sourceColumn.appendChild(draggedCard);
-        }
-        updateColumnCounts();
-        showToast(result.data.error || 'Invalid status transition.', 'danger');
-      }
-    })
-    .catch(function(err) {
-      draggedCard.classList.remove('loading');
-      // Revert on network error
-      if (sourceColumn) {
-        sourceColumn.appendChild(draggedCard);
-      }
-      updateColumnCounts();
-      showToast('Network error. Please try again.', 'danger');
-    });
-  };
-
-  function updateColumnCounts() {
-    document.querySelectorAll('.kanban-column-body').forEach(function(col) {
-      var status = col.dataset.status;
-      var count = col.querySelectorAll('.kanban-card').length;
-      var countEl = document.getElementById('count-' + status);
-      if (countEl) {
-        countEl.textContent = count;
+        fetch(`/orders/${orderId}/kanban-status`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        })
+        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+        .then(result => {
+          itemEl.classList.remove('loading');
+          if (result.ok) {
+            itemEl.dataset.currentStatus = newStatus;
+            updateCounts();
+            showKanbanToast('Status updated successfully.', 'success');
+          } else {
+            // Revert
+            sourceCol.appendChild(itemEl);
+            updateCounts();
+            showKanbanToast(result.data.error || 'Invalid transition.', 'danger');
+          }
+        })
+        .catch(error => {
+          itemEl.classList.remove('loading');
+          sourceCol.appendChild(itemEl);
+          updateCounts();
+          showKanbanToast('Network error.', 'danger');
+        });
       }
     });
+    sortableInstances.push(instance);
+  });
+}
+
+function updateCounts() {
+  document.querySelectorAll('.kanban-column').forEach(col => {
+    const status = col.dataset.status;
+    const count = col.querySelectorAll('.kanban-card').length;
+    const countEl = document.getElementById(`count-${status}`);
+    if (countEl) countEl.textContent = count;
+  });
+}
+
+function showKanbanToast(message, type) {
+  const container = document.getElementById('kanban-toast-container');
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type} alert-dismissible fade show mb-2 shadow`;
+  toast.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    if (toast.parentNode) {
+      const bsToast = bootstrap.Alert.getOrCreateInstance(toast);
+      bsToast.close();
+    }
+  }, 3000);
+}
+
+// Initial call
+document.addEventListener('DOMContentLoaded', initSortable);
+
+// HTMX re-init
+document.addEventListener('htmx:afterSwap', function(evt) {
+  if (evt.detail.target.id === 'kanbanBoardContainer') {
+    initSortable();
   }
-
-  function showToast(message, type) {
-    var container = document.getElementById('kanban-toast-container');
-    var toast = document.createElement('div');
-    toast.className = 'alert alert-' + type + ' alert-dismissible fade show mb-2';
-    toast.setAttribute('role', 'alert');
-    toast.innerHTML = message +
-      '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
-    container.appendChild(toast);
-
-    // Auto-dismiss after 4 seconds
-    setTimeout(function() {
-      if (toast.parentNode) {
-        toast.classList.remove('show');
-        setTimeout(function() {
-          if (toast.parentNode) toast.parentNode.removeChild(toast);
-        }, 150);
-      }
-    }, 4000);
-  }
-})();
+});
 </script>
 {% endblock %}
