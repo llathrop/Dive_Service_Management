@@ -25,7 +25,11 @@ from app.models.service_item import ServiceItem
 from app.models.service_order import ServiceOrder
 from app.models.user import Role, User
 from app.services import order_service
-from app.services.order_service import SORTABLE_FIELDS  # noqa: F401
+from app.services.order_service import (
+    SORTABLE_FIELDS,
+    KANBAN_ACTIVE_STATUSES,
+    KANBAN_STATUS_LABELS,
+)
 from app.services import template_service
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
@@ -136,30 +140,6 @@ def _populate_detail_form_choices(item_form, part_form, labor_form, service_form
     ]
 
 
-# Active statuses shown as columns on the kanban board (excludes terminal states).
-KANBAN_ACTIVE_STATUSES = [
-    "intake",
-    "assessment",
-    "awaiting_approval",
-    "in_progress",
-    "awaiting_parts",
-    "completed",
-    "ready_for_pickup",
-]
-
-KANBAN_STATUS_LABELS = {
-    "intake": "Intake",
-    "assessment": "Assessment",
-    "awaiting_approval": "Awaiting Approval",
-    "in_progress": "In Progress",
-    "awaiting_parts": "Awaiting Parts",
-    "completed": "Completed",
-    "ready_for_pickup": "Ready for Pickup",
-    "picked_up": "Picked Up",
-    "cancelled": "Cancelled",
-}
-
-
 # ======================================================================
 # Routes -- Order CRUD
 # ======================================================================
@@ -218,30 +198,44 @@ def list_orders():
 @roles_accepted("admin", "technician")
 def kanban():
     """Display the Kanban board view for service orders."""
-    # Fetch all non-deleted orders
-    all_orders = ServiceOrder.not_deleted().all()
+    form = OrderSearchForm(request.args)
+    _populate_search_form_choices(form)
 
-    # Group orders by status
-    columns = {s: [] for s in KANBAN_ACTIVE_STATUSES}
-    archived_orders = {"picked_up": [], "cancelled": []}
+    # Default to excluding terminal statuses if none specified in status filter
+    include_statuses = None
+    if form.status.data:
+        include_statuses = [form.status.data]
 
-    for o in all_orders:
-        if o.status in columns:
-            columns[o.status].append(o)
-        elif o.status in archived_orders:
-            archived_orders[o.status].append(o)
+    # Fetch all matching orders without pagination, with preloaded relationships
+    orders = order_service.get_orders(
+        search=form.q.data,
+        status=form.status.data,
+        priority=form.priority.data,
+        assigned_tech_id=form.assigned_tech_id.data,
+        date_from=form.date_from.data,
+        date_to=form.date_to.data,
+        paginate=False,
+        eager_load=True,
+        include_statuses=include_statuses,
+    )
 
-    total_count = sum(len(v) for v in columns.values())
-    archived_count = sum(len(v) for v in archived_orders.values())
+    board_data = order_service.get_kanban_board_data(orders)
+
+    # If it's an HTMX request, return only the board partial
+    if request.headers.get("HX-Request"):
+        return render_template(
+            "orders/_kanban_board.html",
+            **board_data,
+            active_statuses=KANBAN_ACTIVE_STATUSES,
+            status_labels=KANBAN_STATUS_LABELS,
+        )
 
     return render_template(
         "orders/kanban.html",
-        columns=columns,
-        archived_orders=archived_orders,
+        form=form,
+        **board_data,
         active_statuses=KANBAN_ACTIVE_STATUSES,
         status_labels=KANBAN_STATUS_LABELS,
-        total_count=total_count,
-        archived_count=archived_count,
     )
 
 

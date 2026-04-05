@@ -58,6 +58,33 @@ SORTABLE_FIELDS = [
 ORDER_NUMBER_PATTERN = re.compile(r"^SO-(\d{4})-(\d{5})$")
 
 
+from sqlalchemy.orm import joinedload
+
+# Active statuses shown as columns on the kanban board (excludes terminal states).
+KANBAN_ACTIVE_STATUSES = [
+    "intake",
+    "assessment",
+    "awaiting_approval",
+    "in_progress",
+    "awaiting_parts",
+    "completed",
+    "ready_for_pickup",
+]
+
+# Labels for each status.
+KANBAN_STATUS_LABELS = {
+    "intake": "Intake",
+    "assessment": "Assessment",
+    "awaiting_approval": "Awaiting Approval",
+    "in_progress": "In Progress",
+    "awaiting_parts": "Awaiting Parts",
+    "completed": "Completed",
+    "ready_for_pickup": "Ready for Pickup",
+    "picked_up": "Picked Up",
+    "cancelled": "Cancelled",
+}
+
+
 # =========================================================================
 # Order CRUD
 # =========================================================================
@@ -74,8 +101,11 @@ def get_orders(
     sort="date_received",
     order="desc",
     exclude_statuses=None,
+    include_statuses=None,
+    paginate=True,
+    eager_load=False,
 ):
-    """Return paginated, filtered, sorted service orders.
+    """Return filtered service orders, optionally paginated.
 
     Args:
         page: Page number (1-indexed).
@@ -89,15 +119,27 @@ def get_orders(
         sort: Column name to sort by.  Must be in SORTABLE_FIELDS.
         order: Sort direction, 'asc' or 'desc'.
         exclude_statuses: Optional set of status strings to exclude from results.
+        include_statuses: Optional set of status strings to include in results.
+        paginate: If True, returns a pagination object. If False, returns a list.
+        eager_load: If True, joins customer and assigned_tech relationships.
 
     Returns:
-        A SQLAlchemy pagination object.
+        A SQLAlchemy pagination object or a list of ServiceOrder instances.
     """
     query = ServiceOrder.not_deleted()
+
+    if eager_load:
+        query = query.options(
+            joinedload(ServiceOrder.customer),
+            joinedload(ServiceOrder.assigned_tech)
+        )
 
     # Exclude terminal statuses when requested (e.g. hide completed orders)
     if exclude_statuses:
         query = query.filter(ServiceOrder.status.notin_(exclude_statuses))
+
+    if include_statuses:
+        query = query.filter(ServiceOrder.status.in_(include_statuses))
 
     # Apply search filter
     if search:
@@ -130,13 +172,60 @@ def get_orders(
     # Apply sorting (validate against allowlist)
     if sort not in SORTABLE_FIELDS:
         sort = "date_received"
-    sort_column = getattr(ServiceOrder, sort, ServiceOrder.date_received)
-    if order == "asc":
-        query = query.order_by(sort_column.asc())
+    
+    # Handle custom sorting for priority if requested
+    if sort == "priority":
+        priority_order = db.case(
+            (ServiceOrder.priority == 'rush', 1),
+            (ServiceOrder.priority == 'high', 2),
+            (ServiceOrder.priority == 'normal', 3),
+            (ServiceOrder.priority == 'low', 4),
+            else_=5
+        )
+        if order == "asc":
+            query = query.order_by(priority_order.asc(), ServiceOrder.date_received.asc())
+        else:
+            query = query.order_by(priority_order.desc(), ServiceOrder.date_received.desc())
     else:
-        query = query.order_by(sort_column.desc())
+        sort_column = getattr(ServiceOrder, sort, ServiceOrder.date_received)
+        if order == "asc":
+            query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(sort_column.desc())
+
+    if not paginate:
+        return query.limit(500).all()
 
     return db.paginate(query, page=page, per_page=per_page)
+
+
+def get_kanban_board_data(orders):
+    """Group a list of service orders by status for the Kanban board.
+
+    Args:
+        orders: A list of ServiceOrder instances.
+
+    Returns:
+        A dict with keys 'columns', 'archived_orders', 'total_count', 'archived_count'.
+    """
+    columns = {s: [] for s in KANBAN_ACTIVE_STATUSES}
+    archived_orders = {"picked_up": [], "cancelled": []}
+
+    for o in orders:
+        if o.status in columns:
+            columns[o.status].append(o)
+        elif o.status in archived_orders:
+            archived_orders[o.status].append(o)
+
+    total_count = sum(len(v) for v in columns.values())
+    archived_count = sum(len(v) for v in archived_orders.values())
+
+    return {
+        "columns": columns,
+        "archived_orders": archived_orders,
+        "total_count": total_count,
+        "archived_count": archived_count,
+    }
 
 
 def get_order(order_id):
