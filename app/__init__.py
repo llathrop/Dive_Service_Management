@@ -15,7 +15,7 @@ Typical usage::
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, abort, render_template, send_from_directory
+from flask import Flask, abort, render_template, request, send_from_directory
 from flask_login import login_required
 from flask_security import SQLAlchemyUserDatastore
 
@@ -51,6 +51,18 @@ def create_app(config_class=None):
     # Create the Flask application
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_class)
+
+    # ProxyFix middleware for reverse proxy configuration (S1-1)
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    proxy_count = int(os.environ.get("DSM_PROXY_COUNT", 0))
+    if proxy_count > 0:
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app,
+            x_for=proxy_count,
+            x_proto=proxy_count,
+            x_host=proxy_count,
+            x_prefix=proxy_count,
+        )
 
     # Run config-class-specific validation (e.g. ProductionConfig checks secrets)
     if hasattr(config_class, 'init_app'):
@@ -96,6 +108,11 @@ def create_app(config_class=None):
     # Register security headers
     # ------------------------------------------------------------------
     _register_security_headers(app)
+
+    # ------------------------------------------------------------------
+    # Register before_request handlers (S1-3, S1-6)
+    # ------------------------------------------------------------------
+    _register_before_request_handlers(app)
 
     return app
 
@@ -323,6 +340,37 @@ def _register_security_headers(app):
 
     # Apply rate limits to login and API-like endpoints
     _apply_rate_limits(app)
+
+
+def _register_before_request_handlers(app):
+    """Register custom before_request hooks (Host checks, dynamic session lifetime)."""
+    from datetime import timedelta
+
+    # Pre-parse allowed hosts for Host Header validation (S1-6)
+    allowed_hosts_str = os.environ.get("DSM_ALLOWED_HOSTS", "")
+    allowed_hosts = [
+        h.strip()
+        for h in allowed_hosts_str.split(",")
+        if h.strip() and h.strip() != "*"
+    ]
+
+    @app.before_request
+    def check_host_header():
+        """Ensure the request Host header matches allowed hosts if restricted (S1-6)."""
+        if allowed_hosts:
+            host_header = request.host.split(":")[0]
+            if host_header not in allowed_hosts:
+                abort(400)
+
+    @app.before_request
+    def enforce_session_lifetime():
+        """Dynamically set the session lifetime from database settings (S1-3)."""
+        from app.services.config_service import get_config
+        try:
+            hours = int(get_config("security.session_lifetime_hours", 24))
+            app.permanent_session_lifetime = timedelta(hours=hours)
+        except Exception:
+            pass  # Fail-safe: do not crash if DB config cannot be read
 
 
 def _register_cli(app):
