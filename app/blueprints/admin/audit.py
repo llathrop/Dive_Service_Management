@@ -9,7 +9,7 @@ from flask_security import roles_required
 from app.blueprints.admin import admin_bp
 
 # Fields whose old/new values must never appear in exports
-SENSITIVE_FIELDS = {"password", "password_hash", "fs_uniquifier", "tf_totp_secret"}
+SENSITIVE_FIELDS = {"password", "password_hash", "fs_uniquifier", "tf_totp_secret", "email.smtp_password"}
 
 
 @admin_bp.route("/audit-log")
