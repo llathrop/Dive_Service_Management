@@ -134,24 +134,30 @@ def create_backup_sql():
 
 
 def _mysql_dump():
-    """Run mariadb-dump and return the output."""
+    """Run mariadb-dump and return the output safely without exposing credentials (S1-4)."""
+    import copy
+    import os
+    from urllib.parse import urlparse
+
     db_url = current_app.config["SQLALCHEMY_DATABASE_URI"]
     # Parse connection info from URL: mysql+mysqldb://user:pass@host:port/dbname
-    from urllib.parse import urlparse
     parsed = urlparse(db_url.replace("mysql+mysqldb://", "mysql://"))
+
+    env = copy.copy(os.environ)
+    env["MYSQL_PWD"] = parsed.password or ""
 
     cmd = [
         "mariadb-dump",
         f"--host={parsed.hostname or 'localhost'}",
         f"--port={parsed.port or 3306}",
         f"--user={parsed.username or 'root'}",
-        f"--password={parsed.password or ''}",
         parsed.path.lstrip("/"),
     ]
 
     try:
         result = subprocess.run(
             cmd,
+            env=env,
             capture_output=True,
             text=True,
             timeout=300,
@@ -164,7 +170,11 @@ def _mysql_dump():
             "Backup is only available when running inside the Docker container."
         )
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Backup failed: {e.stderr}")
+        # Sanitize stderr to prevent credential leakage in output
+        stderr_msg = e.stderr or ""
+        if parsed.password:
+            stderr_msg = stderr_msg.replace(parsed.password, "********")
+        raise RuntimeError(f"Backup failed: {stderr_msg}")
 
 
 def _sqlite_dump():
