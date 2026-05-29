@@ -1,6 +1,7 @@
-"""Unit tests for deployment hardening features (Stage 1)."""
+"""Unit and integration tests for deployment hardening features (Stage 1)."""
 
 import os
+from datetime import timedelta
 from unittest.mock import patch, MagicMock
 import pytest
 from flask import Flask, session
@@ -13,44 +14,86 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 pytestmark = pytest.mark.unit
 
 
-def test_proxy_fix_middleware(monkeypatch):
+def test_proxy_fix_middleware_applied(monkeypatch):
     """S1-1: ProxyFix middleware is applied when DSM_PROXY_COUNT > 0."""
     monkeypatch.setenv("DSM_PROXY_COUNT", "2")
-    # Initialize a new app factory instance under these environment variables
     app = create_app()
     assert isinstance(app.wsgi_app, ProxyFix)
-    # Clear env
     monkeypatch.delenv("DSM_PROXY_COUNT", raising=False)
 
 
-def test_host_header_validation(monkeypatch, client):
-    """S1-6: Host header check permits matching Hosts and aborts unmatched ones."""
-    # Temporarily patch environment variable and recreate app context for testing
+def test_proxy_fix_middleware_integration(monkeypatch):
+    """S1-1: ProxyFix middleware is applied and correctly parses forwarded client IP and scheme."""
+    monkeypatch.setenv("DSM_PROXY_COUNT", "1")
+    app = create_app()
+    
+    # Register a temporary test route to inspect the request context remote_addr & scheme
+    @app.route("/test-ip")
+    def test_ip_route():
+        from flask import request
+        return {"remote_addr": request.remote_addr, "scheme": request.scheme}
+
+    with app.test_client() as client:
+        # Send a request with X-Forwarded-For and X-Forwarded-Proto headers
+        res = client.get("/test-ip", headers={
+            "X-Forwarded-For": "203.0.113.195",
+            "X-Forwarded-Proto": "https"
+        })
+        assert res.status_code == 200
+        data = res.get_json()
+        # Verify that ProxyFix correctly intercepted the WSGI environment variables and updated remote_addr
+        assert data["remote_addr"] == "203.0.113.195"
+        assert data["scheme"] == "https"
+
+    monkeypatch.delenv("DSM_PROXY_COUNT", raising=False)
+
+
+def test_host_header_validation(monkeypatch):
+    """S1-6: Host header check permits matching Hosts and aborts unmatched ones with 400 Bad Request."""
     monkeypatch.setenv("DSM_ALLOWED_HOSTS", "localhost,example.com")
     app = create_app()
     
     with app.test_client() as test_client:
         # Host matching example.com should pass (returns typical 404/200/302, not 400)
-        res = test_client.get("/", headers={"Host": "example.com"})
+        res = test_client.get("/health/live", headers={"Host": "example.com"})
         assert res.status_code != 400
 
         # Host matching localhost should pass
-        res = test_client.get("/", headers={"Host": "localhost"})
+        res = test_client.get("/health/live", headers={"Host": "localhost"})
         assert res.status_code != 400
 
         # Host matching a port should pass if inside allowed list
-        res = test_client.get("/", headers={"Host": "example.com:8080"})
+        res = test_client.get("/health/live", headers={"Host": "example.com:8080"})
         assert res.status_code != 400
 
         # Untrusted host should return 400 Bad Request
-        res = test_client.get("/", headers={"Host": "malicious-site.com"})
+        res = test_client.get("/health/live", headers={"Host": "malicious-site.com"})
         assert res.status_code == 400
+
+    monkeypatch.delenv("DSM_ALLOWED_HOSTS", raising=False)
+
+
+def test_host_header_validation_bypass(monkeypatch):
+    """S1-6: Host header check is completely bypassed if DSM_ALLOWED_HOSTS is empty or '*'."""
+    # Test wildcard bypass
+    monkeypatch.setenv("DSM_ALLOWED_HOSTS", "*")
+    app = create_app()
+    with app.test_client() as test_client:
+        res = test_client.get("/health/live", headers={"Host": "malicious-site.com"})
+        assert res.status_code == 200
+
+    # Test empty bypass
+    monkeypatch.setenv("DSM_ALLOWED_HOSTS", "")
+    app = create_app()
+    with app.test_client() as test_client:
+        res = test_client.get("/health/live", headers={"Host": "malicious-site.com"})
+        assert res.status_code == 200
+
+    monkeypatch.delenv("DSM_ALLOWED_HOSTS", raising=False)
 
 
 def test_dynamic_session_lifetime(app, db_session):
     """S1-3: Dynamic session lifetime enforcement from database settings."""
-    from datetime import timedelta
-    from app.services.config_service import set_config
     from app.models.system_config import SystemConfig
 
     with app.app_context():
@@ -119,20 +162,57 @@ def test_secure_database_backup(mock_run, app):
         assert env.get("MYSQL_PWD") == "my_secret_password"
 
 
-def test_sensitive_field_redaction_smtp_password():
-    """S1-5: Sensitive audit fields (including email.smtp_password) are redacted in CSV exports."""
-    from app.blueprints.admin.audit import SENSITIVE_FIELDS
-    assert "email.smtp_password" in SENSITIVE_FIELDS
+def test_sensitive_field_redaction_smtp_password_integration(app, db_session):
+    """S1-5: Sensitive audit fields (including email.smtp_password) are redacted in real streaming CSV exports."""
+    from app.models.user import User
+    from app.models.audit_log import AuditLog
+    from flask_security import hash_password
+    from tests._fixtures import _login_client
 
-    # Verify that mock sensitive audit log entry is correctly redacted
-    entry = MagicMock()
-    entry.field_name = "email.smtp_password"
-    entry.old_value = "supersecret123"
-    entry.new_value = "newsecret456"
+    with app.app_context():
+        # 1. Create an admin user to perform the request
+        user_datastore = app.extensions["security"].datastore
+        admin_role = user_datastore.find_or_create_role(
+            name="admin", description="Full system access"
+        )
+        
+        admin_user = user_datastore.find_user(email="admin_audit@example.com")
+        if not admin_user:
+            admin_user = user_datastore.create_user(
+                username="admin_audit",
+                email="admin_audit@example.com",
+                password=hash_password("adminpassword123"),
+                first_name="Admin",
+                last_name="Audit",
+            )
+            user_datastore.add_role_to_user(admin_user, admin_role)
+            db_session.commit()
 
-    details = ""
-    if entry.field_name and entry.field_name in SENSITIVE_FIELDS:
-        details = f"{entry.field_name}: [REDACTED]"
+        # 2. Insert a real sensitive audit log entry into the database
+        audit_entry = AuditLog(
+            action="update",
+            entity_type="system",
+            entity_id=1,
+            user_id=admin_user.id,
+            field_name="email.smtp_password",
+            old_value="plaintext_smtp_password_123",
+            new_value="new_smtp_password_456",
+        )
+        db_session.add(audit_entry)
+        db_session.commit()
 
-    assert details == "email.smtp_password: [REDACTED]"
+        # 3. Log in the client as the admin user
+        client = _login_client(app, "admin_audit@example.com", "adminpassword123")
 
+        # 4. Request the real CSV export stream
+        res = client.get("/admin/audit-log/export")
+        assert res.status_code == 200
+        assert res.mimetype == "text/csv"
+
+        # 5. Read response content bytes and decode
+        csv_data = res.data.decode("utf-8-sig")
+
+        # 6. Verify that the plaintext password is redacted and DOES NOT appear in the CSV output
+        assert "plaintext_smtp_password_123" not in csv_data
+        assert "new_smtp_password_456" not in csv_data
+        assert "email.smtp_password: [REDACTED]" in csv_data
