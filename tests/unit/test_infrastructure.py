@@ -37,6 +37,13 @@ class TestDockerEntrypoint:
         assert "mariadb-dump" in content
         assert "flask db upgrade" in content
 
+    def test_entrypoint_gated_migrations(self):
+        """docker-entrypoint.sh gates migrations behind DSM_RUN_MIGRATIONS."""
+        path = os.path.join(ROOT_DIR, "docker-entrypoint.sh")
+        with open(path) as f:
+            content = f.read()
+        assert "DSM_RUN_MIGRATIONS" in content
+
     def test_entrypoint_uses_env_var_for_password(self):
         """Password is passed via MYSQL_PWD env var, not --password CLI arg."""
         path = os.path.join(ROOT_DIR, "docker-entrypoint.sh")
