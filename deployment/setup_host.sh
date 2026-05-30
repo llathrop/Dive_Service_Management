@@ -66,11 +66,11 @@ log "System provisioning started..."
 
 # 1. Mount EBS Volume (supporting standard dev-names and Nitro NVMe structures)
 log "Detecting EBS block devices..."
-# Search for a gp3 block device that is 50G in size and has no filesystem type
-EBS_DEV=$(lsblk -o NAME,FSTYPE,SIZE -pn | grep -E "50G[[:space:]]*$" | awk '{print $1}' | head -n 1)
+# Search for a gp3 block device that is 30G in size and has no filesystem type
+EBS_DEV=$(lsblk -o NAME,FSTYPE,SIZE -pn | grep -E "30G[[:space:]]*$" | awk '{print $1}' | head -n 1)
 
 if [ -z "$EBS_DEV" ]; then
-    error "Could not detect attached 50GB EBS volume."
+    error "Could not detect attached 30GB EBS volume."
 fi
 log "Detected EBS Volume block device: $EBS_DEV"
 

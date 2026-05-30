@@ -12,7 +12,7 @@ The automated provisioning and deployment scripts must be robust enough to execu
 | Quality Vector | Audit Criteria | Script Defense Strategy | QA Status |
 | --- | --- | --- | --- |
 | **Idempotency** | Prevents resource replication or formatting data volumes | Dynamic `lsblk -o NAME,FSTYPE` lookup prevents re-formatting an active mount. Security groups and key pairs check for existence before API calls. | **Passed** |
-| **Nitro VM Support** | Handles dynamic NVMe mapping on Nitro hypervisors | Dynamically resolves the EBS volume node via `/sys/block` capacity size (50G block check), bypasses hardcoded `/dev/xvdf` checks. | **Passed** |
+| **Nitro VM Support** | Handles dynamic NVMe mapping on Nitro hypervisors | Dynamically resolves the EBS volume node via `/sys/block` capacity size (30G block check), bypasses hardcoded `/dev/xvdf` checks. | **Passed** |
 | **Error Cascades** | Avoids continuing when a critical sub-step fails | Enforces strict bash shell mode `set -euo pipefail` locally and on the remote host payload. | **Passed** |
 | **State Sync** | Safely waits for asynchronous AWS state changes | Orchestrates `aws ec2 wait` for instance states, volume availabilities, and a TCP polling loop (`nc -z`) for remote SSH availability. | **Passed** |
 
@@ -20,16 +20,16 @@ The automated provisioning and deployment scripts must be robust enough to execu
 
 ## 2. Dynamic Disk Detection Audit
 
-In AWS EC2 Nitro instances (such as the `t3.medium` specified), EBS volumes are attached as NVMe block devices (`/dev/nvme1n1`, `/dev/nvme2n1`) rather than traditional Xen virtual blocks (`/dev/xvdf`).
+In AWS EC2 Nitro instances (such as the `t2.micro` specified in newer regions), EBS volumes are attached as NVMe block devices (`/dev/nvme1n1`, `/dev/nvme2n1`) rather than traditional Xen virtual blocks (`/dev/xvdf`).
 
 ### The Hazard:
 If the remote setup script used a hardcoded `/dev/xvdf` target, formatting and mounting would **fail immediately** on modern EC2 host architectures.
 
 ### The QA Fix implemented in `setup_host.sh`:
 ```bash
-EBS_DEV=$(lsblk -o NAME,FSTYPE,SIZE -pn | grep -E "50G[[:space:]]*$" | awk '{print $1}' | head -n 1)
+EBS_DEV=$(lsblk -o NAME,FSTYPE,SIZE -pn | grep -E "30G[[:space:]]*$" | awk '{print $1}' | head -n 1)
 ```
-This scans all block devices dynamically, identifies the exact mount node that matches our 50GB gp3 EBS disk, and yields a foolproof target for ext4 formatting.
+This scans all block devices dynamically, identifies the exact mount node that matches our 30GB gp3 EBS disk, and yields a foolproof target for ext4 formatting.
 
 ---
 
@@ -47,7 +47,7 @@ sequenceDiagram
     Local->>AWS: Poll: aws ec2 wait instance-running
     AWS-->>Local: Instance is Running
     Local->>AWS: Create EIP & Associate
-    Local->>AWS: Create 50G Volume & Attach
+    Local->>AWS: Create 30G Volume & Attach
     Local->>AWS: Poll: aws ec2 wait volume-in-use
     AWS-->>Local: Volume is Active
     Local->>VM: TCP Poll: nc -z port 22

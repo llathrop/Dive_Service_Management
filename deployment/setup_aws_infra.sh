@@ -107,10 +107,10 @@ fi
 log "Latest Ubuntu 24.04 AMI: $AMI_ID"
 
 # 6. Launch EC2 Instance
-log "Launching EC2 instance (t3.medium)..."
+log "Launching EC2 instance (t2.micro)..."
 INSTANCE_JSON=$(aws ec2 run-instances \
     --image-id "$AMI_ID" \
-    --instance-type t3.medium \
+    --instance-type t2.micro \
     --key-name "$KEY_NAME" \
     --security-group-ids "$SG_ID" \
     --subnet-id "$SUBNET_ID" \
@@ -125,11 +125,11 @@ log "Waiting for instance to enter running state..."
 aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
 log "Instance is running."
 
-# 8. Create and Attach 50GB gp3 EBS Volume
-log "Creating 50GB gp3 EBS volume in $AZ..."
+# 8. Create and Attach 30GB gp3 EBS Volume
+log "Creating 30GB gp3 EBS volume in $AZ..."
 VOLUME_ID=$(aws ec2 create-volume \
     --availability-zone "$AZ" \
-    --size 50 \
+    --size 30 \
     --volume-type gp3 \
     --tag-specifications 'ResourceType=volume,Tags=[{Key=Name,Value=dsm-production-data}]' \
     --query "VolumeId" \
