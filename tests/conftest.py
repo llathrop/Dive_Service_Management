@@ -28,6 +28,51 @@ def app():
 
     with app.app_context():
         _db.create_all()
+        
+        # Seed lookup values for drysuit forms and choices
+        from app.models.lookup import LookupValue
+        from app.cli.seed_lookups import DRYSUIT_LOOKUPS
+        
+        # Build a safe deep copy of lookups to avoid modifying shared module references
+        test_lookups = {}
+        for cat, pairs in DRYSUIT_LOOKUPS.items():
+            test_lookups[cat] = list(pairs)
+            
+        # Append test-specific values safely
+        if ("Back-entry", "Back-entry") not in test_lookups.setdefault("suit_entry_type", []):
+            test_lookups["suit_entry_type"].append(("Back-entry", "Back-entry"))
+        if ("Integrated Rock Boot", "Integrated Rock Boot") not in test_lookups.setdefault("boot_type", []):
+            test_lookups["boot_type"].append(("Integrated Rock Boot", "Integrated Rock Boot"))
+            
+        test_lookups["zipper_orientation"] = [
+            ("Front", "Front"),
+            ("Rear", "Rear"),
+            ("Shoulder", "Shoulder"),
+            ("Diagonal", "Diagonal"),
+            ("Back", "Back")
+        ]
+        test_lookups["dump_valve_type"] = [
+            ("Shoulder", "Shoulder"),
+            ("Wrist", "Wrist"),
+            ("Ankle", "Ankle")
+        ]
+        
+        # Deduplicate and add to session
+        for category, pairs in test_lookups.items():
+            seen = set()
+            for value, display_name in pairs:
+                if value in seen:
+                    continue
+                seen.add(value)
+                lv = LookupValue(
+                    category=category,
+                    value=value,
+                    display_name=display_name,
+                    is_active=True
+                )
+                _db.session.add(lv)
+        _db.session.commit()
+        
         yield app
         _db.session.remove()
         _db.drop_all()
