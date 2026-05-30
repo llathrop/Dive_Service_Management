@@ -431,6 +431,172 @@ docker compose logs web | grep -i password   # should return nothing
 
 ---
 
+### Automating Stage 1 Deployments (DevOps Best Practices)
+
+To move away from manual SSH shell steps and make VM deployment highly repeatable, fast, and consistent, you can automate infrastructure provisioning, target package installations, and builds using modern DevOps tools:
+
+#### 1. Infrastructure Provisioning (IaC via Terraform)
+To automate the cloud VM instance, network firewall rules, and persistent storage volumes (Phase A), use Terraform. Below is a simplified configuration for **AWS (Option 1)**:
+
+```hcl
+# main.tf
+resource "aws_security_group" "dsm_sg" {
+  name        = "dsm-security-group"
+  description = "Allow inbound HTTPS/HTTP and SSH for admins"
+
+  ingress {
+    from_port        = 443
+    to_port          = 443
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = ["YOUR_ADMIN_IP/32"]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "dsm_vm" {
+  ami             = "ami-0cd59ec37668f0581" # Ubuntu 24.04 LTS
+  instance_type   = "t3.medium"
+  security_groups = [aws_security_group.dsm_sg.name]
+  key_name        = "dsm-admin-key"
+
+  tags = {
+    Name = "dsm-production-server"
+  }
+}
+
+resource "aws_ebs_volume" "dsm_data" {
+  availability_zone = aws_instance.dsm_vm.availability_zone
+  size              = 50
+  type              = "gp3"
+}
+
+resource "aws_volume_attachment" "ebs_att" {
+  device_name = "/dev/xvdf"
+  volume_id   = aws_ebs_volume.dsm_data.id
+  instance_id = aws_instance.dsm_vm.id
+}
+```
+
+#### 2. OS Configuration & Software Setup (via Ansible)
+To automate VM package installs, Docker setup, and permission creation (Phase B & C), use an Ansible playbook to run tasks consistently:
+
+```yaml
+# playbook.yml
+- name: Configure DSM Production Server
+  hosts: dsm_servers
+  become: yes
+  tasks:
+    - name: Update package cache and install services
+      apt:
+        name:
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+          - fail2ban
+        state: present
+        update_cache: yes
+
+    - name: Start and enable fail2ban
+      systemctl:
+        name: fail2ban
+        state: started
+        enabled: yes
+
+    - name: Ensure target EBS mount folder exists
+      file:
+        path: /mnt/dsm-data
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Provision DSM application folder structure
+      file:
+        path: "/mnt/dsm-data/{{ item }}"
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: '0755'
+      loop:
+        - db
+        - uploads/logos
+        - uploads/imports
+        - uploads/exports
+        - uploads/attachments
+        - logs
+        - backups
+
+    - name: Install Docker via web script
+      shell: curl -fsSL https://get.docker.com | sh
+      args:
+        creates: /usr/bin/docker
+
+    - name: Add ubuntu to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+```
+
+#### 3. Continuous Deployment (CI/CD via GitHub Actions)
+To automate tests, pull updates, rebuild, and trigger migrations during a git push to master, configure a CI/CD integration workflow:
+
+```yaml
+# .github/workflows/deploy.yml
+name: Continuous Deployment (Stage 1)
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Fast Unit Tests
+        run: make test-fast
+
+      - name: Execute Remote SSH Deploy Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /srv/dsm
+            git pull origin master
+            # Rebuild and start container services in daemon mode
+            docker compose build
+            docker compose up -d
+            # Trigger database migration upgrades inside container
+            docker compose exec -T web flask db upgrade
+```
+
+---
+
 ### Upgrading the VM Deployment
 
 The existing `scripts/setup.sh upgrade` command handles the standard upgrade path:
