@@ -51,6 +51,7 @@ coverage.xml
 .env.staging
 .env.*.local
 instance/config.py
+deployment/.env.infra
 
 # ---------- Credentials / Keys ----------
 *.pem
