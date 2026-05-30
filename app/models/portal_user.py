@@ -11,6 +11,10 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import validates
 from werkzeug.security import check_password_hash, generate_password_hash
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
+
+_ph = PasswordHasher()
 
 from app.extensions import db
 from app.models.mixins import TimestampMixin
@@ -79,10 +83,20 @@ class PortalUser(TimestampMixin, db.Model):
         return value
 
     def set_password(self, raw_password):
-        self.password_hash = generate_password_hash(raw_password)
+        self.password_hash = _ph.hash(raw_password)
 
     def check_password(self, raw_password):
-        return check_password_hash(self.password_hash, raw_password)
+        if self.password_hash and self.password_hash.startswith("$argon2"):
+            try:
+                return _ph.verify(self.password_hash, raw_password)
+            except (VerifyMismatchError, VerificationError, InvalidHashError):
+                return False
+        else:
+            # Fallback and auto-upgrade older PBKDF2 hashes
+            matches = check_password_hash(self.password_hash, raw_password)
+            if matches:
+                self.set_password(raw_password)
+            return matches
 
     @property
     def display_name(self):

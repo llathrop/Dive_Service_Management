@@ -58,3 +58,50 @@ class TestHealthEndpoint:
         data = response.get_json()
         assert data["status"] == "degraded"
         assert data["checks"]["database"] == "error"
+
+    def test_liveness_probe_always_returns_200(self, client):
+        """GET /health/live liveness probe always returns 200 OK."""
+        response = client.get("/health/live")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["status"] == "alive"
+
+    def test_readiness_probe_returns_200_when_healthy(self, client):
+        """GET /health/ready readiness probe returns 200 OK when DB and Redis are healthy."""
+        # Mock Redis ping to ensure it passes even if Redis is slow in test container
+        with patch("redis.Redis.ping") as mock_ping:
+            mock_ping.return_value = True
+            response = client.get("/health/ready")
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["status"] == "ready"
+            assert data["db"] == "ok"
+            assert data["redis"] == "ok"
+
+    def test_readiness_probe_fails_on_db_error(self, client):
+        """GET /health/ready returns 503 when DB connection fails."""
+        with patch("app.blueprints.health.db") as mock_db, patch("redis.Redis.ping") as mock_ping:
+            mock_ping.return_value = True
+            mock_db.session.execute.side_effect = OperationalError(
+                "SELECT 1", {}, Exception("DB down")
+            )
+            mock_db.text = lambda x: x
+            response = client.get("/health/ready")
+            
+        assert response.status_code == 503
+        data = response.get_json()
+        assert data["status"] == "not_ready"
+        assert data["db"] == "error"
+        assert data["redis"] == "ok"
+
+    def test_readiness_probe_fails_on_redis_error(self, client):
+        """GET /health/ready returns 503 when Redis connection fails."""
+        with patch("redis.Redis.ping") as mock_ping:
+            mock_ping.side_effect = Exception("Redis connection failed")
+            response = client.get("/health/ready")
+
+        assert response.status_code == 503
+        data = response.get_json()
+        assert data["status"] == "not_ready"
+        assert data["db"] == "ok"
+        assert data["redis"] == "error"

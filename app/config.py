@@ -6,6 +6,7 @@ for development only.
 """
 
 import os
+from datetime import timedelta
 
 from dotenv import load_dotenv
 
@@ -99,6 +100,13 @@ class ProductionConfig(Config):
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
+
+    # Secure remember-me cookies (S1-2)
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
 
     @classmethod
     def init_app(cls, app):

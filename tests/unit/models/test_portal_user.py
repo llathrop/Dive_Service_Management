@@ -107,3 +107,35 @@ def test_portal_activation_token_expiry_and_consumption(app, db_session):
     db_session.commit()
     assert token.is_used is True
     assert PortalAccessToken.lookup_valid_token(raw_token) is None
+
+
+def test_portal_user_password_hashing_upgrade(app, db_session):
+    """S1-7: Verify Argon2 upgrades, PBKDF2 backwards compatibility, and self-healing auto-upgrade."""
+    from werkzeug.security import generate_password_hash
+    _set_session(db_session)
+    customer = CustomerFactory(first_name="Upgrade", last_name="User")
+
+    # 1. Verify a new user uses Argon2 hashing
+    new_user = PortalUser(customer_id=customer.id, email="argon2@example.com")
+    new_user.set_password("argon2-pass")
+    db_session.add(new_user)
+    db_session.commit()
+
+    assert new_user.password_hash.startswith("$argon2")
+    assert new_user.check_password("argon2-pass") is True
+    assert new_user.check_password("wrong-pass") is False
+
+    # 2. Verify backwards compatibility with Werkzeug PBKDF2 hashes
+    pbkdf2_hash = generate_password_hash("pbkdf2-pass")
+    assert pbkdf2_hash.startswith("scrypt:") or pbkdf2_hash.startswith("pbkdf2:")
+
+    old_user = PortalUser(customer_id=customer.id, email="pbkdf2@example.com", password_hash=pbkdf2_hash)
+    db_session.add(old_user)
+    db_session.commit()
+
+    # Old password should check successfully
+    assert old_user.check_password("pbkdf2-pass") is True
+    # The check_password hook should have triggered the self-healing upgrade to Argon2!
+    assert old_user.password_hash.startswith("$argon2")
+    # Subsequent check should work with the upgraded hash
+    assert old_user.check_password("pbkdf2-pass") is True

@@ -40,6 +40,8 @@ deployments should set:
 | `DSM_FORCE_HTTPS`      | Redirect HTTP to HTTPS                   | `false` |
 | `DSM_ALLOWED_HOSTS`    | Comma-separated allowed Host headers     | `*`     |
 | `DSM_TRUSTED_PROXIES`  | Trusted proxy IPs for X-Forwarded-For    | (empty) |
+| `DSM_PROXY_COUNT`      | Number of trusted reverse proxy hops (ALB/Nginx) | `0`     |
+| `DSM_RUN_MIGRATIONS`   | Run db migrations & seed on web startup  | `true`    |
 | `DSM_STORAGE_BACKEND`  | Upload storage backend (future)          | `local` |
 
 All `DSM_*` secrets (SECRET_KEY, passwords) should be injected from your
@@ -102,7 +104,10 @@ cloud provider's secret manager rather than stored in plaintext.
         {"name": "DSM_CELERY_BROKER_URL", "value": "redis://dsm-cache.CLUSTER.cache.amazonaws.com:6379/1"},
         {"name": "DSM_CELERY_RESULT_BACKEND", "value": "redis://dsm-cache.CLUSTER.cache.amazonaws.com:6379/2"},
         {"name": "DSM_FORCE_HTTPS", "value": "true"},
-        {"name": "DSM_WORKERS", "value": "2"},
+        {"name": "DSM_PROXY_COUNT", "value": "1"},
+        {"name": "DSM_RUN_MIGRATIONS", "value": "false"},
+        {"name": "DSM_WORKERS", "value": "3"},
+        {"name": "DSM_THREADS", "value": "2"},
         {"name": "DSM_LOG_LEVEL", "value": "INFO"}
       ],
       "logConfiguration": {
